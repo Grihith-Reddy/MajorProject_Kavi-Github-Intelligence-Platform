@@ -9,7 +9,7 @@ class SettingsValidationTests(unittest.TestCase):
     def test_invalid_fernet_key_fails_validation(self):
         cfg = Settings(
             _env_file=None,
-            GITHUB_STATE_SECRET="super-secret-value",
+            GITHUB_STATE_SECRET="state-secret-for-tests-at-least-32-bytes",
             TOKEN_ENCRYPTION_KEY="invalid-key",
         )
 
@@ -26,7 +26,7 @@ class SettingsValidationTests(unittest.TestCase):
             GITHUB_CLIENT_ID="client-id",
             GITHUB_CLIENT_SECRET="client-secret",
             GITHUB_OAUTH_REDIRECT_URI="https://api.example.com/api/github/callback",
-            GITHUB_STATE_SECRET="super-secret-value",
+            GITHUB_STATE_SECRET="state-secret-for-tests-at-least-32-bytes",
             TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode(),
         )
 
@@ -43,7 +43,7 @@ class SettingsValidationTests(unittest.TestCase):
             GITHUB_CLIENT_ID="client-id",
             GITHUB_CLIENT_SECRET="client-secret",
             GITHUB_OAUTH_REDIRECT_URI="https://api.example.com/api/github/callback",
-            GITHUB_STATE_SECRET="super-secret-value",
+            GITHUB_STATE_SECRET="state-secret-for-tests-at-least-32-bytes",
             TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode(),
         )
 
@@ -59,7 +59,7 @@ class SettingsValidationTests(unittest.TestCase):
             GITHUB_CLIENT_ID="client-id",
             GITHUB_CLIENT_SECRET="client-secret",
             GITHUB_OAUTH_REDIRECT_URI="https://api.example.com/api/github/callback",
-            GITHUB_STATE_SECRET="super-secret-value",
+            GITHUB_STATE_SECRET="state-secret-for-tests-at-least-32-bytes",
             TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode(),
         )
 
@@ -76,11 +76,28 @@ class SettingsValidationTests(unittest.TestCase):
             GITHUB_CLIENT_ID="client-id",
             GITHUB_CLIENT_SECRET="client-secret",
             GITHUB_OAUTH_REDIRECT_URI="http://api.example.com/api/github/callback",
-            GITHUB_STATE_SECRET="super-secret-value",
+            GITHUB_STATE_SECRET="state-secret-for-tests-at-least-32-bytes",
             TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode(),
         )
 
         with self.assertRaises(RuntimeError):
+            cfg.validate_runtime()
+
+    def test_production_rejects_short_state_secret(self):
+        cfg = Settings(
+            _env_file=None,
+            ENV="production",
+            FRONTEND_URL="https://kavi.example.com",
+            FIREBASE_PROJECT_ID="kavi-prod",
+            FIREBASE_CREDENTIALS_JSON='{"type":"service_account","project_id":"kavi-prod"}',
+            GITHUB_CLIENT_ID="client-id",
+            GITHUB_CLIENT_SECRET="client-secret",
+            GITHUB_OAUTH_REDIRECT_URI="https://api.example.com/api/github/callback",
+            GITHUB_STATE_SECRET="too-short",
+            TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode(),
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "at least 32 bytes"):
             cfg.validate_runtime()
 
 

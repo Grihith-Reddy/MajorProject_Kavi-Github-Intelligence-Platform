@@ -1,18 +1,20 @@
+import base64
+import hashlib
 import json
+import secrets
 import threading
 import time
 from dataclasses import dataclass
 from typing import Any
 
 import firebase_admin
+import jwt
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth as firebase_auth
 from firebase_admin import credentials as firebase_credentials
 from firebase_admin.exceptions import FirebaseError
-from jose import JWTError, jwt
-
 from app.core.settings import settings
 
 
@@ -85,7 +87,7 @@ def verify_jwt_token(token: str) -> dict[str, Any]:
         ) from exc
 
     try:
-        payload = firebase_auth.verify_id_token(token, app=firebase_app, check_revoked=False)
+        payload = firebase_auth.verify_id_token(token, app=firebase_app, check_revoked=True)
         return payload
     except firebase_auth.ExpiredIdTokenError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired") from exc
@@ -140,20 +142,27 @@ def decrypt_token(token_encrypted: str) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid GitHub token") from exc
 
 
-def create_oauth_state(sub: str) -> str:
+def create_oauth_state() -> tuple[str, str, str]:
     now = int(time.time())
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode("ascii")).digest()
+    ).decode("ascii").rstrip("=")
     payload = {
-        "sub": sub,
+        "jti": secrets.token_urlsafe(32),
         "iat": now,
         "exp": now + 600,
-        "nonce": f"{now}-{sub}",
     }
-    return jwt.encode(payload, settings.GITHUB_STATE_SECRET, algorithm="HS256")
+    state = jwt.encode(payload, settings.GITHUB_STATE_SECRET, algorithm="HS256")
+    return state, code_verifier, code_challenge
 
 
 def verify_oauth_state(state: str) -> str:
     try:
         payload = jwt.decode(state, settings.GITHUB_STATE_SECRET, algorithms=["HS256"])
-        return payload.get("sub")
-    except JWTError as exc:
+        state_id = payload.get("jti")
+        if not isinstance(state_id, str) or not state_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OAuth state")
+        return state_id
+    except jwt.InvalidTokenError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OAuth state") from exc

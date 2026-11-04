@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy import text
@@ -17,7 +17,13 @@ logging.basicConfig(
 )
 settings.validate_runtime()
 
-app = FastAPI(title="KAVI API", version="0.2.0")
+app = FastAPI(
+    title="KAVI API",
+    version="0.2.0",
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
+)
 
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
@@ -57,7 +63,28 @@ def live():
 def ready():
     db = SessionLocal()
     try:
-        db.execute(text("SELECT 1"))
+        schema_state = db.execute(
+            text(
+                """
+                SELECT
+                    to_regclass('public.users') IS NOT NULL AS users,
+                    to_regclass('public.github_accounts') IS NOT NULL AS github_accounts,
+                    to_regclass('public.repositories') IS NOT NULL AS repositories,
+                    to_regclass('public.repository_access') IS NOT NULL AS repository_access,
+                    to_regclass('public.knowledge_entries') IS NOT NULL AS knowledge_entries,
+                    to_regclass('public.sync_jobs') IS NOT NULL AS sync_jobs,
+                    to_regclass('public.chat_conversations') IS NOT NULL AS chat_conversations,
+                    to_regclass('public.chat_messages') IS NOT NULL AS chat_messages,
+                    to_regclass('public.chat_memory_items') IS NOT NULL AS chat_memory_items,
+                    to_regclass('public.github_oauth_states') IS NOT NULL AS github_oauth_states
+                """
+            )
+        ).mappings().one()
+        if not all(schema_state.values()):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database schema is not ready; apply all versioned migrations.",
+            )
         return {"status": "ready"}
     finally:
         db.close()

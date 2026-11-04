@@ -45,73 +45,110 @@ def _upsert_user_id(db: Session, current_user: UserContext) -> str:
     return str(result[0])
 
 
-def _get_user_id_by_sub(db: Session, auth0_sub: str) -> str:
-    result = db.execute(
-        text("SELECT id FROM users WHERE auth0_sub = :auth0_sub"),
-        {"auth0_sub": auth0_sub},
-    ).fetchone()
-    if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return str(result[0])
-
-
 @router.get("/connect-url")
 def github_connect_url(
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_id = _upsert_user_id(db, current_user)
-    state = create_oauth_state(current_user.sub)
-    scopes = "read:user,repo,read:org"
+    state, code_verifier, code_challenge = create_oauth_state()
+    db.execute(
+        text("DELETE FROM github_oauth_states WHERE expires_at <= NOW()")
+    )
+    db.execute(
+        text(
+            """
+            INSERT INTO github_oauth_states (
+                state_id, user_id, code_verifier_encrypted, expires_at
+            )
+            VALUES (:state_id, :user_id, :code_verifier_encrypted, NOW() + INTERVAL '10 minutes')
+            """
+        ),
+        {
+            "state_id": verify_oauth_state(state),
+            "user_id": user_id,
+            "code_verifier_encrypted": encrypt_token(code_verifier),
+        },
+    )
+    db.commit()
     params = {
         "client_id": settings.GITHUB_CLIENT_ID,
         "redirect_uri": settings.GITHUB_OAUTH_REDIRECT_URI,
-        "scope": scopes,
         "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
         # Always surface account selection to avoid sticky browser sessions
         # reconnecting to the previously active GitHub identity.
         "prompt": "select_account",
     }
     url = f"https://github.com/login/oauth/authorize?{urlencode(params)}"
     audit_log("github.connect_url.created", user_id=user_id, auth0_sub=current_user.sub)
-    return {"url": url, "state": state}
+    return {"url": url}
 
 
 @router.get("/callback")
 def github_callback(
-    code: str = Query(...),
-    state: str = Query(...),
+    code: str | None = Query(None, min_length=1, max_length=256),
+    state: str = Query(..., min_length=1, max_length=512),
+    error: str | None = Query(None, max_length=128),
     redirect: bool = Query(True),
     db: Session = Depends(get_db),
 ):
-    auth0_sub = verify_oauth_state(state)
-    user_id = _get_user_id_by_sub(db, auth0_sub)
+    state_id = verify_oauth_state(state)
+    state_record = db.execute(
+        text(
+            """
+            DELETE FROM github_oauth_states
+            WHERE state_id = :state_id
+              AND expires_at > NOW()
+            RETURNING user_id, code_verifier_encrypted
+            """
+        ),
+        {"state_id": state_id},
+    ).mappings().first()
+    if not state_record:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OAuth state is invalid, expired, or already used",
+        )
+    db.commit()
+    user_id = str(state_record["user_id"])
+    code_verifier = decrypt_token(state_record["code_verifier_encrypted"])
 
-    token_data = exchange_code_for_token(code)
+    if error or not code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="GitHub App authorization was not completed",
+        )
+
+    token_data = exchange_code_for_token(code, code_verifier)
     oauth_error = token_data.get("error")
-    oauth_error_description = token_data.get("error_description")
     if oauth_error:
         audit_log(
             "github.callback.exchange_failed",
             user_id=user_id,
-            auth0_sub=auth0_sub,
             error=oauth_error,
         )
-        detail = f"GitHub OAuth exchange failed: {oauth_error}"
-        if oauth_error_description:
-            detail = f"{detail} ({oauth_error_description})"
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"GitHub App authorization failed: {oauth_error}",
+        )
 
     access_token = token_data.get("access_token")
     if not access_token:
         audit_log(
             "github.callback.exchange_missing_token",
             user_id=user_id,
-            auth0_sub=auth0_sub,
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="GitHub OAuth exchange did not return an access token. Check GitHub OAuth app credentials and callback URL.",
+            detail="GitHub App authorization did not return an access token. Check the app credentials and callback URL.",
+        )
+    if "expires_in" in token_data or token_data.get("refresh_token"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Expiring GitHub App tokens are not supported; disable user access token expiration.",
         )
 
     gh_user = get_authenticated_user(access_token)
@@ -140,10 +177,10 @@ def github_callback(
         text(
             """
             INSERT INTO github_accounts (
-                id, user_id, github_user_id, username, access_token_encrypted, token_scopes
+                id, user_id, github_user_id, username, access_token_encrypted, token_scopes, authorization_type
             )
             VALUES (
-                gen_random_uuid(), :user_id, :github_user_id, :username, :access_token_encrypted, :token_scopes
+                gen_random_uuid(), :user_id, :github_user_id, :username, :access_token_encrypted, :token_scopes, 'github_app'
             )
             ON CONFLICT (github_user_id)
             DO UPDATE SET
@@ -152,6 +189,7 @@ def github_callback(
                 username = EXCLUDED.username,
                 access_token_encrypted = EXCLUDED.access_token_encrypted,
                 token_scopes = EXCLUDED.token_scopes,
+                authorization_type = EXCLUDED.authorization_type,
                 updated_at = NOW()
             RETURNING id;
             """
@@ -169,7 +207,6 @@ def github_callback(
     audit_log(
         "github.connected",
         user_id=user_id,
-        auth0_sub=auth0_sub,
         github_account_id=str(result[0]),
         github_username=gh_user.get("login"),
     )
@@ -189,7 +226,7 @@ def github_status(
     account = db.execute(
         text(
             """
-            SELECT id, username, updated_at
+            SELECT id, username, updated_at, authorization_type
             FROM github_accounts
             WHERE user_id = :user_id
             """
@@ -197,19 +234,25 @@ def github_status(
         {"user_id": user_id},
     ).mappings().first()
 
-    audit_log("github.status.checked", user_id=user_id, connected=bool(account))
+    connected = bool(account and account["authorization_type"] == "github_app")
+    audit_log("github.status.checked", user_id=user_id, connected=connected)
     if not account:
-        return {"connected": False, "account": None}
+        return {"connected": False, "account": None, "reauthorization_required": False}
+    if not connected:
+        audit_log("github.reauthorization.required", user_id=user_id)
+        return {"connected": False, "account": None, "reauthorization_required": True}
 
-    return {"connected": True, "account": dict(account)}
+    account_data = dict(account)
+    account_data.pop("authorization_type")
+    return {"connected": True, "account": account_data, "reauthorization_required": False}
 
 
 @router.get("/repositories")
 def list_repositories(
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db),
-    page: int = 1,
-    per_page: int = 50,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
 ):
     user_id = _upsert_user_id(db, current_user)
     gh_account = require_github_account(db, user_id)

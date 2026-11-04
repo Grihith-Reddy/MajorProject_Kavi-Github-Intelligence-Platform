@@ -1,3 +1,4 @@
+import argparse
 import logging
 import time
 
@@ -23,7 +24,7 @@ def _get_github_token(db, github_account_id: str) -> str:
     account = db.execute(
         text(
             """
-            SELECT access_token_encrypted
+            SELECT access_token_encrypted, authorization_type
             FROM github_accounts
             WHERE id = :github_account_id
             """
@@ -32,6 +33,8 @@ def _get_github_token(db, github_account_id: str) -> str:
     ).mappings().first()
     if not account:
         raise RuntimeError("GitHub account not found for sync job")
+    if account["authorization_type"] != "github_app":
+        raise RuntimeError("GitHub account must be reconnected using the read-only GitHub App")
     return decrypt_token(account["access_token_encrypted"])
 
 
@@ -79,6 +82,21 @@ def run_forever() -> None:
             time.sleep(settings.SYNC_WORKER_POLL_SECONDS)
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Process KAVI repository ingestion jobs.")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Process at most one queued job and exit.",
+    )
+    args = parser.parse_args(argv)
+
     logging.basicConfig(level=settings.LOG_LEVEL)
-    run_forever()
+    if args.once:
+        process_one_job()
+    else:
+        run_forever()
+
+
+if __name__ == "__main__":
+    main()

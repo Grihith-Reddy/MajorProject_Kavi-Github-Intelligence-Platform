@@ -1,18 +1,18 @@
 ﻿# KAVI Architecture
 
 ## Overview
-KAVI is a production-grade Developer Experience platform that captures the intent behind code changes. It ingests pull requests from GitHub, distills the WHY into structured knowledge entries, and serves grounded answers with persistent multi-turn memory.
+KAVI is a Developer Experience platform that captures the intent behind code changes. It ingests pull requests from GitHub, distills the WHY into structured knowledge entries, and serves evidence-grounded answers with persistent multi-turn memory.
 
 ## System Components
 - Frontend (React + Vite + Tailwind): GitHub-inspired UI with repository management, chat, file detail views, and timelines.
-- Backend (FastAPI): JWT-protected REST APIs for auth verification, GitHub OAuth, ingestion, knowledge queries, and chat.
+- Backend (FastAPI): JWT-protected REST APIs for auth verification, GitHub App user authorization, ingestion, knowledge queries, and chat.
 - Database (PostgreSQL): Relational store for users, GitHub accounts, repositories, pull requests, commits, knowledge entries, file mappings, and chat memory (conversations/messages/memory items).
 - AI Summarization + Chat Reasoning (Gemini): Summarizes PR intent during ingestion and generates structured chat answers grounded in repository + memory context.
 
 ## Data Flow
 1. User authenticates via Firebase Authentication and receives an ID token.
 2. Frontend sends the Firebase token on every API request.
-3. User connects GitHub with OAuth (read-only). Token is encrypted and stored.
+3. User authorizes the GitHub App with PKCE and read-only repository permissions. The one-time state and encrypted PKCE verifier are stored server-side; the returned token is encrypted at rest.
 4. Repository sync ingests PRs, commits, and discussions.
 5. AI summarizes each PR once and stores the structured output.
 6. Chat queries combine repository retrieval, conversation history, and long-term memory, then return grounded answers with references.

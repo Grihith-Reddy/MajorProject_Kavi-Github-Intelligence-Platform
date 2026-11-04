@@ -254,7 +254,7 @@ export function LandingPage() {
     let cleanup: (() => void) | undefined
     ;(async () => {
       try {
-        const { default: Lenis } = await import('@studio-freight/lenis')
+        const { default: Lenis } = await import('lenis')
         const lenis = new Lenis({ lerp: 0.08, smoothWheel: true })
         document.documentElement.classList.add('lenis')
         lenis.on('scroll', (event: { scroll: number }) => {

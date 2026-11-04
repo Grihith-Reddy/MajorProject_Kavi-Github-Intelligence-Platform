@@ -303,7 +303,7 @@ class GitHubService:
     wait=wait_exponential(multiplier=1, min=1, max=10),
     stop=stop_after_attempt(settings.OUTBOUND_RETRY_ATTEMPTS),
 )
-def exchange_code_for_token(code: str) -> dict[str, Any]:
+def exchange_code_for_token(code: str, code_verifier: str) -> dict[str, Any]:
     github_circuit_breaker.before_request()
     try:
         response = requests.post(
@@ -313,6 +313,7 @@ def exchange_code_for_token(code: str) -> dict[str, Any]:
                 "client_id": settings.GITHUB_CLIENT_ID,
                 "client_secret": settings.GITHUB_CLIENT_SECRET,
                 "code": code,
+                "code_verifier": code_verifier,
                 "redirect_uri": settings.GITHUB_OAUTH_REDIRECT_URI,
             },
             timeout=settings.REQUEST_TIMEOUT_SECONDS,

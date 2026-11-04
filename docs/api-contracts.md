@@ -15,7 +15,7 @@ Validates Firebase ID token and upserts user.
 Returns the current user.
 - Auth: Required
 
-## GitHub OAuth
+## GitHub App authorization
 ### GET `/github/status`
 Returns whether the authenticated user has connected GitHub.
 - Auth: Required
@@ -25,11 +25,15 @@ Returns whether the authenticated user has connected GitHub.
 ```
 or
 ```json
-{ "connected": false, "account": null }
+{ "connected": false, "account": null, "reauthorization_required": false }
+```
+Legacy OAuth connections return:
+```json
+{ "connected": false, "account": null, "reauthorization_required": true }
 ```
 
 ### GET `/github/connect-url`
-Returns GitHub OAuth URL.
+Returns the GitHub App user-authorization URL. The callback uses one-time state and PKCE.
 - Auth: Required
 - Response:
 ```json
@@ -37,7 +41,7 @@ Returns GitHub OAuth URL.
 ```
 
 ### GET `/github/callback`
-GitHub OAuth callback handler.
+GitHub App user-authorization callback handler.
 - Query: `code`, `state`, `redirect` (optional, default true)
 - Response: Redirects to frontend `/repositories` when `redirect=true`.
 - JSON Response (when `redirect=false`):

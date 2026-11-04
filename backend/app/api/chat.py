@@ -5,7 +5,7 @@ import json
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -117,11 +117,13 @@ _TEXT_FILE_EXTENSIONS = {
 
 
 class ChatQuery(BaseModel):
-    repo_id: str
-    query: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    repo_id: str = Field(min_length=1, max_length=64)
+    query: str = Field(min_length=1, max_length=4000)
     limit: int = Field(default=5, ge=1, le=15)
-    mode: str | None = None
-    conversation_id: str | None = None
+    mode: str | None = Field(default=None, max_length=32)
+    conversation_id: str | None = Field(default=None, max_length=64)
 
 
 def _ensure_user_id(db: Session, current_user: UserContext) -> str:
@@ -240,6 +242,227 @@ def _has_file_path_signal(query: str) -> bool:
     if "/" in text_value or "\\" in text_value:
         return True
     return bool(re.search(r"\b[a-zA-Z0-9_.-]+\.[a-zA-Z0-9]{1,8}\b", text_value))
+
+
+def _extract_requested_file_path(query: str) -> str | None:
+    lowered = str(query or "").lower()
+    asks_for_contents = bool(re.search(r"\b(code|contents?|source)\b", lowered))
+    asks_to_open_file = bool(re.search(r"\b(show|give|read|print|display|open)\b", lowered)) and bool(
+        re.search(r"\bfile\b", lowered)
+    )
+    if not asks_for_contents and not asks_to_open_file:
+        return None
+
+    extensions = "|".join(
+        re.escape(extension[1:])
+        for extension in sorted(_TEXT_FILE_EXTENSIONS, key=len, reverse=True)
+    )
+    file_pattern = re.compile(
+        rf"(?<![A-Za-z0-9_])([A-Za-z0-9_.-]+(?:[/\\][A-Za-z0-9_.-]+)*\.(?:{extensions}))(?![A-Za-z0-9_])",
+        re.IGNORECASE,
+    )
+    match = file_pattern.search(str(query or ""))
+    if not match:
+        return None
+
+    return match.group(1).replace("\\", "/").strip("/")
+
+
+def _match_requested_file_paths(requested_path: str, tree_paths: list[str]) -> list[str]:
+    normalized_request = str(requested_path or "").replace("\\", "/").strip("/").lower()
+    if not normalized_request:
+        return []
+
+    normalized_paths = [
+        str(path or "").replace("\\", "/").strip("/")
+        for path in tree_paths
+        if str(path or "").strip()
+    ]
+    exact_matches = [path for path in normalized_paths if path.lower() == normalized_request]
+    if exact_matches or "/" in normalized_request:
+        return exact_matches
+
+    return [
+        path
+        for path in normalized_paths
+        if path.rsplit("/", 1)[-1].lower() == normalized_request
+    ]
+
+
+def _resolve_requested_file(
+    db: Session,
+    requested_path: str,
+    current_user: UserContext,
+    repo_meta: dict[str, Any],
+) -> dict[str, Any]:
+    user_id = require_user_id(db, current_user.sub)
+    gh_account = require_github_account(db, user_id)
+    github = GitHubService(decrypt_token(gh_account["access_token_encrypted"]))
+    repo_full_name = str(repo_meta.get("full_name") or "").strip()
+    if not repo_full_name:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Repository metadata is missing its GitHub name.",
+        )
+
+    branch = str(repo_meta.get("default_branch") or "").strip()
+    try:
+        live_repo = github.get_repository(repo_full_name)
+        branch = str(live_repo.get("default_branch") or branch).strip()
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_404_NOT_FOUND:
+            raise
+        logger.warning("Unable to refresh GitHub repository metadata for requested file")
+
+    branch = branch or "main"
+    tree_rows = github.list_repository_tree(repo_full_name, branch=branch, max_entries=10000)
+    tree_paths = [
+        str(item.get("path") or "").strip()
+        for item in tree_rows
+        if isinstance(item, dict) and item.get("path")
+    ]
+    matches = _match_requested_file_paths(requested_path, tree_paths)
+    if not matches and "/" not in requested_path:
+        matches = github.search_code_paths(repo_full_name, requested_path, per_page=30)
+        matches = _match_requested_file_paths(requested_path, matches)
+
+    if not matches:
+        if "/" in requested_path:
+            try:
+                content = github.get_file_content(
+                    repo_full_name,
+                    requested_path,
+                    ref=branch,
+                    max_chars=60000,
+                )
+            except HTTPException as exc:
+                if exc.status_code != status.HTTP_404_NOT_FOUND:
+                    raise
+                content = ""
+            if content:
+                return {
+                    "status": "found",
+                    "branch": branch,
+                    "repo_full_name": repo_full_name,
+                    "file_path": requested_path,
+                    "content": content,
+                    "truncated": len(content) >= 60000,
+                }
+        return {"status": "not_found", "branch": branch, "repo_full_name": repo_full_name}
+    if len(matches) > 1:
+        return {
+            "status": "ambiguous",
+            "branch": branch,
+            "repo_full_name": repo_full_name,
+            "matches": matches[:10],
+        }
+
+    file_path = matches[0]
+    content = github.get_file_content(
+        repo_full_name,
+        file_path,
+        ref=branch,
+        max_chars=60000,
+    )
+    if not content:
+        return {
+            "status": "unavailable",
+            "branch": branch,
+            "repo_full_name": repo_full_name,
+            "file_path": file_path,
+        }
+
+    return {
+        "status": "found",
+        "branch": branch,
+        "repo_full_name": repo_full_name,
+        "file_path": file_path,
+        "content": content,
+        "truncated": len(content) >= 60000,
+    }
+
+
+def _build_requested_file_answer(requested_path: str, resolution: dict[str, Any]) -> dict[str, Any]:
+    status_value = str(resolution.get("status") or "")
+    repo_full_name = str(resolution.get("repo_full_name") or "the selected repository")
+    branch = str(resolution.get("branch") or "the default branch")
+    ai_service = AIService()
+    structured: dict[str, Any] = {
+        "title": f"File: {requested_path}",
+        "summary": "",
+        "sections": [],
+        "code_references": [],
+        "code_snippets": [],
+        "timeline_highlights": [],
+        "limitations": [],
+    }
+    sources: list[dict[str, Any]] = []
+
+    if status_value == "found":
+        file_path = str(resolution["file_path"])
+        content = str(resolution["content"])
+        line_count = content.count("\n") + (1 if content else 0)
+        structured["summary"] = f"Current contents of `{file_path}` in `{repo_full_name}` on branch `{branch}`."
+        structured["code_snippets"] = [
+            {
+                "title": file_path.rsplit("/", 1)[-1],
+                "description": "Exact file contents fetched from the connected GitHub repository.",
+                "language": ai_service._infer_language_from_path(file_path),
+                "code": content,
+                "file_path": file_path,
+                "start_line": 1,
+                "end_line": line_count,
+                "source": "repository",
+            }
+        ]
+        if resolution.get("truncated"):
+            structured["limitations"].append(
+                "The file exceeds the 60,000-character response limit; only the beginning is shown."
+            )
+        sources = [
+            {
+                "entry_id": f"live-file::{file_path}",
+                "pr_number": None,
+                "pr_title": f"Current file: {file_path}",
+                "pr_url": None,
+                "summary": f"File read directly from branch {branch}.",
+                "intent": "Exact file content was fetched from GitHub.",
+                "files": [{"file_path": file_path, "start_line": 1, "end_line": line_count}],
+                "rank": 1000.0,
+            }
+        ]
+    elif status_value == "ambiguous":
+        matches = [str(path) for path in resolution.get("matches", [])]
+        structured["summary"] = (
+            f"Found multiple files named `{requested_path}` in `{repo_full_name}` on branch `{branch}`. "
+            "No file contents were selected."
+        )
+        if matches:
+            structured["sections"] = [
+                {"heading": "Matching paths", "bullets": matches}
+            ]
+        structured["limitations"] = ["Ask again using the complete repository-relative path."]
+    elif status_value == "not_found":
+        structured["summary"] = (
+            f"I could not find an exact match for `{requested_path}` in `{repo_full_name}` "
+            f"on branch `{branch}`. I have not guessed or generated file contents."
+        )
+        structured["limitations"] = [
+            "Check the filename or branch, or sync the repository if the file was recently added."
+        ]
+    else:
+        structured["summary"] = (
+            f"I found `{requested_path}` in `{repo_full_name}`, but could not read its contents from GitHub."
+        )
+        structured["limitations"] = [
+            "Check the connected GitHub account's repository permissions and try again."
+        ]
+
+    return {
+        "answer": ai_service._format_structured_answer(structured),
+        "structured": structured,
+        "sources": sources,
+    }
 
 
 def _has_code_preview_signal(query: str) -> bool:
@@ -507,6 +730,9 @@ def _fetch_full_text_entries(db: Session, payload: ChatQuery, limit: int) -> lis
                     pr.github_pr_number,
                     pr.title AS pr_title,
                     pr.url AS pr_url,
+                    MAX(pr.created_at) AS pr_created_at,
+                    MAX(pr.updated_at) AS pr_updated_at,
+                    MAX(pr.merged_at) AS pr_merged_at,
                     MAX(ts_rank(
                         k.search_document,
                         websearch_to_tsquery('english', :query)
@@ -572,6 +798,9 @@ def _fetch_lexical_entries(
                     pr.github_pr_number,
                     pr.title AS pr_title,
                     pr.url AS pr_url,
+                    MAX(pr.created_at) AS pr_created_at,
+                    MAX(pr.updated_at) AS pr_updated_at,
+                    MAX(pr.merged_at) AS pr_merged_at,
                     MAX({rank_formula}) AS rank,
                     MAX(COALESCE(pr.updated_at, k.updated_at)) AS sort_ts
                 FROM knowledge_entries k
@@ -620,6 +849,9 @@ def _fetch_recency_entries(db: Session, payload: ChatQuery, limit: int) -> list[
                     pr.github_pr_number,
                     pr.title AS pr_title,
                     pr.url AS pr_url,
+                    pr.created_at AS pr_created_at,
+                    pr.updated_at AS pr_updated_at,
+                    pr.merged_at AS pr_merged_at,
                     0 AS rank
                 FROM knowledge_entries k
                 LEFT JOIN pull_requests pr ON pr.id = k.pr_id
@@ -668,6 +900,9 @@ def _fetch_repo_overview_entries(db: Session, repo_id: str, limit: int = 20) -> 
                     pr.github_pr_number,
                     pr.title AS pr_title,
                     pr.url AS pr_url,
+                    pr.created_at AS pr_created_at,
+                    pr.updated_at AS pr_updated_at,
+                    pr.merged_at AS pr_merged_at,
                     0 AS rank
                 FROM knowledge_entries k
                 LEFT JOIN pull_requests pr ON pr.id = k.pr_id
@@ -773,6 +1008,9 @@ def _build_sources_from_pr_metadata(
                 "pr_number": pr_number,
                 "pr_title": title,
                 "pr_url": row.get("url"),
+                "pr_created_at": row.get("created_at"),
+                "pr_updated_at": row.get("updated_at"),
+                "pr_merged_at": row.get("merged_at"),
                 "summary": summary,
                 "intent": intent,
                 "files": [],
@@ -1462,6 +1700,9 @@ def chat_query(
                 "pr_number": entry["github_pr_number"],
                 "pr_title": entry["pr_title"],
                 "pr_url": entry["pr_url"],
+                "pr_created_at": entry.get("pr_created_at"),
+                "pr_updated_at": entry.get("pr_updated_at"),
+                "pr_merged_at": entry.get("pr_merged_at"),
                 "summary": summary_text,
                 "intent": intent_text,
                 "files": entry_files,
@@ -1472,27 +1713,42 @@ def chat_query(
     if not sources and metadata_sources:
         sources = metadata_sources
 
-    live_file_sources = _build_live_file_sources(
-        db,
-        payload.repo_id,
-        query_text,
-        current_user,
-        repo_meta,
-        max_files=2,
-        existing_sources=sources,
-    )
-    if live_file_sources:
-        sources = _merge_sources(
-            live_file_sources,
-            sources,
-            limit=max(12, max(payload.limit, 8) + len(live_file_sources)),
+    requested_file_path = _extract_requested_file_path(query_text)
+    if requested_file_path:
+        resolution = _resolve_requested_file(
+            db,
+            requested_file_path,
+            current_user,
+            repo_meta,
         )
+        file_answer = _build_requested_file_answer(requested_file_path, resolution)
+        sources = file_answer["sources"]
+        ai_payload = {
+            "answer": file_answer["answer"],
+            "structured": file_answer["structured"],
+        }
+    else:
+        live_file_sources = _build_live_file_sources(
+            db,
+            payload.repo_id,
+            query_text,
+            current_user,
+            repo_meta,
+            max_files=2,
+            existing_sources=sources,
+        )
+        if live_file_sources:
+            sources = _merge_sources(
+                live_file_sources,
+                sources,
+                limit=max(12, max(payload.limit, 8) + len(live_file_sources)),
+            )
 
-    if not sources and not repo_overview_context:
-        audit_log("chat.query.empty_context", auth0_sub=current_user.sub, repo_id=payload.repo_id, mode=mode)
+        if not sources and not repo_overview_context:
+            audit_log("chat.query.empty_context", auth0_sub=current_user.sub, repo_id=payload.repo_id, mode=mode)
 
-    ai_service = AIService()
-    ai_payload = ai_service.generate_chat_payload(query_text, sources, repo_overview_context, memory_context=memory_context)
+        ai_service = AIService()
+        ai_payload = ai_service.generate_chat_payload(query_text, sources, repo_overview_context, memory_context=memory_context)
     answer = str(ai_payload.get("answer") or "")
     answer_structured = ai_payload.get("structured")
 

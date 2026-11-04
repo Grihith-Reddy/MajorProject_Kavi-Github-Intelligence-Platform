@@ -17,7 +17,7 @@ def require_github_account(db: Session, user_id: str) -> dict:
     result = db.execute(
         text(
             """
-            SELECT id, username, access_token_encrypted, token_scopes, updated_at
+            SELECT id, username, access_token_encrypted, token_scopes, authorization_type, updated_at
             FROM github_accounts
             WHERE user_id = :user_id
             """
@@ -26,6 +26,11 @@ def require_github_account(db: Session, user_id: str) -> dict:
     ).mappings().first()
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="GitHub account not connected")
+    if result["authorization_type"] != "github_app":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Reconnect GitHub to continue using KAVI with read-only permissions.",
+        )
     return dict(result)
 
 

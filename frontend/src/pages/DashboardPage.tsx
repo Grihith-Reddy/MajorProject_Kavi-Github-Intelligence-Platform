@@ -98,7 +98,7 @@ interface CodeSnippet {
   end_line?: number | null
   source?: string
 }
-interface StructuredAnswer { title?: string; summary?: string; sections?: StructuredSection[]; code_references?: CodeReference[]; code_snippets?: CodeSnippet[]; timeline_highlights?: TimelineHighlight[]; limitations?: string[] }
+interface StructuredAnswer { format?: 'plain' | 'structured'; title?: string; summary?: string; sections?: StructuredSection[]; code_references?: CodeReference[]; code_snippets?: CodeSnippet[]; timeline_highlights?: TimelineHighlight[]; limitations?: string[] }
 interface ChatEntry { role: 'user' | 'assistant'; content: string; structured?: StructuredAnswer | null }
 interface ChatSource { [key: string]: unknown }
 interface ChatConversationSummary {
@@ -154,6 +154,20 @@ function defaultMessages(name?: string | null): ChatEntry[] {
   const safeName = typeof name === 'string' && name.trim() ? name.trim() : null
   const greeting = safeName ? `Welcome, ${safeName}.` : 'Welcome.'
   return [{ role: 'assistant', content: `${greeting} ${DEFAULT_ASSISTANT_MESSAGE}` }]
+}
+
+function shouldRenderStructuredAnswer(structured: StructuredAnswer | null | undefined): boolean {
+  if (!structured || structured.format === 'plain') return false
+  if (structured.format === 'structured') return true
+  if (
+    (structured.code_references?.length ?? 0) > 0
+    || (structured.code_snippets?.length ?? 0) > 0
+    || (structured.timeline_highlights?.length ?? 0) > 0
+  ) return true
+
+  const sections = structured.sections ?? []
+  return sections.length > 1
+    && sections.some((section) => !['key takeaways', 'guidance', 'last question'].includes(section.heading.trim().toLowerCase()))
 }
 
 function resolveUserDisplayName(user: unknown): string | null {
@@ -1004,7 +1018,7 @@ function DashboardChatPane({ messages, chatLoading, chatInput, setChatInput, noP
 
         {messages.map((message, index) => {
           const isStreaming = message.role === 'assistant' && index === streamingIndex
-          const hasStructuredAnswer = message.role === 'assistant' && Boolean(message.structured)
+          const hasStructuredAnswer = message.role === 'assistant' && shouldRenderStructuredAnswer(message.structured)
           const useStreamingRenderer = message.role === 'assistant' && isStreaming && !hasStructuredAnswer
           return (
             <motion.article
@@ -1040,8 +1054,10 @@ function DashboardChatPane({ messages, chatLoading, chatInput, setChatInput, noP
                       onComplete={() => onAssistantStreamComplete(index)}
                     />
                   )
-                  : message.role === 'assistant' && message.structured
+                  : message.role === 'assistant' && hasStructuredAnswer && message.structured
                   ? <StructuredAssistantBody content={message.content} structured={message.structured} />
+                  : message.role === 'assistant' && message.structured?.summary
+                    ? <span style={{ whiteSpace: 'pre-wrap' }}>{message.structured.summary}</span>
                   : message.role === 'assistant'
                     ? <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
                     : message.content}

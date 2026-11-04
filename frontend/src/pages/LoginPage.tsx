@@ -57,6 +57,8 @@ export function LoginPage() {
       case 'auth/invalid-email': return 'Please enter a valid email address.'
       case 'auth/too-many-requests': return 'Too many attempts. Please try again later.'
       case 'auth/popup-closed-by-user': return 'Sign-in cancelled.'
+      case 'auth/unauthorized-domain':
+        return `This site is not authorized for Google sign-in. Open KAVI at http://localhost:5173 or add ${window.location.hostname} under Firebase Authentication > Settings > Authorized domains.`
       default: return 'Something went wrong. Please try again.'
     }
   }

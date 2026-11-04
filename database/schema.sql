@@ -9,6 +9,14 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS github_oauth_states (
+    state_id TEXT PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_verifier_encrypted TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS github_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -16,6 +24,7 @@ CREATE TABLE IF NOT EXISTS github_accounts (
     username TEXT NOT NULL,
     access_token_encrypted TEXT NOT NULL,
     token_scopes TEXT,
+    authorization_type TEXT NOT NULL DEFAULT 'legacy_oauth',
     token_expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -180,6 +189,7 @@ CREATE TABLE IF NOT EXISTS chat_memory_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_github_accounts_user_id ON github_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_github_oauth_states_expires_at ON github_oauth_states(expires_at);
 CREATE INDEX IF NOT EXISTS idx_repositories_full_name ON repositories(full_name);
 CREATE INDEX IF NOT EXISTS idx_repository_access_repository ON repository_access(repository_id);
 CREATE INDEX IF NOT EXISTS idx_repository_access_account ON repository_access(github_account_id);

@@ -5,7 +5,7 @@ Goal
 ----
 Configure these variables:
 - Frontend: `VITE_FIREBASE_*` + `VITE_API_BASE_URL`
-- Backend: `FIREBASE_*`, GitHub OAuth vars, DB, and AI vars
+- Backend: `FIREBASE_*`, GitHub App user-authorization vars, DB, and AI vars
 
 
 Step 1: Create Firebase Web App
@@ -37,13 +37,20 @@ Alternative:
 - Or set `GOOGLE_APPLICATION_CREDENTIALS` externally.
 
 
-Step 3: Create GitHub OAuth App
--------------------------------
-1. GitHub -> Settings -> Developer settings -> OAuth Apps -> New OAuth App
+Step 3: Create a least-privilege GitHub App
+-------------------------------------------
+1. GitHub -> Settings -> Developer settings -> GitHub Apps -> New GitHub App
+   Allow installation on any account if KAVI users need to connect their own accounts.
 2. Use:
    - Homepage URL: `http://localhost:5173`
-   - Authorization callback URL: `http://localhost:8000/api/github/callback`
-3. Copy:
+   - User authorization callback URL: `http://localhost:8000/api/github/callback`
+3. Grant only these repository permissions as Read-only:
+   - Contents (read repository trees and files)
+   - Pull requests (read pull requests, commits, reviews, and changed files)
+   - Issues (read pull-request conversation comments)
+   Repository metadata is granted automatically. Do not grant write or administration permissions.
+4. Keep expiring user authorization tokens disabled until token refresh support is implemented.
+5. Copy:
    - `GITHUB_CLIENT_ID`
    - `GITHUB_CLIENT_SECRET`
 

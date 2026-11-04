@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,11 @@ router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
 
 class SyncRequest(BaseModel):
-    repo_full_name: str
+    repo_full_name: str = Field(
+        min_length=3,
+        max_length=250,
+        pattern=r"^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$",
+    )
 
 
 @router.post("/repositories/sync")

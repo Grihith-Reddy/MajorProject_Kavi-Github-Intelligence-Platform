@@ -13,8 +13,8 @@ router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 @router.get("/repositories/{repo_id}/entries")
 def list_entries(
     repo_id: str,
-    limit: int = Query(20, le=100),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0, le=1000000),
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

@@ -25,6 +25,7 @@ interface SyncRepositoryResponse {
 
 export interface GitHubStatusResponse {
   connected: boolean
+  reauthorization_required?: boolean
   account: {
     id: string
     username: string

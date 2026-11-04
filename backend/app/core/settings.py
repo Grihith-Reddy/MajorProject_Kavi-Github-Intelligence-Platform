@@ -94,8 +94,13 @@ class Settings(BaseSettings):
                 raise RuntimeError("Production GITHUB_OAUTH_REDIRECT_URI must use HTTPS")
 
     def _validate_secret(self, name: str, value: str) -> None:
-        if value.strip().lower() in {"", "change-me", "changeme", "replace-me"}:
+        normalized = value.strip().lower()
+        if normalized in {"", "change-me", "changeme", "replace-me"} or normalized.startswith(
+            ("generate_", "your_", "example_")
+        ):
             raise RuntimeError(f"{name} must be rotated before startup")
+        if self.is_production and len(value.encode("utf-8")) < 32:
+            raise RuntimeError(f"{name} must be at least 32 bytes in production")
 
     def _validate_non_empty(self, names: Iterable[str]) -> None:
         for name in names:

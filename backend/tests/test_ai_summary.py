@@ -171,6 +171,56 @@ class AISummaryTests(unittest.TestCase):
         self.assertIn("Conversation Memory", section_titles)
         self.assertIn("Recent Context", section_titles)
 
+    def test_simple_conversation_uses_plain_format(self):
+        normalized = self.service._normalize_chat_structure(
+            {
+                "format": "structured",
+                "title": "Last User Question",
+                "summary": 'You asked: "What was my last question?"',
+                "sections": [{"heading": "Last Question", "bullets": ["You asked about Enrollment.java."]}],
+                "limitations": [],
+            },
+            context_sources=[],
+            repo_overview_context=None,
+            query="What was my last question?",
+        )
+
+        self.assertEqual(normalized["format"], "plain")
+        self.assertEqual(self.service._format_structured_answer(normalized), normalized["summary"])
+        self.assertFalse(self.service._query_prefers_structured_response("How are you?"))
+
+    def test_structured_format_is_kept_for_code_and_analysis_questions(self):
+        self.assertTrue(self.service._query_prefers_structured_response("Show me the code for AuthService.java"))
+        self.assertTrue(self.service._query_prefers_structured_response("Compare the authentication approaches"))
+        self.assertTrue(self.service._query_prefers_structured_response("Explain the entire repo"))
+
+    def test_generic_limitations_are_removed(self):
+        limitations = self.service._sanitize_limitations_for_code_context(
+            [
+                "Some line-level ranges may be unavailable when upstream patches omit hunk data.",
+                "Conversation memory was used to resolve follow-up context; confirm if priorities changed.",
+                "The requested file was not present on the default branch.",
+            ]
+        )
+
+        self.assertEqual(limitations, ["The requested file was not present on the default branch."])
+
+    def test_compact_sources_keep_pull_request_timestamps(self):
+        source = {
+            "entry_id": "entry-1",
+            "pr_number": 2,
+            "pr_title": "master-abhishek",
+            "pr_created_at": "2026-10-28T15:42:00+00:00",
+            "pr_updated_at": "2026-10-29T10:00:00+00:00",
+            "pr_merged_at": "2026-10-29T10:05:00+00:00",
+        }
+
+        compact = self.service._compact_sources([source])[0]
+
+        self.assertEqual(compact["pr_created_at"], source["pr_created_at"])
+        self.assertEqual(compact["pr_updated_at"], source["pr_updated_at"])
+        self.assertEqual(compact["pr_merged_at"], source["pr_merged_at"])
+
 
 if __name__ == "__main__":
     unittest.main()

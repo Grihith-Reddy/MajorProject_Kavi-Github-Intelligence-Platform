@@ -161,7 +161,7 @@ class AIService:
                 parsed = self._repair_summary_json(raw)
             return self._normalize_summary(parsed, pr_payload)
         except Exception as exc:
-            logger.warning("Gemini summary failed; using fallback summary: %s", exc)
+            logger.warning("Gemini summary failed; using fallback summary (%s)", type(exc).__name__)
             return self._fallback_summary(pr_payload)
 
     def generate_chat_payload(
@@ -180,7 +180,10 @@ class AIService:
                     answer = self._format_structured_answer(structured)
                     return {"answer": answer, "structured": structured}
                 except Exception as exc:
-                    logger.warning("Gemini general structured chat failed; using fallback response: %s", exc)
+                    logger.warning(
+                        "Gemini general structured chat failed; using fallback response (%s)",
+                        type(exc).__name__,
+                    )
             fallback = self._fallback_chat_payload(
                 query,
                 context_sources,
@@ -211,10 +214,13 @@ class AIService:
                     return {"answer": answer, "structured": structured}
                 except Exception as general_exc:
                     logger.warning(
-                        "Gemini general fallback chat failed after structured failure: %s",
-                        general_exc,
+                        "Gemini general fallback chat failed after structured failure (%s)",
+                        type(general_exc).__name__,
                     )
-            logger.warning("Gemini structured chat failed; using fallback response: %s", exc)
+            logger.warning(
+                "Gemini structured chat failed; using fallback response (%s)",
+                type(exc).__name__,
+            )
             fallback_reason = (
                 "structured_parse_failed"
                 if _looks_like_json_parse_error(exc) or "object" in str(exc).lower()
@@ -678,10 +684,49 @@ class AIService:
         return None
 
     def _sanitize_limitations_for_code_context(self, limitations: list[str]) -> list[str]:
-        sanitized = [item for item in limitations if not self._contains_no_file_claim(item)]
-        if not sanitized:
-            sanitized.append("Some line-level ranges may be unavailable when upstream patches omit hunk data.")
-        return sanitized[:6]
+        boilerplate = (
+            "some line-level ranges may be unavailable",
+            "line-level citations are limited when source mappings are incomplete",
+            "conversation memory was used to resolve follow-up context",
+        )
+        return [
+            item
+            for item in limitations
+            if not self._contains_no_file_claim(item)
+            and not any(phrase in item.lower() for phrase in boilerplate)
+        ][:6]
+
+    def _query_prefers_structured_response(self, query: str, mode: str | None = None) -> bool:
+        if str(mode or "").strip().lower() == "repo_overview":
+            return True
+        if self._query_prefers_code_references(query) or self._query_prefers_code_snippets(query):
+            return True
+
+        lowered = str(query or "").strip().lower()
+        structured_signals = (
+            "compare",
+            "comparison",
+            "pros and cons",
+            "advantages and disadvantages",
+            "step by step",
+            "step-by-step",
+            "breakdown",
+            "detailed analysis",
+            "architecture",
+            "entire repo",
+            "whole repo",
+            "project overview",
+            "repo overview",
+            "timeline",
+            "list all",
+            "all files",
+            "multiple",
+        )
+        if any(signal in lowered for signal in structured_signals):
+            return True
+        if len(re.findall(r"\?", lowered)) > 1:
+            return True
+        return False
 
     def _file_name_from_path(self, file_path: str) -> str:
         normalized = str(file_path or "").replace("\\", "/").strip("/")
@@ -793,8 +838,9 @@ class AIService:
             "For clearly general software/engineering questions, answer using general technical knowledge.\n\n"
             "Required output schema:\n"
             "{\n"
+            '  "format": "plain|structured",\n'
             '  "title": "short title",\n'
-            '  "summary": "2-4 sentence summary",\n'
+            '  "summary": "direct answer in natural conversational language",\n'
             '  "sections": [{"heading":"...", "bullets":["...", "..."]}],\n'
             '  "code_references": [\n'
             '      {"file_path":"...", "start_line": null, "end_line": null, "pr_number": null, "note":"..."}\n'
@@ -806,19 +852,22 @@ class AIService:
             '  "limitations": ["..."]\n'
             "}\n\n"
             "Rules:\n"
-            "1) Sections must be concise and useful for engineers.\n"
-            "2) Prefer sections for architecture, features, technologies, and evolution when relevant.\n"
-            "3) code_references must point to real paths from context.\n"
-            "4) For high-level questions (e.g. 'what did PR X do'), keep code_references empty unless needed.\n"
-            "5) For high-level questions, explain outcomes in plain language and avoid dumping raw file paths.\n"
-            "6) For general questions, keep code_references empty and avoid repository-specific claims.\n"
-            "7) If data is missing, limitations must explicitly call it out.\n\n"
-            "8) When file_excerpt is present for a source, use it for code-level reasoning and provide repository code_snippets.\n"
-            "9) If the user asks for code generation, include at least one code_snippet with source='generated'.\n"
-            "10) Keep code snippets concise and directly relevant.\n\n"
-            "11) Use MEMORY_CONTEXT to resolve follow-up references like 'that', 'continue', or 'same approach'.\n"
-            "12) Prioritize latest user intent over older memory when they conflict.\n"
-            "13) Treat memory as assistant hints; repository claims still require repository evidence.\n\n"
+            "1) Default to format='plain' for simple questions, greetings, short factual answers, and conversation-memory follow-ups. Put the complete natural answer in summary and leave sections, references, snippets, and timeline empty unless requested.\n"
+            "2) Use format='structured' only when the question benefits from multiple sections, a comparison, a step-by-step explanation, a repository overview, code, or evidence references.\n"
+            "3) When structured, sections must be concise and useful for engineers.\n"
+            "4) Prefer sections for architecture, features, technologies, and evolution when relevant.\n"
+            "5) code_references must point to real paths from context.\n"
+            "6) For high-level questions (e.g. 'what did PR X do'), keep code_references empty unless needed.\n"
+            "7) For high-level questions, explain outcomes in plain language and avoid dumping raw file paths.\n"
+            "8) For general questions, keep code_references empty and avoid repository-specific claims.\n"
+            "9) Include a limitation only when a specific missing or incomplete piece of evidence materially affects this answer. Do not add generic caveats about line ranges, indexing, memory, or repository context.\n\n"
+            "10) When file_excerpt is present for a source, use it for code-level reasoning and provide repository code_snippets.\n"
+            "11) If the user asks for code generation, include at least one code_snippet with source='generated'.\n"
+            "12) Keep code snippets concise and directly relevant.\n\n"
+            "13) Use MEMORY_CONTEXT to resolve follow-up references like 'that', 'continue', or 'same approach'. Answer the user's question directly; do not narrate that you are reading memory or repeat their question unless asked.\n"
+            "14) Prioritize latest user intent over older memory when they conflict.\n"
+            "15) Treat memory as assistant hints; repository claims still require repository evidence.\n"
+            "16) PR_CONTEXT may include pr_created_at, pr_updated_at, and pr_merged_at. Use those exact timestamps to answer when/date follow-ups; distinguish created, updated, and merged dates, and do not claim a date is unavailable when the relevant timestamp is present.\n\n"
             f"QUESTION:\n{query.strip()}\n\n"
             f"PR_CONTEXT:\n{json.dumps(compact_sources, default=str)}\n\n"
             f"REPO_OVERVIEW_CONTEXT:\n{json.dumps(repo_overview_context or {}, default=str)}\n\n"
@@ -844,8 +893,9 @@ class AIService:
             "Do not invent repository-specific facts, PR numbers, file paths, or line numbers.\n\n"
             "Required output schema:\n"
             "{\n"
+            '  "format": "plain|structured",\n'
             '  "title": "short title",\n'
-            '  "summary": "2-4 sentence summary",\n'
+            '  "summary": "direct answer in natural conversational language",\n'
             '  "sections": [{"heading":"...", "bullets":["...", "..."]}],\n'
             '  "code_references": [],\n'
             '  "code_snippets": [{"title":"...", "description":"...", "language":"python", "code":"...", "file_path":"...", "start_line": null, "end_line": null, "source":"generated"}],\n'
@@ -853,11 +903,11 @@ class AIService:
             '  "limitations": ["..."]\n'
             "}\n\n"
             "Rules:\n"
-            "1) Use plain, practical engineering language.\n"
-            "2) Keep sections concise and actionable.\n"
+            "1) Answer simple questions in format='plain' with a concise, direct conversational response in summary; leave sections empty.\n"
+            "2) Use format='structured' and concise sections only when the question benefits from a breakdown, comparison, or multiple steps.\n"
             "3) code_references and timeline_highlights must be empty arrays.\n"
             "4) If the user asks for code/examples, include at least one generated code_snippet.\n"
-            "5) Mention that guidance is general if repository evidence is required.\n\n"
+            "5) Mention that guidance is general only when that limitation materially affects the answer. Do not add generic caveats.\n\n"
             f"QUESTION:\n{query.strip()}"
         )
         raw = self._call_gemini(
@@ -1066,6 +1116,14 @@ class AIService:
                 if code_section:
                     sections.append(code_section)
             limitations = self._sanitize_limitations_for_code_context(limitations)
+        else:
+            limitations = self._sanitize_limitations_for_code_context(limitations)
+
+        response_format = (
+            "structured"
+            if self._query_prefers_structured_response(query)
+            else "plain"
+        )
 
         if not prefer_code_refs:
             summary = self._replace_paths_with_file_names(summary)
@@ -1083,6 +1141,7 @@ class AIService:
                 sections = filtered_sections
 
         return {
+            "format": response_format,
             "title": title,
             "summary": summary,
             "sections": sections,
@@ -1383,6 +1442,9 @@ class AIService:
         return defaults
 
     def _format_structured_answer(self, structured: dict[str, Any]) -> str:
+        if structured.get("format") == "plain":
+            return str(structured.get("summary") or "").strip()
+
         lines = [f"## {structured.get('title', 'Repository Context Answer')}", ""]
         summary = str(structured.get("summary") or "").strip()
         if summary:
@@ -1598,6 +1660,9 @@ class AIService:
                     "entry_id": entry_id,
                     "pr_number": source.get("pr_number"),
                     "pr_title": str(source.get("pr_title") or "")[:240],
+                    "pr_created_at": str(source.get("pr_created_at") or ""),
+                    "pr_updated_at": str(source.get("pr_updated_at") or ""),
+                    "pr_merged_at": str(source.get("pr_merged_at") or ""),
                     "intent": str(source.get("intent") or "")[:intent_limit],
                     "summary": str(source.get("summary") or "")[:summary_limit],
                     "file_excerpt": file_excerpt[:3200],
@@ -1754,6 +1819,7 @@ class AIService:
         try:
             response = requests.post(
                 self._gemini_generate_url(model_name),
+                headers=self._gemini_headers(),
                 json=body,
                 timeout=settings.REQUEST_TIMEOUT_SECONDS,
             )
@@ -1773,6 +1839,7 @@ class AIService:
                 try:
                     response = requests.post(
                         self._gemini_generate_url(model_name),
+                        headers=self._gemini_headers(),
                         json=body,
                         timeout=settings.REQUEST_TIMEOUT_SECONDS,
                     )
@@ -1798,6 +1865,7 @@ class AIService:
                 try:
                     response = requests.post(
                         self._gemini_generate_url(model_name),
+                        headers=self._gemini_headers(),
                         json=body_without_mime,
                         timeout=settings.REQUEST_TIMEOUT_SECONDS,
                     )
@@ -1811,9 +1879,6 @@ class AIService:
 
         if response.status_code >= 400:
             error_message = f"Gemini API error (HTTP {response.status_code})"
-            raw_error = self._response_text(response)
-            if raw_error:
-                error_message = f"{error_message}: {raw_error[:300]}"
 
             if response.status_code in {401, 403}:
                 AIService._gemini_disabled_reason = error_message
@@ -1854,8 +1919,11 @@ class AIService:
     def _gemini_generate_url(self, model_name: str) -> str:
         return (
             "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model_name}:generateContent?key={settings.AI_API_KEY}"
+            f"{model_name}:generateContent"
         )
+
+    def _gemini_headers(self) -> dict[str, str]:
+        return {"x-goog-api-key": settings.AI_API_KEY or ""}
 
     def _normalize_model_name(self, model_name: str) -> str:
         cleaned = (model_name or "").strip()
@@ -1868,11 +1936,15 @@ class AIService:
             return AIService._resolved_model_name
 
         AIService._model_discovery_attempted = True
-        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={settings.AI_API_KEY}"
+        url = "https://generativelanguage.googleapis.com/v1beta/models"
         try:
-            response = requests.get(url, timeout=settings.REQUEST_TIMEOUT_SECONDS)
+            response = requests.get(
+                url,
+                headers=self._gemini_headers(),
+                timeout=settings.REQUEST_TIMEOUT_SECONDS,
+            )
         except requests.RequestException as exc:
-            logger.warning("Unable to discover Gemini models: %s", exc)
+            logger.warning("Unable to discover Gemini models (%s)", type(exc).__name__)
             ai_circuit_breaker.record_failure()
             return None
         if response.status_code >= 400:
@@ -2266,12 +2338,9 @@ class AIService:
         limitations: list[str] = []
         if fallback_reason == "insufficient_context":
             limitations.append("Indexed context is still limited for this repository.")
-        elif prefer_code_refs:
-            limitations.append("Line-level citations are limited when source mappings are incomplete.")
-        if memory_items or memory_messages:
-            limitations.append("Conversation memory was used to resolve follow-up context; confirm if priorities changed.")
 
         structured = {
+            "format": "structured" if self._query_prefers_structured_response(query) else "plain",
             "title": default_title,
             "summary": summary_text,
             "sections": sections,
