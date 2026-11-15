@@ -90,3 +90,128 @@ export const apiOrigin = (): string => {
   const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
   return base.replace(/\/api\/?$/, '')
 }
+
+// ── Promise Tracker ────────────────────────────────────────────────────────
+
+export type PromiseStatus = 'open' | 'kept' | 'dismissed'
+export type PromiseKind = 'follow_up' | 'todo' | 'temporary' | 'tech_debt'
+
+export interface PromiseItem {
+  id: string
+  quote: string
+  summary?: string | null
+  kind: PromiseKind
+  source: string
+  source_url?: string | null
+  status: PromiseStatus
+  author_login?: string | null
+  made_at?: string | null
+  resolution_note?: string | null
+  resolution_confidence?: number | null
+  github_pr_number: number
+  pr_title?: string | null
+  pr_url?: string | null
+  resolved_pr_number?: number | null
+  resolved_pr_title?: string | null
+  resolved_pr_url?: string | null
+  resolved_at?: string | null
+}
+
+export interface PromiseStats {
+  total: number
+  open: number
+  kept: number
+  dismissed: number
+  oldest_open_days: number | null
+  median_open_days: number | null
+  median_days_to_keep: number | null
+}
+
+export const getPromises = async (api: AxiosInstance, repoId: string) => {
+  const { data } = await api.get(`/insights/repositories/${repoId}/promises`)
+  return data as { stats: PromiseStats; promises: PromiseItem[] }
+}
+
+export const setPromiseStatus = async (api: AxiosInstance, promiseId: string, status: PromiseStatus) => {
+  await api.post(`/insights/promises/${promiseId}/status`, { status })
+}
+
+// ── Knowledge map ──────────────────────────────────────────────────────────
+
+export type ModuleRisk = 'healthy' | 'single_expert' | 'at_risk'
+
+export interface MapModule {
+  id: string
+  path: string
+  pr_count: number
+  file_count: number
+  bus_factor: number
+  risk: ModuleRisk
+  contributors: Array<{ login: string; share: number; last_seen_at?: string | null }>
+  last_activity?: string | null
+}
+
+export interface MapEdge {
+  source: string
+  target: string
+  shared_prs: number
+  strength: number
+}
+
+export interface KnowledgeMap {
+  modules: MapModule[]
+  edges: MapEdge[]
+  people: Array<{ login: string; pr_count: number; module_count: number; last_seen_at?: string | null; active: boolean }>
+  summary: { module_count: number; at_risk: number; single_expert: number; healthy: number; strongest_coupling?: MapEdge | null }
+}
+
+export const getKnowledgeMap = async (api: AxiosInstance, repoId: string) => {
+  const { data } = await api.get(`/insights/repositories/${repoId}/knowledge-map`)
+  return data as KnowledgeMap
+}
+
+// ── Guardian ───────────────────────────────────────────────────────────────
+
+export interface GuardianReview {
+  id: string
+  pr_number: number
+  head_sha: string
+  verdict: 'clear' | 'heads_up' | 'conflict'
+  findings: Array<{ kind: string; pr_number?: number | null; file?: string | null; title: string; detail: string; confidence: number }>
+  comment_markdown: string
+  created_at: string
+}
+
+export const getGuardianReviews = async (api: AxiosInstance, repoId: string) => {
+  const { data } = await api.get(`/guardian/repositories/${repoId}/reviews`)
+  return (data?.reviews ?? []) as GuardianReview[]
+}
+
+// ── Quality ────────────────────────────────────────────────────────────────
+
+export type StrategyMetrics = { 'recall@1': number; 'recall@3': number; 'recall@5': number; mrr: number }
+
+export interface EvalRun {
+  id: string
+  status: 'running' | 'completed' | 'failed'
+  metrics?: {
+    question_count: number
+    question_source: 'generated' | 'template' | null
+    duration_seconds: number
+    strategies: Record<'fulltext' | 'lexical' | 'semantic' | 'hybrid', StrategyMetrics>
+  } | null
+  cases?: Array<{ question: string; pr_number: number; source: string; ranks: Record<string, number | null> }> | null
+  error?: string | null
+  created_at: string
+  finished_at?: string | null
+}
+
+export const getQualityRuns = async (api: AxiosInstance, repoId: string) => {
+  const { data } = await api.get(`/insights/repositories/${repoId}/quality`)
+  return (data?.runs ?? []) as EvalRun[]
+}
+
+export const startQualityRun = async (api: AxiosInstance, repoId: string) => {
+  const { data } = await api.post(`/insights/repositories/${repoId}/quality/run`)
+  return data as { run_id: string; status: string }
+}
