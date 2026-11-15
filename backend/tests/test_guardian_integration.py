@@ -234,6 +234,82 @@ class GuardianIntegrationTests(unittest.TestCase):
         guardian = self._create_guardian_token()
         self.assertEqual(self.client.get("/api/mcp/repositories", headers={"Authorization": f"Bearer {guardian}"}).status_code, 401)
 
+    def _seed_more_prs(self):
+        from app.services.embedding_service import LOCAL_MODEL, local_embedding
+
+        topics = [
+            ("Add Redis session cache", "Cache user sessions in Redis to cut database load on every request.", "app/cache/session.py", "bob"),
+            ("Switch auth to Firebase", "Replace hand-rolled JWT auth with Firebase to get revocation and MFA.", "app/auth/firebase.py", "alice"),
+            ("Paginate order history", "Order history pages timed out for large accounts, so results are paginated.", "app/orders/history.py", "alice"),
+            ("Rate limit login attempts", "Brute-force attempts on login are throttled per IP to protect accounts.", "app/auth/limits.py", "alice"),
+            ("Move images to CDN", "Product images are served from a CDN to speed up the storefront.", "web/static/images.ts", "carol"),
+        ]
+        for index, (title, intent, path, author) in enumerate(topics, start=60):
+            pr_id = self.session.execute(
+                text(
+                    """
+                    INSERT INTO pull_requests (repo_id, github_pr_id, github_pr_number, title, state, merged_at, author_login)
+                    VALUES (:r, :gid, :n, :t, 'closed', NOW() - make_interval(days => :d), :a) RETURNING id
+                    """
+                ),
+                {"r": self.repo_id, "gid": 1000 + index, "n": index, "t": title, "d": 70 - index, "a": author},
+            ).scalar()
+            entry_id = self.session.execute(
+                text(
+                    """
+                    INSERT INTO knowledge_entries (repo_id, pr_id, summary, intent, embedding, embedding_model)
+                    VALUES (:r, :p, :s, :i, CAST(:e AS real[]), :m) RETURNING id
+                    """
+                ),
+                {"r": self.repo_id, "p": pr_id, "s": f"{title}. {intent}", "i": intent, "e": local_embedding(f"{title}\n{intent}"), "m": LOCAL_MODEL},
+            ).scalar()
+            self.session.execute(
+                text(
+                    "INSERT INTO file_mappings (repo_id, knowledge_entry_id, file_path, start_line, end_line) VALUES (:r, :k, :f, 1, 20)"
+                ),
+                {"r": self.repo_id, "k": entry_id, "f": path},
+            )
+            self.session.execute(
+                text("INSERT INTO pr_participants (repo_id, pr_id, login, role) VALUES (:r, :p, :a, 'author')"),
+                {"r": self.repo_id, "p": pr_id, "a": author},
+            )
+        self.session.commit()
+
+    def test_knowledge_map_reports_modules_and_single_experts(self):
+        from app.services.map_service import build_knowledge_map
+
+        self._seed_more_prs()
+        result = build_knowledge_map(self.session, self.repo_id)
+        modules = {m["id"]: m for m in result["modules"]}
+        self.assertIn("app/auth", modules)
+        self.assertEqual(modules["app/auth"]["pr_count"], 2)
+        self.assertEqual(modules["app/auth"]["bus_factor"], 1)
+        self.assertEqual(modules["app/auth"]["contributors"][0]["login"], "alice")
+        self.assertIn(modules["app/auth"]["risk"], {"single_expert", "at_risk"})
+        self.assertEqual(result["summary"]["module_count"], len(result["modules"]))
+
+    def test_evaluation_run_scores_every_strategy(self):
+        from unittest.mock import patch as _patch
+
+        from app.services import embedding_service
+        from app.services.ai_service import AIService
+        from app.services.embedding_service import LOCAL_MODEL
+        from app.services.eval_service import run_evaluation
+
+        self._seed_more_prs()
+        run_id = str(self.session.execute(text("INSERT INTO eval_runs (repo_id) VALUES (:r) RETURNING id"), {"r": self.repo_id}).scalar())
+        self.session.commit()
+        with _patch.object(AIService, "_can_use_gemini", return_value=False), _patch.object(
+            embedding_service, "preferred_model", return_value=LOCAL_MODEL
+        ):
+            run_evaluation(self.session, self.repo_id, run_id)
+        row = self.session.execute(text("SELECT status, metrics, error FROM eval_runs WHERE id = :id"), {"id": run_id}).mappings().one()
+        self.assertEqual(row["status"], "completed", row["error"])
+        metrics = row["metrics"]
+        self.assertEqual(metrics["question_source"], "template")
+        self.assertEqual(set(metrics["strategies"]), {"fulltext", "lexical", "semantic", "hybrid"})
+        self.assertGreater(metrics["strategies"]["hybrid"]["recall@5"], 0.5)
+
     def test_tokens_are_stored_hashed(self):
         token = self._create_guardian_token()
         stored = self.session.execute(text("SELECT token_hash, token_prefix FROM kavi_tokens")).mappings().first()
