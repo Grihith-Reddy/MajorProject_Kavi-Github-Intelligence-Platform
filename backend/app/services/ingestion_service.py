@@ -2,7 +2,8 @@
 import json
 import logging
 import re
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Callable
 
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -12,7 +13,7 @@ from app.core.access import grant_repository_access
 from app.core.audit import audit_log
 from app.core.settings import settings
 from app.services.ai_service import AIService
-from app.services.github_service import GitHubService
+from app.services.github_service import GitHubService, parse_github_datetime
 
 
 logger = logging.getLogger(__name__)
@@ -390,30 +391,156 @@ def _upsert_file_mappings(
         )
 
 
+def _upsert_participants(
+    db: Session,
+    repo_id: str,
+    pr_id: str,
+    pr_detail: dict[str, Any],
+    comments: list[dict[str, Any]],
+    reviews: list[dict[str, Any]],
+) -> None:
+    counts: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def _add(login: Any, role: str, seen_at: Any) -> None:
+        normalized = str(login or "").strip()
+        if not normalized or normalized.endswith("[bot]"):
+            return
+        key = (normalized, role)
+        bucket = counts.setdefault(key, {"interactions": 0, "last_seen_at": None})
+        bucket["interactions"] += 1
+        parsed = parse_github_datetime(seen_at)
+        if parsed and (bucket["last_seen_at"] is None or parsed > bucket["last_seen_at"]):
+            bucket["last_seen_at"] = parsed
+
+    _add((pr_detail.get("user") or {}).get("login"), "author", pr_detail.get("created_at"))
+    for review in reviews:
+        if isinstance(review, dict):
+            _add((review.get("user") or {}).get("login"), "reviewer", review.get("submitted_at"))
+    for comment in comments:
+        if isinstance(comment, dict):
+            _add((comment.get("user") or {}).get("login"), "commenter", comment.get("created_at"))
+
+    stmt = text(
+        """
+        INSERT INTO pr_participants (id, repo_id, pr_id, login, role, interactions, last_seen_at)
+        VALUES (gen_random_uuid(), :repo_id, :pr_id, :login, :role, :interactions, :last_seen_at)
+        ON CONFLICT (pr_id, login, role)
+        DO UPDATE SET interactions = EXCLUDED.interactions, last_seen_at = EXCLUDED.last_seen_at
+        """
+    )
+    for (login, role), bucket in counts.items():
+        db.execute(
+            stmt,
+            {
+                "repo_id": str(repo_id),
+                "pr_id": str(pr_id),
+                "login": login,
+                "role": role,
+                "interactions": bucket["interactions"],
+                "last_seen_at": bucket["last_seen_at"],
+            },
+        )
+
+
+def _existing_pr_index(db: Session, repo_id: str) -> dict[int, dict[str, Any]]:
+    rows = db.execute(
+        text(
+            """
+            SELECT pr.github_pr_number, pr.updated_at, (k.id IS NOT NULL) AS has_entry
+            FROM pull_requests pr
+            LEFT JOIN knowledge_entries k ON k.pr_id = pr.id
+            WHERE pr.repo_id = :repo_id
+            """
+        ),
+        {"repo_id": repo_id},
+    ).mappings().all()
+    return {
+        int(row["github_pr_number"]): {
+            "updated_at": parse_github_datetime(row["updated_at"]),
+            "has_entry": bool(row["has_entry"]),
+        }
+        for row in rows
+    }
+
+
+def _needs_processing(pr: dict[str, Any], existing: dict[int, dict[str, Any]]) -> bool:
+    known = existing.get(int(pr.get("number") or 0))
+    if not known or not known.get("has_entry"):
+        return True
+    listed_updated_at = parse_github_datetime(pr.get("updated_at"))
+    return listed_updated_at is None or known.get("updated_at") != listed_updated_at
+
+
+ProgressCallback = Callable[[dict[str, Any]], None]
+
+
+def run_post_sync_enrichment(db: Session, repo_id: str, ai_service: AIService, results: dict[str, Any]) -> None:
+    """Repository-level enrichment that runs after PR ingestion (best-effort)."""
+    return None
+
+
 def sync_repository(
     db: Session,
     repo_full_name: str,
     github_token: str,
     github_account_id: str | None = None,
+    *,
+    full_resync: bool = False,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     github = GitHubService(github_token)
     ai_service = AIService()
 
+    def _report(**progress: Any) -> None:
+        if progress_callback is None:
+            return
+        try:
+            progress_callback(progress)
+        except Exception:  # progress is best-effort and must never break ingestion
+            logger.debug("Progress callback failed", exc_info=True)
+
+    _report(phase="connecting", processed=0, total=0)
     repo = github.get_repository(repo_full_name)
     repo_id = _upsert_repository(db, repo, github_account_id)
     if github_account_id:
         grant_repository_access(db, repo_id, github_account_id)
     db.commit()
 
-    prs = github.list_pull_requests(repo_full_name, state="all")
-    results = {"repo_id": repo_id, "synced_prs": 0, "total_prs_fetched": len(prs), "errors": []}
+    cursor_row = db.execute(
+        text("SELECT last_pr_updated_at FROM repositories WHERE id = :repo_id"),
+        {"repo_id": repo_id},
+    ).mappings().first()
+    cursor = None if full_resync else parse_github_datetime((cursor_row or {}).get("last_pr_updated_at"))
 
-    for pr in prs:
+    _report(phase="listing", processed=0, total=0)
+    listed_prs = github.list_pull_requests_updated_since(repo_full_name, since=cursor)
+    existing_index = _existing_pr_index(db, repo_id)
+    prs = [pr for pr in listed_prs if full_resync or _needs_processing(pr, existing_index)]
+    results = {
+        "repo_id": repo_id,
+        "synced_prs": 0,
+        "total_prs_fetched": len(listed_prs),
+        "skipped_unchanged": len(listed_prs) - len(prs),
+        "incremental": cursor is not None,
+        "errors": [],
+    }
+    failed_updated_at: list[datetime] = []
+    _report(phase="analyzing", processed=0, total=len(prs))
+
+    for index, pr in enumerate(prs):
         pr_number = pr.get("number")
         if not isinstance(pr_number, int):
             results["errors"].append({"pr": pr_number, "error": "invalid_pr_number"})
             continue
 
+        _report(
+            phase="analyzing",
+            processed=index,
+            total=len(prs),
+            current_pr=pr_number,
+            current_title=_normalize_text(pr.get("title"), max_length=140),
+        )
+        listed_updated_at = parse_github_datetime(pr.get("updated_at"))
         try:
             pr_detail = github.get_pull_request(repo_full_name, pr_number)
             commits = github.list_pull_request_commits(repo_full_name, pr_number)
@@ -426,6 +553,7 @@ def sync_repository(
 
             pr_id = _upsert_pr(db, repo_id, pr_detail)
             _upsert_commits(db, repo_id, pr_id, commits)
+            _upsert_participants(db, repo_id, pr_id, pr_detail, comments, reviews)
             db.commit()
             results["synced_prs"] += 1
 
@@ -459,20 +587,39 @@ def sync_repository(
             db.rollback()
             logger.warning("Failed to ingest PR %s: %s", pr_number, exc.detail)
             results["errors"].append({"pr": pr_number, "error": exc.detail})
+            if listed_updated_at:
+                failed_updated_at.append(listed_updated_at)
         except Exception as exc:
             db.rollback()
             logger.exception("Unexpected ingestion error")
             results["errors"].append({"pr": pr_number, "error": str(exc)})
+            if listed_updated_at:
+                failed_updated_at.append(listed_updated_at)
+
+    _report(phase="finishing", processed=len(prs), total=len(prs))
+    run_post_sync_enrichment(db, repo_id, ai_service, results)
+
+    # Advance the incremental cursor. If any PR failed, keep the cursor just
+    # before the oldest failure so the next sync retries it; PRs that already
+    # succeeded are skipped cheaply by the unchanged-PR check.
+    listed_times = [t for t in (parse_github_datetime(p.get("updated_at")) for p in listed_prs) if t]
+    new_cursor = cursor
+    if failed_updated_at:
+        candidate = min(failed_updated_at) - timedelta(seconds=1)
+        new_cursor = candidate if cursor is None or candidate > cursor else cursor
+    elif listed_times:
+        new_cursor = max(listed_times)
 
     db.execute(
         text(
             """
             UPDATE repositories
-            SET synced_at = NOW(), updated_at = NOW()
+            SET synced_at = NOW(), updated_at = NOW(),
+                last_pr_updated_at = :cursor
             WHERE id = :repo_id
             """
         ),
-        {"repo_id": repo_id},
+        {"repo_id": repo_id, "cursor": new_cursor},
     )
     db.commit()
 

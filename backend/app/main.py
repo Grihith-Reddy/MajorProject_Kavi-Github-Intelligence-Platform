@@ -76,7 +76,10 @@ def ready():
                     to_regclass('public.chat_conversations') IS NOT NULL AS chat_conversations,
                     to_regclass('public.chat_messages') IS NOT NULL AS chat_messages,
                     to_regclass('public.chat_memory_items') IS NOT NULL AS chat_memory_items,
-                    to_regclass('public.github_oauth_states') IS NOT NULL AS github_oauth_states
+                    to_regclass('public.github_oauth_states') IS NOT NULL AS github_oauth_states,
+                    to_regclass('public.pr_promises') IS NOT NULL AS pr_promises,
+                    to_regclass('public.kavi_tokens') IS NOT NULL AS kavi_tokens,
+                    to_regclass('public.eval_runs') IS NOT NULL AS eval_runs
                 """
             )
         ).mappings().one()

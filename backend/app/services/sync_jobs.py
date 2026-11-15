@@ -14,6 +14,7 @@ def enqueue_sync_job(
     user_id: str,
     github_account_id: str,
     repo_full_name: str,
+    full_resync: bool = False,
 ) -> dict[str, Any]:
     existing = db.execute(
         text(
@@ -39,10 +40,11 @@ def enqueue_sync_job(
         text(
             """
             INSERT INTO sync_jobs (
-                id, user_id, github_account_id, repo_full_name, status, max_attempts
+                id, user_id, github_account_id, repo_full_name, status, max_attempts, full_resync, progress
             )
             VALUES (
-                gen_random_uuid(), :user_id, :github_account_id, :repo_full_name, 'queued', :max_attempts
+                gen_random_uuid(), :user_id, :github_account_id, :repo_full_name, 'queued', :max_attempts,
+                :full_resync, CAST(:progress AS jsonb)
             )
             RETURNING id, status, repo_full_name, created_at
             """
@@ -52,22 +54,26 @@ def enqueue_sync_job(
             "github_account_id": github_account_id,
             "repo_full_name": repo_full_name,
             "max_attempts": settings.SYNC_JOB_MAX_ATTEMPTS,
+            "full_resync": bool(full_resync),
+            "progress": json.dumps({"phase": "queued", "processed": 0, "total": 0}),
         },
     ).mappings().first()
     db.commit()
     return dict(job)
 
 
-def claim_next_sync_job(db: Session) -> dict[str, Any] | None:
+def claim_next_sync_job(db: Session, job_id: str | None = None) -> dict[str, Any] | None:
+    job_filter = "AND id = CAST(:job_id AS uuid)" if job_id else ""
     job = db.execute(
         text(
-            """
+            f"""
             WITH claimed AS (
                 SELECT id
                 FROM sync_jobs
                 WHERE status = 'queued'
                   AND available_at <= NOW()
                   AND attempt_count < max_attempts
+                  {job_filter}
                 ORDER BY created_at ASC
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
@@ -86,9 +92,11 @@ def claim_next_sync_job(db: Session) -> dict[str, Any] | None:
                 j.github_account_id,
                 j.repo_full_name,
                 j.attempt_count,
-                j.max_attempts
+                j.max_attempts,
+                j.full_resync
             """
-        )
+        ),
+        {"job_id": job_id} if job_id else {},
     ).mappings().first()
     if not job:
         db.rollback()
@@ -147,6 +155,35 @@ def mark_sync_job_succeeded(
     db.commit()
 
 
+def update_sync_job_progress(db: Session, *, job_id: str, progress: dict[str, Any]) -> None:
+    db.execute(
+        text(
+            """
+            UPDATE sync_jobs
+            SET progress = CAST(:progress AS jsonb), updated_at = NOW()
+            WHERE id = :job_id
+            """
+        ),
+        {"job_id": job_id, "progress": json.dumps(progress, default=str)},
+    )
+    db.commit()
+
+
+def get_sync_job_for_user(db: Session, *, job_id: str, user_id: str) -> dict[str, Any] | None:
+    job = db.execute(
+        text(
+            """
+            SELECT id, status, repo_id, repo_full_name, attempt_count, max_attempts, last_error,
+                   result_summary, progress, full_resync, created_at, started_at, finished_at, updated_at
+            FROM sync_jobs
+            WHERE id = CAST(:job_id AS uuid) AND user_id = :user_id
+            """
+        ),
+        {"job_id": job_id, "user_id": user_id},
+    ).mappings().first()
+    return dict(job) if job else None
+
+
 def mark_sync_job_failed(db: Session, *, job_id: str, error_message: str) -> None:
     db.execute(
         text(
@@ -186,6 +223,7 @@ def get_latest_sync_job_for_repo(db: Session, repo_id: str) -> dict[str, Any] | 
                     max_attempts,
                     last_error,
                     result_summary,
+                    progress,
                     created_at,
                     started_at,
                     finished_at,

@@ -1,16 +1,77 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, FolderGit2, GitPullRequest, RefreshCw, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
-import { RepositorySummary, listRepositories, syncRepository } from '../services/githubService'
+import {
+  RepositorySummary,
+  SyncJob,
+  SyncJobProgress,
+  getSyncJob,
+  listRepositories,
+  syncRepository,
+} from '../services/githubService'
 import { getApiErrorMessage } from '../utils/errors'
 import cloudImg from '../assets/cloud.webp'
 
 // ─── Card colour palette (matches landing page pastel cards) ─────────────────
 const CARD_COLORS = ['#EAE4DC', '#D7CEF0', '#FDDBCE', '#DBE5F0', '#E4EED2', '#DCEEEF']
+
+const SYNC_PHASE_LABELS: Record<string, string> = {
+  queued: 'Waiting for a worker',
+  connecting: 'Connecting to GitHub',
+  listing: 'Checking what changed',
+  analyzing: 'Reading pull requests',
+  finishing: 'Building memory',
+  completed: 'Done',
+}
+
+function SyncProgressCapsule({ progress }: { progress?: SyncJobProgress & { status?: string } }) {
+  const phase = progress?.phase ?? 'queued'
+  const total = Number(progress?.total ?? 0)
+  const processed = Math.min(Number(progress?.processed ?? 0), total || Infinity)
+  const determinate = phase === 'analyzing' && total > 0
+  const percent = determinate ? Math.max(4, Math.round((processed / total) * 100)) : phase === 'finishing' ? 100 : 0
+
+  return (
+    <div className="repo-progress" role="status" aria-live="polite">
+      <div className="repo-progress-head">
+        <span className="repo-progress-phase">{SYNC_PHASE_LABELS[phase] ?? 'Syncing'}</span>
+        {determinate && <span className="repo-progress-count font-archivo">{processed} / {total}</span>}
+      </div>
+      <div className="repo-progress-track">
+        {determinate || phase === 'finishing' ? (
+          <motion.div
+            className="repo-progress-fill"
+            initial={false}
+            animate={{ width: `${percent}%` }}
+            transition={{ type: 'spring', stiffness: 120, damping: 22 }}
+          />
+        ) : (
+          <div className="repo-progress-fill is-indeterminate" />
+        )}
+      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.p
+          key={progress?.current_pr ?? phase}
+          className="repo-progress-detail font-archivo"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.18 }}
+        >
+          {progress?.current_pr
+            ? `#${progress.current_pr} · ${progress.current_title || 'Untitled pull request'}`
+            : phase === 'listing'
+              ? 'Only new or updated pull requests are analyzed.'
+              : 'This keeps running even if you leave the page.'}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export function RepositorySelectionPage() {
   const api = useApiClient()
@@ -22,48 +83,81 @@ export function RepositorySelectionPage() {
   const [syncNotice, setSyncNotice] = useState<string | null>(null)
   const [syncedRepoIds, setSyncedRepoIds] = useState<Record<string, string>>({})
   const [searchQuery, setSearchQuery] = useState('')
+  const [syncProgress, setSyncProgress] = useState<Record<string, SyncJobProgress & { status?: string }>>({})
 
-  const handleSync = async (repo: RepositorySummary) => {
+  const pollAbortRef = useRef(false)
+  useEffect(() => {
+    pollAbortRef.current = false
+    return () => { pollAbortRef.current = true }
+  }, [])
+
+  const waitForJob = async (repoFullName: string, jobId: string): Promise<SyncJob> => {
+    const startedAt = Date.now()
+    for (;;) {
+      if (pollAbortRef.current) throw new Error('cancelled')
+      const job = await getSyncJob(api, jobId)
+      setSyncProgress((prev) => ({ ...prev, [repoFullName]: { ...(job.progress ?? {}), status: job.status } }))
+      if (job.status === 'completed') return job
+      if (job.status === 'failed') throw new Error(job.last_error || 'Sync failed')
+      if (Date.now() - startedAt > 45 * 60 * 1000) throw new Error('Sync is taking unusually long; it will keep running in the background.')
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    }
+  }
+
+  const handleSync = async (repo: RepositorySummary, fullResync = false) => {
     setSyncing((prev) => ({ ...prev, [repo.full_name]: true }))
+    setSyncProgress((prev) => ({ ...prev, [repo.full_name]: { phase: 'queued', processed: 0, total: 0, status: 'queued' } }))
     setSyncError(null)
     setSyncNotice(null)
 
     try {
-      const result = await syncRepository(api, repo.full_name)
-      const syncedPrs = typeof result.synced_prs === 'number' ? result.synced_prs : 0
-      const syncedRepoId = result.repo_id
+      const started = await syncRepository(api, repo.full_name, { fullResync })
+      let syncedRepoId = started.repo_id
+      let syncedPrs = typeof started.synced_prs === 'number' ? started.synced_prs : 0
 
-      if (syncedRepoId) {
-        setSyncedRepoIds((prev) => ({ ...prev, [repo.full_name]: syncedRepoId }))
+      if (started.status === 'queued' && started.job_id) {
+        const job = await waitForJob(repo.full_name, started.job_id)
+        syncedRepoId = job.repo_id ?? job.result_summary?.repo_id ?? syncedRepoId
+        syncedPrs = job.result_summary?.synced_prs ?? 0
       }
 
-      if (syncedRepoId && syncedPrs > 0) {
-        setTimeout(() => navigate(`/dashboard?repoId=${syncedRepoId}`), 450)
-      } else if (syncedPrs === 0) {
+      // Refresh counts from the knowledge base: an incremental sync may process
+      // zero PRs simply because nothing changed since the last run.
+      const refreshed = await listRepositories(api)
+      setData(refreshed)
+      const refreshedRepo = refreshed.repositories.find((item) => item.id === repo.id)
+      const totalPrs = refreshedRepo?.pr_count ?? syncedPrs
+      syncedRepoId = syncedRepoId ?? refreshedRepo?.repo_uuid ?? undefined
+
+      if (syncedRepoId) {
+        setSyncedRepoIds((prev) => ({ ...prev, [repo.full_name]: syncedRepoId as string }))
+      }
+
+      if (syncedRepoId && totalPrs > 0) {
+        if (fullResync || repo.synced_at) {
+          setSyncNotice(
+            syncedPrs > 0
+              ? `${repo.full_name} is up to date. ${syncedPrs} pull request${syncedPrs === 1 ? '' : 's'} refreshed.`
+              : `${repo.full_name} is already up to date. Nothing changed since the last sync.`
+          )
+        } else {
+          setTimeout(() => navigate(`/dashboard?repoId=${syncedRepoId}`), 450)
+        }
+      } else if (totalPrs === 0) {
         setSyncNotice(
           `Sync completed for ${repo.full_name}, but no pull-request discussions were found. Chat remains disabled.`
         )
       }
-
-      setData((prev) => {
-        if (!prev) return prev
-        return {
-          repositories: prev.repositories.map((item) =>
-            item.id === repo.id
-              ? {
-                  ...item,
-                  synced_at: new Date().toISOString(),
-                  pr_count: syncedPrs,
-                  repo_uuid: syncedRepoId ?? item.repo_uuid,
-                }
-              : item
-          ),
-        }
-      })
     } catch (err) {
+      if (err instanceof Error && err.message === 'cancelled') return
       setSyncError(getApiErrorMessage(err, 'Failed to sync repository'))
     } finally {
       setSyncing((prev) => ({ ...prev, [repo.full_name]: false }))
+      setSyncProgress((prev) => {
+        const next = { ...prev }
+        delete next[repo.full_name]
+        return next
+      })
     }
   }
 
@@ -309,6 +403,78 @@ export function RepositorySelectionPage() {
         }
         .repo-btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.95); }
 
+        /* ── Sync progress capsule ── */
+        .repo-progress {
+          border-radius: 20px;
+          background: rgba(255,255,255,0.6);
+          border: 1px solid rgba(24,29,31,0.1);
+          padding: 14px 16px 12px;
+        }
+        .repo-progress-head {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+        .repo-progress-phase {
+          font-family: 'Gabarito', sans-serif;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(24,29,31,0.6);
+        }
+        .repo-progress-count {
+          font-size: 13px;
+          font-weight: 600;
+          color: #181D1F;
+          font-variant-numeric: tabular-nums;
+        }
+        .repo-progress-track {
+          position: relative;
+          height: 6px;
+          border-radius: 9999px;
+          background: rgba(24,29,31,0.1);
+          overflow: hidden;
+        }
+        .repo-progress-fill {
+          position: absolute;
+          inset: 0 auto 0 0;
+          border-radius: 9999px;
+          background: #181D1F;
+        }
+        .repo-progress-fill.is-indeterminate {
+          width: 36%;
+          animation: repo-progress-slide 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+        }
+        @keyframes repo-progress-slide {
+          from { transform: translateX(-110%); }
+          to { transform: translateX(300%); }
+        }
+        .repo-progress-detail {
+          margin-top: 9px;
+          font-size: 13px;
+          color: rgba(24,29,31,0.55);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .repo-card-actions { display: flex; align-items: center; gap: 8px; }
+        .repo-resync-btn {
+          width: 32px; height: 32px;
+          border-radius: 9999px;
+          border: 1px solid rgba(24,29,31,0.18);
+          background: rgba(255,255,255,0.5);
+          display: inline-flex; align-items: center; justify-content: center;
+          cursor: pointer;
+          color: #181D1F;
+          transition: background 0.15s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .repo-resync-btn:hover:not(:disabled) { background: rgba(255,255,255,0.9); transform: rotate(-90deg); }
+        .repo-resync-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
         .repo-no-prs {
           margin-top: 10px;
           font-family: 'Archivo', sans-serif;
@@ -484,9 +650,23 @@ export function RepositorySelectionPage() {
                           <div className="repo-icon-wrap">
                             <FolderGit2 size={20} color="#181D1F" strokeWidth={1.5} />
                           </div>
-                          <span className={`repo-badge${synced ? ' synced' : ''}`}>
-                            {synced ? 'Synced' : repo.private ? 'Private' : 'Public'}
-                          </span>
+                          <div className="repo-card-actions">
+                            {canOpenChat && (
+                              <button
+                                type="button"
+                                className="repo-resync-btn"
+                                onClick={() => handleSync(repo)}
+                                disabled={isSyncing}
+                                aria-label={`Check ${repo.full_name} for new pull requests`}
+                                title="Check for new pull requests"
+                              >
+                                <RefreshCw size={14} strokeWidth={1.75} />
+                              </button>
+                            )}
+                            <span className={`repo-badge${synced ? ' synced' : ''}`}>
+                              {synced ? 'Synced' : repo.private ? 'Private' : 'Public'}
+                            </span>
+                          </div>
                         </div>
 
                         <p className="repo-name font-archivo">{repo.full_name}</p>
@@ -507,6 +687,9 @@ export function RepositorySelectionPage() {
                       </div>
 
                       <div>
+                        {isSyncing ? (
+                          <SyncProgressCapsule progress={syncProgress[repo.full_name]} />
+                        ) : (
                         <button
                           onClick={() => {
                             if (canOpenChat) {
@@ -540,6 +723,7 @@ export function RepositorySelectionPage() {
                             </>
                           )}
                         </button>
+                        )}
 
                         {hasNoPrHistory && (
                           <p className="repo-no-prs font-archivo">
