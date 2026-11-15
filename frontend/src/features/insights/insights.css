@@ -154,6 +154,19 @@
 .ins-skeleton::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent); animation: ins-shimmer 1.4s infinite; }
 @keyframes ins-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 
+.ins-trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.ins-trust-card { position: relative; border-radius: 24px; background: var(--kv-sage); padding: 20px 22px; }
+.ins-trust-card.is-feedback { background: var(--kv-ice); }
+.ins-trust-icon { position: absolute; top: 18px; right: 18px; width: 32px; height: 32px; border-radius: 10px; background: rgba(255,255,255,0.6); display: inline-flex; align-items: center; justify-content: center; color: var(--kv-ink); }
+.ins-trust-value { font-family: var(--kv-font-read); font-size: 40px; font-weight: 600; letter-spacing: -0.03em; color: var(--kv-ink); margin: 6px 0 6px; line-height: 1; }
+.ins-feedback-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ins-feedback-list li { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 8px; align-items: start; font-family: var(--kv-font-read); font-size: 12.5px; line-height: 1.5; color: var(--kv-ink-2); background: rgba(255,255,255,0.55); border-radius: 12px; padding: 8px 10px; }
+.ins-feedback-list li svg { margin-top: 3px; color: var(--kv-danger-ink); }
+.ins-feedback-list li span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ins-impact { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 14px; }
+.ins-impact-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; padding: 4px 10px; font-family: var(--kv-font-label); font-size: 12px; font-weight: 600; color: var(--kv-ink-2); background: var(--kv-mist); border: 1px solid var(--kv-line); }
+.ins-impact-chip.is-gap { background: var(--kv-warn-bg); color: var(--kv-warn-ink); border-color: transparent; }
+
 @media (max-width: 1100px) {
   .ins-split, .ins-split.is-wide { grid-template-columns: 1fr; }
   .ins-summary, .ins-side { position: static; }

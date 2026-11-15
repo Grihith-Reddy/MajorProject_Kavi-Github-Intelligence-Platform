@@ -362,3 +362,61 @@ a.kv-chip:hover .kv-chip-range { color: rgba(255, 255, 255, 0.7); }
   white-space: nowrap;
   scrollbar-width: none;
 }
+
+/* ── Answer feedback ─────────────────────────────────────────────────── */
+
+.kv-feedback { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 10px; }
+.kv-feedback-note { font-family: var(--kv-font-label); font-size: 12px; color: var(--kv-ink-4); margin-right: 4px; }
+.kv-feedback-btn {
+  width: 28px; height: 28px; border-radius: 9999px;
+  border: 1px solid transparent; background: transparent; color: var(--kv-ink-4);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.2s var(--kv-spring);
+}
+.kv-feedback-btn:hover { background: var(--kv-mist); color: var(--kv-ink); }
+.kv-feedback-btn:active { transform: scale(0.9); }
+.kv-feedback-btn.is-active { background: var(--kv-ink); color: #fff; }
+.kv-feedback-btn.is-active.is-down { background: var(--kv-danger-ink); }
+.kv-feedback-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+
+/* ── Time-Travel ─────────────────────────────────────────────────────── */
+
+.kv-tt { position: relative; flex-shrink: 0; }
+.kv-tt-btn {
+  width: 36px; height: 36px; border-radius: 12px; border: 1px solid var(--kv-line);
+  background: var(--kv-surface); color: var(--kv-ink-3); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.2s var(--kv-spring);
+}
+.kv-tt-btn:hover:not(:disabled) { color: var(--kv-ink); background: var(--kv-mist); }
+.kv-tt-btn.is-active { background: var(--kv-ice); border-color: rgba(3, 123, 181, 0.25); color: var(--kv-sky-ink); }
+.kv-tt-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.kv-tt-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+.kv-tt-pop {
+  position: absolute; bottom: calc(100% + 10px); left: 0; z-index: 40; width: 280px;
+  border-radius: 20px; background: #fff; border: 1px solid var(--kv-line);
+  box-shadow: 0 24px 48px rgba(24, 29, 31, 0.14); padding: 16px;
+  display: flex; flex-direction: column; gap: 10px; transform-origin: bottom left;
+}
+.kv-tt-title { font-family: var(--kv-font-read); font-size: 15px; font-weight: 600; color: var(--kv-ink); }
+.kv-tt-text { font-family: var(--kv-font-read); font-size: 12.5px; line-height: 1.55; color: var(--kv-ink-3); }
+.kv-tt-input {
+  border-radius: 12px; border: 1px solid var(--kv-line-strong); padding: 9px 12px;
+  font-family: var(--kv-font-read); font-size: 14px; color: var(--kv-ink); background: var(--kv-mist-2);
+}
+.kv-tt-banner {
+  display: inline-flex; align-items: center; gap: 8px; width: fit-content; margin-bottom: 8px;
+  border-radius: 9999px; padding: 5px 6px 5px 12px; background: var(--kv-ice);
+  font-family: var(--kv-font-read); font-size: 13px; color: var(--kv-sky-ink);
+}
+.kv-tt-banner strong { font-weight: 600; }
+.kv-tt-banner button {
+  width: 22px; height: 22px; border-radius: 9999px; border: none; cursor: pointer;
+  background: rgba(255, 255, 255, 0.7); color: var(--kv-sky-ink);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.kv-asof-chip {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  border-radius: 9999px; padding: 2px 10px; background: var(--kv-ice);
+  font-family: var(--kv-font-label); font-size: 12px; font-weight: 600; color: var(--kv-sky-ink);
+}

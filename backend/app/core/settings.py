@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "gemini"
     AI_MODEL: str = "gemini-2.5-flash"
     AI_API_KEY: str | None = None
+    # Tried in order when a model is over its free-tier quota (each model has its own quota).
+    AI_FALLBACK_MODELS: str = "gemini-flash-latest,gemini-flash-lite-latest,gemini-2.5-flash-lite"
     EMBEDDING_MODEL: str = "gemini-embedding-001"
     EMBEDDING_DIMENSIONS: int = 768
 

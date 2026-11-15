@@ -23,7 +23,7 @@ from app.core.access import require_github_account, require_user_id
 from app.core.resilience import ai_circuit_breaker
 from app.core.security import UserContext, decrypt_token
 from app.core.settings import settings
-from app.services.ai_service import AIService
+from app.services.ai_service import AIService, gemini_model_chain, is_quota_exhausted, mark_model_exhausted
 from app.services.github_service import GitHubService
 
 
@@ -448,20 +448,31 @@ class RepoAgentTools:
         context = _build_repo_overview_context(
             self.db, self.repo_id, self.current_user, self.repo_meta, include_live_inventory=False
         )
-        return {
+        recent = [
+            pr for pr in (context.get("recent_prs") or [])
+            if not self._after_as_of(pr.get("merged_at") or pr.get("created_at"))
+        ]
+        monthly = [m for m in (context.get("monthly_activity") or []) if not (self.as_of and str(m.get("month") or "") > self.as_of[:7])]
+        result = {
             "repository": context.get("repository"),
             "stats": context.get("stats"),
             "recent_prs": [
                 {"pr_number": pr.get("github_pr_number"), "title": pr.get("title"), "author": pr.get("author_login"), "merged_at": _iso(pr.get("merged_at"))}
-                for pr in (context.get("recent_prs") or [])[:10]
+                for pr in recent[:10]
             ],
             "top_directories": (context.get("top_directories") or [])[:12],
             "top_files": [f.get("file_path") for f in (context.get("top_files") or [])[:15]],
             "top_tags": [t.get("tag") for t in (context.get("top_tags") or [])[:15]],
             "technologies": [t.get("name") for t in (context.get("technologies") or [])][:12],
             "contributors": [{"login": c.get("author_login"), "prs": c.get("pr_count")} for c in (context.get("contributors") or [])[:8]],
-            "monthly_activity": (context.get("monthly_activity") or [])[-12:],
+            "monthly_activity": monthly[-12:],
         }
+        if self.as_of:
+            result["time_travel_note"] = (
+                f"recent_prs and monthly_activity are limited to {self.as_of}; stats, files, tags and contributors "
+                "cover the full history up to today. Use search_memory for the state on that date."
+            )
+        return result
 
     def list_promises(self, status: str | None = None) -> dict[str, Any]:
         wanted = str(status or "open").lower()
@@ -524,7 +535,9 @@ class RepoAgentTools:
         if handler is None:
             return {"error": f"Unknown tool {name}"}
         try:
-            return handler(args or {})
+            # Round-trip through JSON so dates, decimals and UUIDs from the database
+            # can always be sent back to the model.
+            return json.loads(json.dumps(handler(args or {}), default=str))
         except HTTPException as exc:  # GitHub/upstream errors carry safe, user-facing details
             self.db.rollback()
             logger.warning("Agent tool %s failed: %s", name, exc.detail)
@@ -588,9 +601,9 @@ def _stream_gemini(contents: list[dict[str, Any]], *, use_tools: bool) -> Iterat
     if use_tools:
         body["tools"] = [{"functionDeclarations": TOOL_DECLARATIONS}]
 
-    model = _model_name()
     response = None
-    for attempt in range(2):
+    model = _model_name()
+    for model in gemini_model_chain(_model_name()):
         try:
             response = requests.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent",
@@ -603,21 +616,31 @@ def _stream_gemini(contents: list[dict[str, Any]], *, use_tools: bool) -> Iterat
         except requests.RequestException as exc:
             ai_circuit_breaker.record_failure()
             raise AgentUnavailable(type(exc).__name__) from exc
-        if response.status_code == 404 and attempt == 0:
+        if response.status_code == 429 and is_quota_exhausted(429, response.text):
+            mark_model_exhausted(model)
+            continue
+        if response.status_code == 404:
             discovered = AIService()._discover_supported_model()
             if discovered and discovered != model:
                 model = discovered
-                continue
+                response = requests.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent",
+                    params={"alt": "sse"},
+                    headers={"x-goog-api-key": settings.AI_API_KEY or ""},
+                    json=body,
+                    stream=True,
+                    timeout=(10, 120),
+                )
         break
 
-    assert response is not None
+    if response is None:
+        raise AgentUnavailable("All configured Gemini models are over their free-tier quota right now")
     if response.status_code >= 400:
         if response.status_code in {429, 500, 502, 503, 504}:
             ai_circuit_breaker.record_failure()
         raise AgentUnavailable(f"Gemini HTTP {response.status_code}")
 
     ai_circuit_breaker.record_success()
-    AIService._resolved_model_name = model
     with response:
         for raw_line in response.iter_lines(decode_unicode=True):
             if not raw_line or not raw_line.startswith("data:"):

@@ -95,18 +95,34 @@ def guardian_reviews(
     db: Session = Depends(get_db),
 ):
     assert_repo_access(db, repo_id, current_user.sub)
-    rows = db.execute(
-        text(
-            """
-            SELECT id, pr_number, head_sha, verdict, findings, comment_markdown, created_at
-            FROM guardian_reviews
-            WHERE repo_id = :repo_id
-            ORDER BY created_at DESC
-            LIMIT :limit
-            """
-        ),
-        {"repo_id": repo_id, "limit": limit},
-    ).mappings().all()
+    params = {"repo_id": repo_id, "limit": limit}
+    try:
+        rows = db.execute(
+            text(
+                """
+                SELECT id, pr_number, head_sha, verdict, findings, comment_markdown, impact, reviewers, created_at
+                FROM guardian_reviews
+                WHERE repo_id = :repo_id
+                ORDER BY created_at DESC
+                LIMIT :limit
+                """
+            ),
+            params,
+        ).mappings().all()
+    except Exception:
+        db.rollback()  # databases without migration 006
+        rows = db.execute(
+            text(
+                """
+                SELECT id, pr_number, head_sha, verdict, findings, comment_markdown, created_at
+                FROM guardian_reviews
+                WHERE repo_id = :repo_id
+                ORDER BY created_at DESC
+                LIMIT :limit
+                """
+            ),
+            params,
+        ).mappings().all()
     return {"reviews": [dict(row) for row in rows]}
 
 
