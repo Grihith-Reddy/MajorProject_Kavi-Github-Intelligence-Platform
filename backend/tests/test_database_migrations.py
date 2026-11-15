@@ -18,8 +18,10 @@ class DatabaseMigrationTests(unittest.TestCase):
             "003_chat_memory.sql",
             "004_github_oauth_states.sql",
             "005_kavi_intelligence.sql",
+            "006_impact_and_feedback.sql",
         ]
         down_migrations = [
+            "006_impact_and_feedback_down.sql",
             "005_kavi_intelligence_down.sql",
             "004_github_oauth_states_down.sql",
             "003_chat_memory_down.sql",
@@ -53,7 +55,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                 self.assertIn("github_oauth_states", created_tables)
                 self.assertTrue(
                     {"pr_participants", "pr_promises", "blame_cache", "kavi_tokens",
-                     "guardian_reviews", "eval_runs"}.issubset(created_tables)
+                     "guardian_reviews", "eval_runs", "chat_feedback"}.issubset(created_tables)
                 )
 
                 for migration_name in down_migrations:
