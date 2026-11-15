@@ -9,6 +9,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/repositories', label: 'Repositories' },
   { to: '/why', label: 'Why-Lens' },
+  { to: '/insights', label: 'Insights' },
   { to: '/timeline', label: 'Timeline' },
   { to: '/settings', label: 'Settings' },
 ]
@@ -49,7 +50,7 @@ export function TopNav() {
 
   const resolveNavTarget = (path: string) => {
     if (!activeRepoId) return path
-    if (path === '/dashboard' || path === '/timeline' || path === '/why') {
+    if (path === '/dashboard' || path === '/timeline' || path === '/why' || path === '/insights') {
       return `${path}?repoId=${encodeURIComponent(activeRepoId)}`
     }
     return path
