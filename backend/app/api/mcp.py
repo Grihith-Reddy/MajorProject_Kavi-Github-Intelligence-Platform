@@ -42,8 +42,8 @@ def _resolve_repo(db: Session, principal: TokenPrincipal, repo: str) -> dict[str
     return assert_repo_access(db, str(row[0]), principal.auth0_sub)
 
 
-def _tools(db: Session, principal: TokenPrincipal, repo: str) -> RepoAgentTools:
-    return RepoAgentTools(db, _resolve_repo(db, principal, repo), UserContext(sub=principal.auth0_sub))
+def _tools(db: Session, principal: TokenPrincipal, repo: str, as_of: str | None = None) -> RepoAgentTools:
+    return RepoAgentTools(db, _resolve_repo(db, principal, repo), UserContext(sub=principal.auth0_sub), as_of=as_of)
 
 
 @router.get("/repositories")
@@ -68,11 +68,12 @@ def mcp_repositories(principal: TokenPrincipal = Depends(require_token("mcp")), 
 class AskRequest(BaseModel):
     repo: str = Field(min_length=1, max_length=250)
     question: str = Field(min_length=1, max_length=4000)
+    as_of: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 @router.post("/ask")
 def mcp_ask(payload: AskRequest, principal: TokenPrincipal = Depends(require_token("mcp")), db: Session = Depends(get_db)):
-    tools = _tools(db, principal, payload.repo)
+    tools = _tools(db, principal, payload.repo, payload.as_of)
     steps: list[str] = []
 
     def _emit(name: str, data: dict[str, Any]) -> None:

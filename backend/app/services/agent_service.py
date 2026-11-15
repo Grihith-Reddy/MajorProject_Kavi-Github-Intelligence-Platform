@@ -138,7 +138,7 @@ def _iso(value: Any) -> str | None:
 
 
 class RepoAgentTools:
-    def __init__(self, db: Session, repo_meta: dict[str, Any], current_user: UserContext):
+    def __init__(self, db: Session, repo_meta: dict[str, Any], current_user: UserContext, as_of: str | None = None):
         self.db = db
         self.repo_meta = repo_meta
         self.repo_id = str(repo_meta["id"])
@@ -148,6 +148,9 @@ class RepoAgentTools:
         self._github: GitHubService | None = None
         self._tree: list[str] | None = None
         self.sources: dict[str, dict[str, Any]] = {}
+        # Time-Travel: YYYY-MM-DD. Memory, code and blame are limited to that date.
+        self.as_of = as_of
+        self._ref: str | None = None
 
     # ── shared helpers ──────────────────────────────────────────────────────
 
@@ -159,9 +162,26 @@ class RepoAgentTools:
             self._github = GitHubService(decrypt_token(account["access_token_encrypted"]))
         return self._github
 
+    @property
+    def ref(self) -> str:
+        """Branch for live answers, or the commit that was current on the Time-Travel date."""
+        if self._ref is None:
+            self._ref = self.default_branch
+            if self.as_of:
+                sha = self.github.commit_at(self.full_name, self.default_branch, f"{self.as_of}T23:59:59Z")
+                if sha:
+                    self._ref = sha
+        return self._ref
+
+    def _after_as_of(self, value: Any) -> bool:
+        if not self.as_of or value is None:
+            return False
+        stamp = value.isoformat() if hasattr(value, 'isoformat') else str(value)
+        return stamp[:10] > self.as_of
+
     def tree(self) -> list[str]:
         if self._tree is None:
-            rows = self.github.list_repository_tree(self.full_name, branch=self.default_branch, max_entries=10000)
+            rows = self.github.list_repository_tree(self.full_name, branch=self.ref, max_entries=10000)
             self._tree = [str(item.get("path") or "") for item in rows if item.get("path")]
         return self._tree
 
@@ -221,7 +241,7 @@ class RepoAgentTools:
     def search_memory(self, query: str) -> dict[str, Any]:
         from app.api.chat import ChatQuery, _fetch_candidate_entries  # local import avoids a cycle
 
-        payload = ChatQuery(repo_id=self.repo_id, query=str(query or "")[:500] or "overview", limit=6)
+        payload = ChatQuery(repo_id=self.repo_id, query=str(query or "")[:500] or "overview", limit=6, as_of=self.as_of)
         rows = _fetch_candidate_entries(self.db, payload, strategy="hybrid")[:6]
         files_by_entry = self._files_for_entries([str(row["id"]) for row in rows])
         results = []
@@ -256,6 +276,8 @@ class RepoAgentTools:
         ).mappings().first()
         if not row:
             return {"error": f"PR #{number} is not in KAVI's memory for this repository."}
+        if self._after_as_of(row["merged_at"] or row["created_at"]):
+            return {"note": f"As of {self.as_of}, PR #{number} did not exist yet (it is dated {_iso(row['merged_at'] or row['created_at'])})."}
         files = self._files_for_entries([str(row["entry_id"])]).get(str(row["entry_id"]), []) if row["entry_id"] else []
         people = self.db.execute(
             text(
@@ -291,7 +313,7 @@ class RepoAgentTools:
 
     def read_file(self, path: str, start_line: int | None = None, end_line: int | None = None) -> dict[str, Any]:
         normalized = str(path or "").strip().lstrip("/")
-        content = self.github.get_file_content(self.full_name, normalized, ref=self.default_branch, max_chars=120_000)
+        content = self.github.get_file_content(self.full_name, normalized, ref=self.ref, max_chars=120_000)
         if not content:
             matches = [p for p in self.tree() if p.endswith("/" + normalized) or p.endswith(normalized)][:5]
             return {"error": f"Could not read {normalized}.", "did_you_mean": matches}
@@ -301,7 +323,10 @@ class RepoAgentTools:
         end = min(end, start + 249)
         self._add_file_source(normalized, start, end)
         numbered = "\n".join(f"{index + 1:>5}  {lines[index]}" for index in range(start - 1, end))
-        return {"path": normalized, "total_lines": len(lines), "start_line": start, "end_line": end, "content": numbered}
+        result = {"path": normalized, "total_lines": len(lines), "start_line": start, "end_line": end, "content": numbered}
+        if self.as_of:
+            result["as_of_commit"] = self.ref[:12]
+        return result
 
     def find_files(self, pattern: str) -> dict[str, Any]:
         raw = str(pattern or "").strip()
@@ -318,7 +343,7 @@ class RepoAgentTools:
     def why_lines(self, path: str, start_line: int, end_line: int) -> dict[str, Any]:
         from app.services.why_service import get_file_why, why_for_lines
 
-        file_why = get_file_why(self.db, repo_meta=self.repo_meta, github=self.github, path=path)
+        file_why = get_file_why(self.db, repo_meta=self.repo_meta, github=self.github, path=path, ref=self.ref)
         narrowed = why_for_lines(file_why, start_line, end_line)
         self._add_file_source(narrowed["path"], narrowed["start_line"], narrowed["end_line"])
         for pr in narrowed["prs"]:
@@ -354,7 +379,7 @@ class RepoAgentTools:
     def who_knows(self, topic: str) -> dict[str, Any]:
         from app.api.chat import ChatQuery, _fetch_candidate_entries
 
-        payload = ChatQuery(repo_id=self.repo_id, query=str(topic or "")[:300] or "code", limit=10)
+        payload = ChatQuery(repo_id=self.repo_id, query=str(topic or "")[:300] or "code", limit=10, as_of=self.as_of)
         rows = _fetch_candidate_entries(self.db, payload, strategy="hybrid")[:10]
         entry_ids = [str(row["id"]) for row in rows]
         if not entry_ids:
@@ -441,11 +466,14 @@ class RepoAgentTools:
     def list_promises(self, status: str | None = None) -> dict[str, Any]:
         wanted = str(status or "open").lower()
         clauses = "" if wanted == "all" else "AND p.status = :status"
+        if self.as_of:
+            # Status as it stood on the date: kept only if the keeping PR had merged by then.
+            clauses = "AND p.made_at <= CAST(:as_of AS timestamptz)"
         rows = self.db.execute(
             text(
                 f"""
                 SELECT p.quote, p.summary, p.kind, p.status, p.author_login, p.made_at,
-                       pr.github_pr_number, rp.github_pr_number AS resolved_by
+                       pr.github_pr_number, rp.github_pr_number AS resolved_by, rp.merged_at AS resolved_at
                 FROM pr_promises p
                 JOIN pull_requests pr ON pr.id = p.pr_id
                 LEFT JOIN pull_requests rp ON rp.id = p.resolved_pr_id
@@ -454,8 +482,16 @@ class RepoAgentTools:
                 LIMIT 25
                 """
             ),
-            {"repo_id": self.repo_id, "status": wanted},
+            {"repo_id": self.repo_id, "status": wanted, "as_of": f"{self.as_of}T23:59:59+00:00" if self.as_of else None},
         ).mappings().all()
+        if self.as_of:
+            rows = [
+                {**dict(row), "status": "kept" if row["resolved_by"] and row["status"] == "kept" and not self._after_as_of(row.get("resolved_at")) else "open"}
+                for row in rows
+                if row["status"] != "dismissed"
+            ]
+            if wanted in {"open", "kept"}:
+                rows = [row for row in rows if row["status"] == wanted]
         return {
             "promises": [
                 {
@@ -605,6 +641,10 @@ def run_agent(
 ) -> dict[str, Any]:
     """Run the tool loop, emitting ``token``, ``step`` and ``note`` events. Returns the final answer."""
     user_text = query.strip()
+    if getattr(tools, "as_of", None):
+        user_text = (
+            f"[TIME-TRAVEL: answer as the repository was at the end of {tools.as_of}. Your tools only return history up to that date and code at the commit current then. Speak about that point in time.]\n\n{user_text}"
+        )
     if memory_note:
         user_text = f"{user_text}\n\n[Context KAVI remembers about this user and conversation]\n{memory_note}"
     contents = _merge_consecutive([*history, {"role": "user", "parts": [{"text": user_text}]}])

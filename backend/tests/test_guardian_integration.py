@@ -421,6 +421,43 @@ class GuardianIntegrationTests(unittest.TestCase):
         finally:
             app.dependency_overrides.pop(get_current_user, None)
 
+    def test_time_travel_limits_memory_and_pull_requests_to_the_date(self):
+        from app.api.chat import ChatQuery, _fetch_candidate_entries
+        from app.core.security import UserContext
+        from app.services.agent_service import RepoAgentTools
+
+        s = self.session
+        for number, title, merged in ((400, "Old session store in memory", "2025-01-10"), (401, "Move session store to Redis", "2026-01-10")):
+            pr_id = s.execute(
+                text(
+                    """
+                    INSERT INTO pull_requests (repo_id, github_pr_id, github_pr_number, title, state, merged_at, created_at)
+                    VALUES (:r, :g, :n, :t, 'closed', CAST(:m AS timestamptz), CAST(:m AS timestamptz)) RETURNING id
+                    """
+                ),
+                {"r": self.repo_id, "g": 9000 + number, "n": number, "t": title, "m": merged},
+            ).scalar()
+            s.execute(
+                text("INSERT INTO knowledge_entries (repo_id, pr_id, summary, intent) VALUES (:r, :p, :t, 'Session store decision')"),
+                {"r": self.repo_id, "p": pr_id, "t": title},
+            )
+        s.commit()
+
+        live = {row["github_pr_number"] for row in _fetch_candidate_entries(s, ChatQuery(repo_id=self.repo_id, query="session store"))}
+        past = {
+            row["github_pr_number"]
+            for row in _fetch_candidate_entries(s, ChatQuery(repo_id=self.repo_id, query="session store", as_of="2025-06-01"))
+        }
+        self.assertTrue({400, 401}.issubset(live))
+        self.assertIn(400, past)
+        self.assertNotIn(401, past)
+        self.assertNotIn(42, past)  # PR #42 merged 30 days ago
+
+        repo = {"id": self.repo_id, "full_name": "org/shop", "default_branch": "main"}
+        tools = RepoAgentTools(s, repo, UserContext(sub="uid-1"), as_of="2025-06-01")
+        self.assertIn("did not exist yet", tools.call("get_pull_request", {"number": 401})["note"])
+        self.assertEqual(tools.call("get_pull_request", {"number": 400})["pr_number"], 400)
+
     def test_tokens_are_stored_hashed(self):
         token = self._create_guardian_token()
         stored = self.session.execute(text("SELECT token_hash, token_prefix FROM kavi_tokens")).mappings().first()
