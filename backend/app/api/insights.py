@@ -277,4 +277,36 @@ def quality_runs(
     runs = [dict(row) for row in rows]
     for run in runs[1:]:
         run["cases"] = None  # only the latest run needs per-question detail
-    return {"runs": runs}
+    feedback = None
+    try:
+        stats = db.execute(
+            text(
+                """
+                SELECT COUNT(*) FILTER (WHERE rating = 1) AS helpful,
+                       COUNT(*) FILTER (WHERE rating = -1) AS not_helpful
+                FROM chat_feedback WHERE repo_id = :repo_id
+                """
+            ),
+            {"repo_id": repo_id},
+        ).mappings().one()
+        recent = db.execute(
+            text(
+                """
+                SELECT f.reason, f.created_at, LEFT(m.content, 240) AS answer
+                FROM chat_feedback f JOIN chat_messages m ON m.id = f.message_id
+                WHERE f.repo_id = :repo_id AND f.rating = -1
+                ORDER BY f.created_at DESC LIMIT 5
+                """
+            ),
+            {"repo_id": repo_id},
+        ).mappings().all()
+        rated = int(stats["helpful"]) + int(stats["not_helpful"])
+        feedback = {
+            "helpful": int(stats["helpful"]),
+            "not_helpful": int(stats["not_helpful"]),
+            "helpful_rate": round(int(stats["helpful"]) / rated, 3) if rated else None,
+            "recent_not_helpful": [dict(row) for row in recent],
+        }
+    except Exception:
+        db.rollback()  # migration 006 not applied yet
+    return {"runs": runs, "feedback": feedback}
