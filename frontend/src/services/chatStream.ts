@@ -23,6 +23,7 @@ interface StreamRequest {
   query: string
   mode: ChatMode
   conversationId?: string | null
+  asOf?: string | null
   getToken: () => Promise<string | undefined>
   signal?: AbortSignal
 }
@@ -48,6 +49,7 @@ export async function streamChat(request: StreamRequest, handlers: ChatStreamHan
       query: request.query,
       mode: request.mode,
       conversation_id: request.conversationId ?? undefined,
+      as_of: request.asOf || undefined,
     }),
     signal: request.signal,
   })

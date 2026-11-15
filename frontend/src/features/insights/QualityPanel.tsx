@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { FlaskConical } from 'lucide-react'
+import { FlaskConical, ShieldCheck, ThumbsDown, ThumbsUp } from 'lucide-react'
 
 import { useApiClient } from '../../services/apiClient'
-import { getQualityRuns, startQualityRun, type EvalRun, type StrategyMetrics } from '../../services/insightsService'
+import { getQualityRuns, startQualityRun, type EvalRun, type FeedbackSummary, type StrategyMetrics } from '../../services/insightsService'
 import { getApiErrorMessage } from '../../utils/errors'
 import { PanelError, PanelSkeleton } from './PanelStates'
 
@@ -27,12 +27,15 @@ function pct(value: number) {
 export function QualityPanel({ repoId }: { repoId: string }) {
   const api = useApiClient()
   const [runs, setRuns] = useState<EvalRun[] | null>(null)
+  const [feedback, setFeedback] = useState<FeedbackSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      setRuns(await getQualityRuns(api, repoId))
+      const result = await getQualityRuns(api, repoId)
+      setRuns(result.runs)
+      setFeedback(result.feedback)
     } catch (err) {
       setError(getApiErrorMessage(err, 'Couldn’t load evaluation runs'))
     }
@@ -100,6 +103,42 @@ export function QualityPanel({ repoId }: { repoId: string }) {
               <span className="ins-muted"> {metrics.question_count} {metrics.question_source === 'generated' ? 'AI-written' : 'template'} questions · {metrics.duration_seconds}s</span>
             </p>
           </div>
+
+
+          {(metrics.faithfulness || feedback) && (
+            <div className="ins-trust-grid">
+              {metrics.faithfulness && metrics.faithfulness.supported_rate !== null && (
+                <div className="ins-trust-card">
+                  <span className="ins-trust-icon"><ShieldCheck size={16} strokeWidth={1.75} /></span>
+                  <p className="kv-eyebrow">Faithfulness</p>
+                  <p className="ins-trust-value kv-num">{pct(metrics.faithfulness.supported_rate)}</p>
+                  <p className="ins-muted">
+                    of {metrics.faithfulness.claims} claims in {metrics.faithfulness.answers} answers were backed by the pull requests they cited,
+                    checked by a separate fact-checking pass. The right PR was cited in {pct(metrics.faithfulness.cites_gold_rate)} of answers.
+                  </p>
+                </div>
+              )}
+              {feedback && (
+                <div className="ins-trust-card is-feedback">
+                  <span className="ins-trust-icon"><ThumbsUp size={16} strokeWidth={1.75} /></span>
+                  <p className="kv-eyebrow">What people said</p>
+                  <p className="ins-trust-value kv-num">{feedback.helpful_rate !== null ? pct(feedback.helpful_rate) : '—'}</p>
+                  <p className="ins-muted">
+                    {feedback.helpful + feedback.not_helpful
+                      ? <>of {feedback.helpful + feedback.not_helpful} rated answers were helpful.</>
+                      : 'No answers rated yet. Use the thumbs under any answer in chat.'}
+                  </p>
+                  {feedback.recent_not_helpful.length > 0 && (
+                    <ul className="ins-feedback-list">
+                      {feedback.recent_not_helpful.slice(0, 3).map((item, index) => (
+                        <li key={index}><ThumbsDown size={12} /> <span>{item.reason || item.answer}</span></li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="ins-scoreboard" role="table" aria-label="Retrieval quality by strategy">
             <div className="ins-score-row is-head" role="row">

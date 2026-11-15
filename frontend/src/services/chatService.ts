@@ -45,3 +45,7 @@ export const getConversation = async (api: AxiosInstance, conversationId: string
   const { data } = await api.get(`/chat/conversations/${conversationId}`)
   return data as { conversation: ConversationSummary; messages: ConversationMessage[] }
 }
+
+export const rateMessage = async (api: AxiosInstance, messageId: string, rating: -1 | 0 | 1) => {
+  await api.post(`/chat/messages/${messageId}/feedback`, { rating })
+}

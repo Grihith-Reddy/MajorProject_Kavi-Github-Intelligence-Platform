@@ -205,8 +205,8 @@ def append_chat_message(
             "role": normalized_role,
             "content": sanitized_content,
             "mode": _safe_text(mode, max_chars=32) or None,
-            "answer_structured": json.dumps(structured_payload) if structured_payload is not None else None,
-            "sources": json.dumps(sources_payload) if sources_payload is not None else None,
+            "answer_structured": json.dumps(structured_payload, default=str) if structured_payload is not None else None,
+            "sources": json.dumps(sources_payload, default=str) if sources_payload is not None else None,
         },
     ).mappings().first()
 

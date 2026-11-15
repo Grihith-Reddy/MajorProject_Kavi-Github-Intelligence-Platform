@@ -1,4 +1,5 @@
 import json
+import time
 import logging
 import re
 from collections import Counter
@@ -138,6 +139,35 @@ def _looks_like_json_parse_error(error: Exception) -> bool:
         " char ",
     )
     return any(token in lowered for token in indicators)
+
+
+_model_exhausted_until: dict[str, float] = {}
+QUOTA_COOLDOWN_SECONDS = 3600
+
+
+def is_quota_exhausted(status_code: int, body_text: str) -> bool:
+    lowered = (body_text or "").lower()
+    return status_code == 429 and ("quota" in lowered or "resource_exhausted" in lowered or "rate limit" in lowered)
+
+
+def mark_model_exhausted(model_name: str) -> None:
+    _model_exhausted_until[model_name] = time.time() + QUOTA_COOLDOWN_SECONDS
+    logger.warning("Gemini model '%s' is over its free-tier quota; using the next model for an hour.", model_name)
+
+
+def gemini_model_chain(primary: str) -> list[str]:
+    """Primary model first, then configured fallbacks, skipping models that recently hit their quota.
+
+    Each Gemini model has its own free-tier quota, so falling back keeps KAVI working
+    at no cost when one model's daily allowance runs out.
+    """
+    chain: list[str] = []
+    for name in [primary, *str(settings.AI_FALLBACK_MODELS or "").split(",")]:
+        cleaned = name.strip().removeprefix("models/")
+        if cleaned and cleaned not in chain:
+            chain.append(cleaned)
+    now = time.time()
+    return [name for name in chain if _model_exhausted_until.get(name, 0) <= now]
 
 
 class AIService:
@@ -1815,17 +1845,27 @@ class AIService:
         if response_mime_type:
             body["generationConfig"]["responseMimeType"] = response_mime_type
 
-        model_name = AIService._resolved_model_name or self._normalize_model_name(settings.AI_MODEL)
-        try:
-            response = requests.post(
-                self._gemini_generate_url(model_name),
-                headers=self._gemini_headers(),
-                json=body,
-                timeout=settings.REQUEST_TIMEOUT_SECONDS,
-            )
-        except requests.RequestException:
-            ai_circuit_breaker.record_failure()
-            raise
+        response = None
+        model_name = ""
+        for candidate in gemini_model_chain(AIService._resolved_model_name or self._normalize_model_name(settings.AI_MODEL)):
+            model_name = candidate
+            try:
+                response = requests.post(
+                    self._gemini_generate_url(candidate),
+                    headers=self._gemini_headers(),
+                    json=body,
+                    timeout=settings.REQUEST_TIMEOUT_SECONDS,
+                )
+            except requests.RequestException:
+                ai_circuit_breaker.record_failure()
+                raise
+            if is_quota_exhausted(response.status_code, self._response_text(response)):
+                mark_model_exhausted(candidate)
+                continue
+            break
+        if response is None or is_quota_exhausted(response.status_code, self._response_text(response)):
+            # Not retryable: every model is over quota until the cooldown ends.
+            raise RuntimeError("All configured Gemini models are over their free-tier quota right now.")
 
         if response.status_code == 404:
             discovered_model = self._discover_supported_model()
@@ -1836,6 +1876,7 @@ class AIService:
                     discovered_model,
                 )
                 model_name = discovered_model
+                AIService._resolved_model_name = discovered_model
                 try:
                     response = requests.post(
                         self._gemini_generate_url(model_name),
@@ -1887,7 +1928,6 @@ class AIService:
             raise RuntimeError(error_message)
 
         ai_circuit_breaker.record_success()
-        AIService._resolved_model_name = model_name
         data = response.json()
         candidates = data.get("candidates") if isinstance(data, dict) else []
         parts = (

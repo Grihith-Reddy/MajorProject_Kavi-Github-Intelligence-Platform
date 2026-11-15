@@ -95,6 +95,18 @@ class ToolErrorTests(unittest.TestCase):
             result = tools.call("search_memory", {"query": "x"})
         self.assertNotIn("secret_table", result["error"])
 
+    def test_tool_results_are_json_safe(self):
+        import datetime
+        import json as _json
+        from decimal import Decimal
+
+        tools = self._tools()
+        raw = {"stats": {"first_pr_at": datetime.datetime(2025, 4, 13, tzinfo=datetime.timezone.utc), "share": Decimal("0.5")}}
+        with patch.object(RepoAgentTools, "repo_overview", return_value=raw):
+            result = tools.call("repo_overview", {})
+        _json.dumps(result)  # must not raise
+        self.assertTrue(result["stats"]["first_pr_at"].startswith("2025-04-13"))
+
     def test_upstream_http_errors_are_reported(self):
         tools = self._tools()
         with patch.object(RepoAgentTools, "read_file", side_effect=HTTPException(status_code=404, detail="GitHub resource not found")):

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ShieldCheck } from 'lucide-react'
+import { ChevronDown, GitCompareArrows, ShieldCheck, UserRound } from 'lucide-react'
 
 import { MarkdownMessage } from '../chat/MarkdownMessage'
 import { useAsync } from '../../hooks/useAsync'
@@ -67,6 +67,20 @@ export function GuardianPanel({ repoId }: { repoId: string }) {
                 <motion.span animate={{ rotate: expanded ? 180 : 0 }} className="ins-chevron"><ChevronDown size={15} /></motion.span>
               </button>
               {!expanded && review.findings[0] && <p className="ins-review-lead">{review.findings[0].title}: {review.findings[0].detail}</p>}
+              {!expanded && ((review.impact?.likely_missing?.length ?? 0) > 0 || (review.reviewers?.reviewers?.length ?? 0) > 0) && (
+                <div className="ins-impact">
+                  {(review.impact?.likely_missing ?? []).slice(0, 2).map((item) => (
+                    <span key={item.path} className="ins-impact-chip is-gap" title={`Changed with ${item.because_of} in ${item.support} of ${item.of_prs} past PRs`}>
+                      <GitCompareArrows size={12} /> Also usually changes: {item.path.split('/').pop()}
+                    </span>
+                  ))}
+                  {(review.reviewers?.reviewers ?? []).slice(0, 2).map((person) => (
+                    <span key={person.login} className="ins-impact-chip" title={person.reason}>
+                      <UserRound size={12} /> Suggested reviewer: {person.login}{person.inactive ? ' (inactive)' : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
               <AnimatePresence initial={false}>
                 {expanded && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>

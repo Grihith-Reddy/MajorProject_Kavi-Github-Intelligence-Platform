@@ -179,6 +179,15 @@ export interface GuardianReview {
   verdict: 'clear' | 'heads_up' | 'conflict'
   findings: Array<{ kind: string; pr_number?: number | null; file?: string | null; title: string; detail: string; confidence: number }>
   comment_markdown: string
+  impact?: {
+    likely_missing: Array<{ path: string; because_of: string; confidence: number; support: number; of_prs: number; example_prs: number[] }>
+    likely_missing_modules: Array<{ module: string; because_of: string; confidence: number; support: number; of_prs: number }>
+    blast_radius: { coupled_files: number; modules: string[]; history_prs: number }
+  } | null
+  reviewers?: {
+    reviewers: Array<{ login: string; share: number; pr_numbers: number[]; files: string[]; reason: string; inactive: boolean }>
+    context_risk?: { login: string; share: number; inactive: boolean; message: string } | null
+  } | null
   created_at: string
 }
 
@@ -198,17 +207,31 @@ export interface EvalRun {
     question_count: number
     question_source: 'generated' | 'template' | null
     duration_seconds: number
+    faithfulness?: { answers: number; claims: number; supported_rate: number | null; cites_gold_rate: number } | null
     strategies: Record<'fulltext' | 'lexical' | 'semantic' | 'hybrid', StrategyMetrics>
   } | null
-  cases?: Array<{ question: string; pr_number: number; source: string; ranks: Record<string, number | null> }> | null
+  cases?: Array<{
+    question: string
+    pr_number: number
+    source: string
+    ranks: Record<string, number | null>
+    faithfulness?: { answer: string; claims: Array<{ text: string; cites: number[]; supported: boolean }>; supported: number; total: number; cites_gold: boolean }
+  }> | null
   error?: string | null
   created_at: string
   finished_at?: string | null
 }
 
+export interface FeedbackSummary {
+  helpful: number
+  not_helpful: number
+  helpful_rate: number | null
+  recent_not_helpful: Array<{ reason?: string | null; answer: string; created_at: string }>
+}
+
 export const getQualityRuns = async (api: AxiosInstance, repoId: string) => {
   const { data } = await api.get(`/insights/repositories/${repoId}/quality`)
-  return (data?.runs ?? []) as EvalRun[]
+  return { runs: (data?.runs ?? []) as EvalRun[], feedback: (data?.feedback ?? null) as FeedbackSummary | null }
 }
 
 export const startQualityRun = async (api: AxiosInstance, repoId: string) => {

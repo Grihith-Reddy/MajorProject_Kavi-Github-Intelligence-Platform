@@ -72,6 +72,9 @@ import {
 
 import { useAuth } from '../features/auth/useAuth'
 import { AgentTrace } from '../features/chat/AgentTrace'
+import { AnswerFeedback } from '../features/chat/AnswerFeedback'
+import { TimeTravelBanner, TimeTravelButton } from '../features/chat/TimeTravelControl'
+import { formatAsOf } from '../utils/format'
 import { CodeSnippetCard, type CodeSnippet } from '../features/chat/CodeSnippetCard'
 import { ConversationHistory } from '../features/chat/ConversationHistory'
 import { MarkdownMessage } from '../features/chat/MarkdownMessage'
@@ -93,7 +96,7 @@ import {
 interface StructuredSection { heading: string; bullets: string[] }
 interface CodeReference { file_path: string; start_line?: number | null; end_line?: number | null; pr_number?: number | null; note?: string }
 interface TimelineHighlight { label: string; detail: string }
-interface StructuredAnswer { format?: 'plain' | 'structured' | 'markdown'; trace?: AgentTraceStep[]; title?: string; summary?: string; sections?: StructuredSection[]; code_references?: CodeReference[]; code_snippets?: CodeSnippet[]; timeline_highlights?: TimelineHighlight[]; limitations?: string[] }
+interface StructuredAnswer { format?: 'plain' | 'structured' | 'markdown'; trace?: AgentTraceStep[]; as_of?: string | null; title?: string; summary?: string; sections?: StructuredSection[]; code_references?: CodeReference[]; code_snippets?: CodeSnippet[]; timeline_highlights?: TimelineHighlight[]; limitations?: string[] }
 interface ChatEntry {
   role: 'user' | 'assistant'
   content: string
@@ -103,6 +106,8 @@ interface ChatEntry {
   notes?: string[]
   live?: boolean
   prUrls?: Record<number, string>
+  messageId?: string
+  asOf?: string | null
 }
 interface ChatSource { [key: string]: unknown }
 interface ChatConversationSummary {
@@ -132,9 +137,9 @@ interface ChatQueryResponse {
   conversation_id?: string | null
   conversation?: ChatConversationSummary | null
 }
-interface WorkspaceRenderProps { repoId: string; repositoryName: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; chatSources: ChatSource[]; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; renderHistory: (close: () => void) => ReactNode }
+interface WorkspaceRenderProps { repoId: string; repositoryName: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; chatSources: ChatSource[]; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; renderHistory: (close: () => void) => ReactNode; timeTravel: string | null; setTimeTravel: (value: string | null) => void }
 interface WorkspaceOverlayProps { repoId: string; repositoryName: string; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; chatSources: ChatSource[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; onNavigate?: () => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; historyNode?: ReactNode }
-interface DashboardChatPaneProps { repoId: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void }
+interface DashboardChatPaneProps { repoId: string; timeTravel: string | null; setTimeTravel: (value: string | null) => void; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void }
 
 type WorkspacePanelId = 'repository' | 'history' | 'focus' | 'prs' | 'files' | 'git'
 
@@ -750,7 +755,7 @@ function WorkspaceOverlayPanel({
 
 // ─── Chat pane ────────────────────────────────────────────────────────────────
 
-function DashboardChatPane({ repoId, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete }: DashboardChatPaneProps) {
+function DashboardChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete }: DashboardChatPaneProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const assistantMessageRefs = useRef<Record<number, HTMLElement | null>>({})
 
@@ -839,10 +844,14 @@ function DashboardChatPane({ repoId, messages, chatLoading, chatInput, setChatIn
                 {message.role === 'assistant' && (message.format === 'markdown' || message.structured?.format === 'markdown')
                   ? (
                     <>
+                      {(message.asOf ?? message.structured?.as_of) && (
+                        <span className="kv-asof-chip">As of {formatAsOf((message.asOf ?? message.structured?.as_of) as string)}</span>
+                      )}
                       <AgentTrace steps={message.trace ?? message.structured?.trace ?? []} notes={message.notes} active={Boolean(message.live)} />
                       {(message.content || !message.live) && (
                         <MarkdownMessage content={message.content} streaming={Boolean(message.live)} repoId={repoId} prUrls={message.prUrls} />
                       )}
+                      {!message.live && message.messageId && <AnswerFeedback messageId={message.messageId} />}
                     </>
                   )
                   : useStreamingRenderer
@@ -894,12 +903,16 @@ function DashboardChatPane({ repoId, messages, chatLoading, chatInput, setChatIn
         </div>
 
         {/* Input bar */}
+        <AnimatePresence>
+          {timeTravel && <TimeTravelBanner value={timeTravel} onClear={() => setTimeTravel(null)} />}
+        </AnimatePresence>
         <div
           className="db-chat-input-row"
           style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: '#fff', border: '1.5px solid #E7E7E9', borderRadius: 20, padding: '10px 10px 10px 16px', boxShadow: '0 2px 8px rgba(24,29,31,0.06)', transition: 'border-color 0.15s' }}
           onFocusCapture={(e) => (e.currentTarget.style.borderColor = '#181D1F')}
           onBlurCapture={(e) => (e.currentTarget.style.borderColor = '#E7E7E9')}
         >
+          <TimeTravelButton value={timeTravel} onChange={setTimeTravel} disabled={chatLoading} />
           <textarea
             className="db-chat-textarea"
             value={chatInput}
@@ -1044,6 +1057,8 @@ function DashboardWorkspaceV2(props: WorkspaceRenderProps) {
           <WorkspaceIconRail activePanel={activePanel} onToggle={handlePanelToggle} />
           <DashboardChatPane
             repoId={props.repoId}
+            timeTravel={props.timeTravel}
+            setTimeTravel={props.setTimeTravel}
             messages={props.messages}
             chatLoading={props.chatLoading}
             chatInput={props.chatInput}
@@ -1157,6 +1172,7 @@ export function DashboardPage() {
   const [chatConversationId, setChatConversationId] = useState<string | null>(null)
   const [chatHydrated, setChatHydrated] = useState(false)
   const [streamingIndex, setStreamingIndex] = useState<number | null>(null)
+  const [timeTravel, setTimeTravel] = useState<string | null>(null)
 
   const scrollToLatestMessage = useCallback((behavior: ScrollBehavior = 'smooth') => {
     requestAnimationFrame(() => { messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' }) })
@@ -1182,7 +1198,7 @@ export function DashboardPage() {
       const parsed = JSON.parse(raw) as { messages?: unknown; chatSources?: unknown; conversationId?: unknown }
       const persistedMessages = Array.isArray(parsed.messages)
         ? parsed.messages.filter((item): item is ChatEntry => Boolean(item) && typeof item === 'object' && (item as ChatEntry).role !== undefined && ((item as ChatEntry).role === 'assistant' || (item as ChatEntry).role === 'user') && typeof (item as ChatEntry).content === 'string')
-            .map((item) => ({ role: item.role, content: item.content, structured: item.structured && typeof item.structured === 'object' ? (item.structured as StructuredAnswer) : undefined, format: item.format === 'markdown' ? 'markdown' as const : undefined, trace: Array.isArray(item.trace) ? item.trace : undefined, prUrls: item.prUrls && typeof item.prUrls === 'object' ? item.prUrls : undefined }))
+            .map((item) => ({ role: item.role, content: item.content, structured: item.structured && typeof item.structured === 'object' ? (item.structured as StructuredAnswer) : undefined, format: item.format === 'markdown' ? 'markdown' as const : undefined, trace: Array.isArray(item.trace) ? item.trace : undefined, prUrls: item.prUrls && typeof item.prUrls === 'object' ? item.prUrls : undefined, messageId: typeof item.messageId === 'string' ? item.messageId : undefined, asOf: typeof item.asOf === 'string' ? item.asOf : undefined }))
         : []
       const persistedSources = Array.isArray(parsed.chatSources) ? parsed.chatSources : []
       const persistedConversationId = typeof parsed.conversationId === 'string' && parsed.conversationId.trim() ? parsed.conversationId.trim() : null
@@ -1266,7 +1282,7 @@ export function DashboardPage() {
     setMessages((prev) => [
       ...prev,
       { role: 'user', content: trimmed },
-      { role: 'assistant', content: '', format: 'markdown', trace: [], notes: [], live: true },
+      { role: 'assistant', content: '', format: 'markdown', trace: [], notes: [], live: true, asOf: timeTravel },
     ])
     setChatInput('')
     setChatLoading(true)
@@ -1279,7 +1295,7 @@ export function DashboardPage() {
 
     try {
       await streamChat(
-        { repoId, query: trimmed, mode, conversationId: chatConversationId, getToken, signal: controller.signal },
+        { repoId, query: trimmed, mode, conversationId: chatConversationId, asOf: timeTravel, getToken, signal: controller.signal },
         {
           onMeta: (data) => {
             receivedAnything = true
@@ -1324,6 +1340,7 @@ export function DashboardPage() {
               content: finalAnswer ?? message.content,
               trace: Array.isArray(data.trace) ? (data.trace as AgentTraceStep[]) : message.trace,
               prUrls,
+              messageId: typeof data.assistant_message_id === 'string' && data.assistant_message_id ? data.assistant_message_id : message.messageId,
               live: false,
             }))
             setChatSources(sources)
@@ -1396,6 +1413,8 @@ export function DashboardPage() {
             format: structured?.format === 'markdown' ? ('markdown' as const) : undefined,
             trace: structured?.trace,
             prUrls,
+            messageId: row.role === 'assistant' ? row.id : undefined,
+            asOf: structured?.as_of ?? null,
           }
         })
       const lastAssistant = [...rows].reverse().find((row) => row.role === 'assistant')
@@ -1444,6 +1463,8 @@ export function DashboardPage() {
       gitVisualization={gitVisualizationData ?? null}
       gitVisualizationLoading={gitVisualizationLoading}
       gitVisualizationError={gitVisualizationError}
+      timeTravel={timeTravel}
+      setTimeTravel={setTimeTravel}
       renderHistory={(close) => (
         <ConversationHistory
           repoId={repoId}
