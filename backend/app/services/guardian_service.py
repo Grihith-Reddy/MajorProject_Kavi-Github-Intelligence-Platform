@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.services.ai_service import AIService
 from app.services.embedding_service import cosine, embed_texts, repo_embedding_model, semantic_search
+from app.services.impact_service import predict_change_impact, suggest_reviewers
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +241,13 @@ def _history_only_review(candidates: list[dict[str, Any]], promises: list[dict[s
     }
 
 
-def render_comment(review: dict[str, Any], candidates: list[dict[str, Any]], repo_full_name: str) -> str:
+def render_comment(
+    review: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    repo_full_name: str,
+    impact: dict[str, Any] | None = None,
+    reviewers: dict[str, Any] | None = None,
+) -> str:
     lines = [COMMENT_MARKER, f"### KAVI Guardian · {VERDICT_LABELS[review['verdict']]}", ""]
     if review.get("summary"):
         lines += [review["summary"], ""]
@@ -264,6 +271,42 @@ def render_comment(review: dict[str, Any], candidates: list[dict[str, Any]], rep
             lines.append(f"- **{item['title']}**{source} {item['detail']}{where}")
         lines.append("")
 
+    likely = (impact or {}).get("likely_missing") or []
+    likely_modules = (impact or {}).get("likely_missing_modules") or []
+    if likely or likely_modules:
+        lines.append("**Usually changes together**")
+        for item in likely:
+            examples = ", ".join(f"#{n}" for n in item["example_prs"])
+            lines.append(
+                f"- `{item['path']}`: changed alongside `{item['because_of'].split('/')[-1]}` in "
+                f"{item['support']} of {item['of_prs']} past PRs ({examples}), but not in this one."
+            )
+        for item in likely_modules:
+            lines.append(
+                f"- `{item['module']}/`: changed with `{item['because_of']}/` in {item['support']} of {item['of_prs']} past PRs."
+            )
+        lines.append("")
+
+    suggested = (reviewers or {}).get("reviewers") or []
+    if suggested:
+        lines.append("**Suggested reviewers**")
+        for person in suggested:
+            note = " (inactive lately)" if person.get("inactive") else ""
+            refs = ", ".join(f"#{n}" for n in person["pr_numbers"][:3])
+            lines.append(f"- `{person['login']}`{note}: {person['reason']} ({refs})")
+        risk = (reviewers or {}).get("context_risk")
+        if risk:
+            lines.append(f"- {risk['message']}")
+        lines.append("")
+
+    radius = (impact or {}).get("blast_radius") or {}
+    if radius.get("coupled_files"):
+        lines.append(
+            f"<sub>Blast radius: these files have historically changed together with {radius['coupled_files']} other file(s) "
+            f"across {len(radius.get('modules') or [])} module(s).</sub>"
+        )
+        lines.append("")
+
     if candidates:
         lines.append(f"<details><summary>History KAVI checked ({len(candidates)} pull request{'s' if len(candidates) != 1 else ''})</summary>")
         lines.append("")
@@ -284,28 +327,62 @@ def review_pull_request(db: Session, *, repo: dict[str, Any], pr: dict[str, Any]
     candidates = gather_history(db, repo_id, pr)
     promises = matching_promises(db, repo_id, pr)
     review = _judge_with_ai(pr, candidates, promises) or _history_only_review(candidates, promises)
-    comment = render_comment(review, candidates, str(repo.get("full_name") or ""))
+    paths = [str(f.get("filename") or "") for f in (pr.get("files") or []) if f.get("filename")]
+    impact: dict[str, Any] | None = None
+    reviewers: dict[str, Any] | None = None
+    try:
+        impact = predict_change_impact(db, repo_id, paths, exclude_pr_number=int(pr.get("pr_number") or 0) or None)
+        reviewers = suggest_reviewers(db, repo_id, paths, pr.get("author"))
+    except Exception:
+        db.rollback()
+        logger.warning("Change-impact analysis failed; continuing without it", exc_info=True)
+    strong_gap = any(item["confidence"] >= 0.8 for item in (impact or {}).get("likely_missing") or [])
+    if review["verdict"] == "clear" and strong_gap:
+        review["verdict"] = "heads_up"
+        review["summary"] = review.get("summary") or "Files that usually change together with these were left untouched."
+    comment = render_comment(review, candidates, str(repo.get("full_name") or ""), impact, reviewers)
 
     try:
-        db.execute(
-            text(
-                """
-                INSERT INTO guardian_reviews (id, repo_id, pr_number, head_sha, verdict, findings, comment_markdown)
-                VALUES (gen_random_uuid(), :repo_id, :pr_number, :head_sha, :verdict, CAST(:findings AS jsonb), :comment)
-                ON CONFLICT (repo_id, pr_number, head_sha)
-                DO UPDATE SET verdict = EXCLUDED.verdict, findings = EXCLUDED.findings,
-                              comment_markdown = EXCLUDED.comment_markdown, created_at = NOW()
-                """
-            ),
-            {
-                "repo_id": repo_id,
-                "pr_number": int(pr.get("pr_number") or 0),
-                "head_sha": str(pr.get("head_sha") or "unknown")[:80],
-                "verdict": review["verdict"],
-                "findings": json.dumps(review["findings"], default=str),
-                "comment": comment,
-            },
-        )
+        params = {
+            "repo_id": repo_id,
+            "pr_number": int(pr.get("pr_number") or 0),
+            "head_sha": str(pr.get("head_sha") or "unknown")[:80],
+            "verdict": review["verdict"],
+            "findings": json.dumps(review["findings"], default=str),
+            "comment": comment,
+            "impact": json.dumps(impact, default=str) if impact else None,
+            "reviewers": json.dumps(reviewers, default=str) if reviewers else None,
+        }
+        try:
+            db.execute(
+                text(
+                    """
+                    INSERT INTO guardian_reviews (id, repo_id, pr_number, head_sha, verdict, findings, comment_markdown, impact, reviewers)
+                    VALUES (gen_random_uuid(), :repo_id, :pr_number, :head_sha, :verdict, CAST(:findings AS jsonb), :comment,
+                            CAST(:impact AS jsonb), CAST(:reviewers AS jsonb))
+                    ON CONFLICT (repo_id, pr_number, head_sha)
+                    DO UPDATE SET verdict = EXCLUDED.verdict, findings = EXCLUDED.findings,
+                                  comment_markdown = EXCLUDED.comment_markdown, impact = EXCLUDED.impact,
+                                  reviewers = EXCLUDED.reviewers, created_at = NOW()
+                    """
+                ),
+                params,
+            )
+        except Exception:
+            # Databases without migration 006 still store the core review.
+            db.rollback()
+            db.execute(
+                text(
+                    """
+                    INSERT INTO guardian_reviews (id, repo_id, pr_number, head_sha, verdict, findings, comment_markdown)
+                    VALUES (gen_random_uuid(), :repo_id, :pr_number, :head_sha, :verdict, CAST(:findings AS jsonb), :comment)
+                    ON CONFLICT (repo_id, pr_number, head_sha)
+                    DO UPDATE SET verdict = EXCLUDED.verdict, findings = EXCLUDED.findings,
+                                  comment_markdown = EXCLUDED.comment_markdown, created_at = NOW()
+                    """
+                ),
+                params,
+            )
         db.commit()
     except Exception:
         db.rollback()
@@ -316,5 +393,7 @@ def review_pull_request(db: Session, *, repo: dict[str, Any], pr: dict[str, Any]
         "summary": review.get("summary"),
         "findings": review["findings"],
         "history_checked": [int(c["github_pr_number"]) for c in candidates],
+        "impact": impact,
+        "reviewers": reviewers,
         "comment_markdown": comment,
     }

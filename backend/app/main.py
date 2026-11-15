@@ -82,7 +82,8 @@ def ready():
                     to_regclass('public.github_oauth_states') IS NOT NULL AS github_oauth_states,
                     to_regclass('public.pr_promises') IS NOT NULL AS pr_promises,
                     to_regclass('public.kavi_tokens') IS NOT NULL AS kavi_tokens,
-                    to_regclass('public.eval_runs') IS NOT NULL AS eval_runs
+                    to_regclass('public.eval_runs') IS NOT NULL AS eval_runs,
+                    to_regclass('public.chat_feedback') IS NOT NULL AS chat_feedback
                 """
             )
         ).mappings().one()

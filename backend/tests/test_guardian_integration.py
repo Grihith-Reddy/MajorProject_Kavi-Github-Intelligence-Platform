@@ -23,6 +23,7 @@ MIGRATIONS = [
     "003_chat_memory.sql",
     "004_github_oauth_states.sql",
     "005_kavi_intelligence.sql",
+    "006_impact_and_feedback.sql",
 ]
 
 
@@ -309,6 +310,67 @@ class GuardianIntegrationTests(unittest.TestCase):
         self.assertEqual(metrics["question_source"], "template")
         self.assertEqual(set(metrics["strategies"]), {"fulltext", "lexical", "semantic", "hybrid"})
         self.assertGreater(metrics["strategies"]["hybrid"]["recall@5"], 0.5)
+
+    def _seed_co_changes(self):
+        for index, (author, reviewer) in enumerate([("alice", "bob"), ("alice", "carol"), ("bob", "alice")], start=200):
+            pr_id = self.session.execute(
+                text(
+                    """
+                    INSERT INTO pull_requests (repo_id, github_pr_id, github_pr_number, title, state, merged_at, author_login)
+                    VALUES (:r, :g, :n, :t, 'closed', NOW() - make_interval(days => :d), :a) RETURNING id
+                    """
+                ),
+                {"r": self.repo_id, "g": 5000 + index, "n": index, "t": f"Session change {index}", "d": 210 - index, "a": author},
+            ).scalar()
+            entry_id = self.session.execute(
+                text("INSERT INTO knowledge_entries (repo_id, pr_id, summary, intent) VALUES (:r, :p, 'Session work', 'Session work') RETURNING id"),
+                {"r": self.repo_id, "p": pr_id},
+            ).scalar()
+            for path in ("app/auth/session.py", "db/migrations/sessions.sql"):
+                self.session.execute(
+                    text("INSERT INTO file_mappings (repo_id, knowledge_entry_id, file_path, start_line, end_line) VALUES (:r, :k, :f, 1, 9)"),
+                    {"r": self.repo_id, "k": entry_id, "f": path},
+                )
+            for login, role in ((author, "author"), (reviewer, "reviewer")):
+                self.session.execute(
+                    text("INSERT INTO pr_participants (repo_id, pr_id, login, role, last_seen_at) VALUES (:r, :p, :l, :role, NOW() - INTERVAL '3 days')"),
+                    {"r": self.repo_id, "p": pr_id, "l": login, "role": role},
+                )
+        self.session.commit()
+
+    def test_impact_prediction_and_reviewer_suggestions(self):
+        from app.services.impact_service import predict_change_impact, suggest_reviewers
+
+        self._seed_co_changes()
+        impact = predict_change_impact(self.session, self.repo_id, ["app/auth/session.py"])
+        self.assertEqual(impact["likely_missing"][0]["path"], "db/migrations/sessions.sql")
+        self.assertEqual(impact["likely_missing"][0]["support"], 3)
+        self.assertEqual(impact["likely_missing"][0]["confidence"], 1.0)
+
+        reviewers = suggest_reviewers(self.session, self.repo_id, ["app/auth/session.py"], author="alice")
+        logins = [r["login"] for r in reviewers["reviewers"]]
+        self.assertNotIn("alice", logins)
+        self.assertEqual(logins[0], "bob")
+
+    def test_guardian_comment_includes_co_change_and_reviewers(self):
+        self._seed_co_changes()
+        token = self._create_guardian_token()
+        payload = {
+            "pr_number": 300,
+            "head_sha": "feedface",
+            "title": "Extend session lifetime",
+            "author": "carol",
+            "files": [{"filename": "app/auth/session.py", "status": "modified", "patch": "@@ -1 +1 @@\n-TTL = 3600\n+TTL = 7200"}],
+        }
+        with patch("app.services.guardian_service.AIService._can_use_gemini", return_value=False):
+            body = self.client.post("/api/guardian/review", json=payload, headers={"Authorization": f"Bearer {token}"}).json()
+        self.assertEqual(body["verdict"], "heads_up")
+        self.assertIn("Usually changes together", body["comment_markdown"])
+        self.assertIn("db/migrations/sessions.sql", body["comment_markdown"])
+        self.assertIn("Suggested reviewers", body["comment_markdown"])
+        stored = self.session.execute(text("SELECT impact, reviewers FROM guardian_reviews WHERE pr_number = 300")).mappings().one()
+        self.assertEqual(stored["impact"]["likely_missing"][0]["path"], "db/migrations/sessions.sql")
+        self.assertTrue(stored["reviewers"]["reviewers"])
 
     def test_tokens_are_stored_hashed(self):
         token = self._create_guardian_token()
