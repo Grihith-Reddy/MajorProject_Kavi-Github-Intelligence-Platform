@@ -2,9 +2,12 @@ import logging
 from collections import Counter
 from typing import Any
 import json
+import queue
+import threading
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -14,6 +17,8 @@ from app.core.audit import audit_log
 from app.core.database import get_db
 from app.core.security import UserContext, decrypt_token, get_current_user
 from app.services.ai_service import AIService
+from app.core.database import SessionLocal
+from app.services.agent_service import AgentUnavailable, RepoAgentTools, history_from_memory, run_agent
 from app.services.embedding_service import reciprocal_rank_fusion, semantic_search
 from app.services.github_service import GitHubService
 from app.services.memory_service import (
@@ -1917,3 +1922,197 @@ def chat_query(
         "memory_applied": bool(memory_context),
         "assistant_message_id": assistant_message_id,
     }
+
+
+def _sse(event: str, data: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
+
+
+def _conversation_payload(conversation: dict[str, Any] | None, repo_id: str) -> dict[str, Any] | None:
+    if not conversation or not str(conversation.get("id") or "").strip():
+        return None
+    return {
+        "id": str(conversation.get("id")),
+        "repo_id": str(conversation.get("repo_id") or repo_id),
+        "title": str(conversation.get("title") or "").strip() or "Conversation",
+        "status": str(conversation.get("status") or "active"),
+        "message_count": int(conversation.get("message_count") or 0),
+        "last_message_at": conversation.get("last_message_at"),
+    }
+
+
+@router.post("/stream")
+def chat_stream(
+    payload: ChatQuery,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Agentic, streaming chat (Server-Sent Events).
+
+    Events: ``meta`` (conversation), ``step`` (tool calls), ``note`` (working notes),
+    ``token`` (answer text), ``legacy`` (full non-streamed answer when the agent is
+    unavailable), ``done`` (sources + persisted ids), ``error``.
+    """
+    query_text = payload.query.strip()
+    if not query_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Query cannot be empty")
+    repo_meta = assert_repo_access(db, payload.repo_id, current_user.sub)
+    user_id = _ensure_user_id(db, current_user)
+    db.commit()
+    mode = _resolve_mode(query_text, payload.mode)
+
+    def generate():
+        session = SessionLocal()
+        try:
+            if not AIService()._can_use_gemini():
+                legacy = chat_query(payload, current_user, session)
+                yield _sse("legacy", legacy)
+                yield _sse("done", {"conversation": legacy.get("conversation"), "sources": legacy.get("sources", [])})
+                return
+
+            conversation: dict[str, Any] | None = None
+            memory_context: dict[str, Any] | None = None
+            try:
+                conversation = ensure_chat_conversation(
+                    session,
+                    user_id=user_id,
+                    repo_id=payload.repo_id,
+                    conversation_id=payload.conversation_id,
+                    seed_query=query_text,
+                )
+                session.commit()
+                memory_context = build_memory_context(
+                    session,
+                    user_id=user_id,
+                    repo_id=payload.repo_id,
+                    conversation=conversation,
+                    query=query_text,
+                    recent_limit=10,
+                    relevant_limit=4,
+                    memory_limit=12,
+                )
+            except Exception:
+                session.rollback()
+                logger.warning("Chat memory unavailable for streaming chat", exc_info=True)
+
+            yield _sse("meta", {"conversation": _conversation_payload(conversation, payload.repo_id), "mode": mode})
+
+            tools = RepoAgentTools(session, repo_meta, current_user)
+            history, memory_note = history_from_memory(memory_context)
+
+            # The agent emits events synchronously from a worker thread; the generator
+            # drains them as they arrive so tokens reach the browser immediately.
+            outbox: "queue.Queue[tuple[str, dict[str, Any]] | None]" = queue.Queue()
+            outcome: dict[str, Any] = {}
+
+            def _worker() -> None:
+                try:
+                    outcome["result"] = run_agent(
+                        query_text,
+                        tools=tools,
+                        history=history,
+                        memory_note=memory_note,
+                        emit=lambda name, data: outbox.put((name, data)),
+                    )
+                except AgentUnavailable as exc:
+                    outcome["unavailable"] = str(exc)
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.exception("Agent crashed")
+                    outcome["crashed"] = str(exc)
+                finally:
+                    outbox.put(None)
+
+            thread = threading.Thread(target=_worker, daemon=True)
+            thread.start()
+            while True:
+                item = outbox.get()
+                if item is None:
+                    break
+                yield _sse(item[0], item[1])
+            thread.join(timeout=1)
+
+            if "unavailable" in outcome or "crashed" in outcome:
+                # Nothing was produced: answer with the original pipeline instead.
+                fallback_payload = payload.model_copy(
+                    update={"conversation_id": str((conversation or {}).get("id") or "") or payload.conversation_id}
+                )
+                legacy = chat_query(fallback_payload, current_user, session)
+                yield _sse("legacy", legacy)
+                yield _sse("done", {"conversation": legacy.get("conversation"), "sources": legacy.get("sources", [])})
+                return
+
+            result = outcome.get("result") or {"answer": "", "trace": []}
+            answer = result["answer"] or "I couldn't find enough evidence to answer that."
+            sources = sorted(tools.sources.values(), key=lambda item: float(item.get("rank") or 0), reverse=True)[:16]
+            structured = {"format": "markdown", "summary": answer[:400], "trace": result["trace"]}
+
+            assistant_message_id = None
+            if conversation and str(conversation.get("id") or "").strip():
+                try:
+                    append_chat_message(
+                        session,
+                        conversation_id=str(conversation["id"]),
+                        user_id=user_id,
+                        repo_id=payload.repo_id,
+                        role="user",
+                        content=query_text,
+                        mode=mode,
+                    )
+                    assistant = append_chat_message(
+                        session,
+                        conversation_id=str(conversation["id"]),
+                        user_id=user_id,
+                        repo_id=payload.repo_id,
+                        role="assistant",
+                        content=answer,
+                        mode=mode,
+                        answer_structured=structured,
+                        sources=sources,
+                    )
+                    assistant_message_id = str(assistant.get("id") or "")
+                    upsert_memory_items(
+                        session,
+                        user_id=user_id,
+                        repo_id=payload.repo_id,
+                        conversation_id=str(conversation["id"]),
+                        source_message_id=assistant_message_id,
+                        memory_items=extract_turn_memory_items(
+                            query=query_text, answer=answer, structured=None, sources=sources, repo_meta=repo_meta
+                        ),
+                    )
+                    session.commit()
+                    conversation = ensure_chat_conversation(
+                        session, user_id=user_id, repo_id=payload.repo_id, conversation_id=str(conversation["id"])
+                    ) or conversation
+                except Exception:
+                    session.rollback()
+                    logger.warning("Unable to persist streamed chat turn", exc_info=True)
+
+            audit_log(
+                "chat.stream.completed",
+                auth0_sub=current_user.sub,
+                repo_id=payload.repo_id,
+                tool_calls=len(result["trace"]),
+                source_count=len(sources),
+            )
+            yield _sse(
+                "done",
+                {
+                    "conversation": _conversation_payload(conversation, payload.repo_id),
+                    "sources": sources,
+                    "trace": result["trace"],
+                    "answer": answer,
+                    "assistant_message_id": assistant_message_id,
+                },
+            )
+        except Exception:
+            logger.exception("Streaming chat failed")
+            yield _sse("error", {"message": "Something went wrong while answering. Please try again."})
+        finally:
+            session.close()
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
