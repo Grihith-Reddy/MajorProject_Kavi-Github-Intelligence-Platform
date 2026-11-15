@@ -4,17 +4,19 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.access import assert_repo_access, require_github_account, require_user_id
 from app.core.audit import audit_log
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
 from app.core.security import UserContext, decrypt_token, get_current_user
 from app.core.tokens import create_token, list_tokens, revoke_token
+from app.services.eval_service import run_evaluation
 from app.services.github_service import GitHubService
+from app.services.map_service import build_knowledge_map
 from app.services.why_service import get_file_why
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -200,3 +202,79 @@ def update_promise_status(
     )
     db.commit()
     return {"status": payload.status}
+
+
+# ── Knowledge map ────────────────────────────────────────────────────────────
+
+
+@router.get("/repositories/{repo_id}/knowledge-map")
+def knowledge_map(
+    repo_id: str,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    assert_repo_access(db, repo_id, current_user.sub)
+    result = build_knowledge_map(db, repo_id)
+    audit_log("insights.map.viewed", auth0_sub=current_user.sub, repo_id=repo_id, modules=len(result["modules"]))
+    return result
+
+
+# ── Retrieval quality (evaluation harness) ───────────────────────────────────
+
+
+def _run_evaluation_in_background(repo_id: str, run_id: str) -> None:
+    session = SessionLocal()
+    try:
+        run_evaluation(session, repo_id, run_id)
+    finally:
+        session.close()
+
+
+@router.post("/repositories/{repo_id}/quality/run")
+def start_quality_run(
+    repo_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    assert_repo_access(db, repo_id, current_user.sub)
+    running = db.execute(
+        text("SELECT id FROM eval_runs WHERE repo_id = :repo_id AND status = 'running' AND created_at > NOW() - INTERVAL '20 minutes'"),
+        {"repo_id": repo_id},
+    ).first()
+    if running:
+        return {"run_id": str(running[0]), "status": "running"}
+    user_id = require_user_id(db, current_user.sub)
+    run_id = db.execute(
+        text("INSERT INTO eval_runs (repo_id, created_by_user_id) VALUES (:repo_id, :user_id) RETURNING id"),
+        {"repo_id": repo_id, "user_id": user_id},
+    ).scalar()
+    db.commit()
+    background_tasks.add_task(_run_evaluation_in_background, repo_id, str(run_id))
+    audit_log("insights.quality.started", auth0_sub=current_user.sub, repo_id=repo_id, run_id=str(run_id))
+    return {"run_id": str(run_id), "status": "running"}
+
+
+@router.get("/repositories/{repo_id}/quality")
+def quality_runs(
+    repo_id: str,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    assert_repo_access(db, repo_id, current_user.sub)
+    rows = db.execute(
+        text(
+            """
+            SELECT id, status, metrics, cases, error, created_at, finished_at
+            FROM eval_runs
+            WHERE repo_id = :repo_id
+            ORDER BY created_at DESC
+            LIMIT 10
+            """
+        ),
+        {"repo_id": repo_id},
+    ).mappings().all()
+    runs = [dict(row) for row in rows]
+    for run in runs[1:]:
+        run["cases"] = None  # only the latest run needs per-question detail
+    return {"runs": runs}

@@ -180,6 +180,7 @@ def entry_embedding_text(row: dict[str, Any]) -> str:
 _cache_lock = threading.Lock()
 _vector_cache: dict[tuple[str, str], dict[str, Any]] = {}
 _CACHE_TTL_SECONDS = 120
+_query_cache: dict[tuple[str, str], list[float]] = {}
 
 
 def invalidate_repo_vectors(repo_id: str) -> None:
@@ -243,8 +244,16 @@ def semantic_search(db: Session, repo_id: str, query: str, limit: int = 12) -> l
         return []
     if not model:
         return []
+    cache_key = (model, query.strip()[:2000])
+    cached_vector = _query_cache.get(cache_key)
     try:
-        _, vectors = embed_texts([query], task_type="RETRIEVAL_QUERY", model=model)
+        if cached_vector is not None:
+            vectors = [cached_vector]
+        else:
+            _, vectors = embed_texts([query], task_type="RETRIEVAL_QUERY", model=model)
+            if len(_query_cache) >= 512:
+                _query_cache.pop(next(iter(_query_cache)))
+            _query_cache[cache_key] = vectors[0]
     except EmbeddingUnavailable as exc:
         logger.warning("Semantic search skipped: %s", exc)
         return []
