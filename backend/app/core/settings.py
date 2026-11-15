@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     SYNC_JOB_MAX_ATTEMPTS: int = 4
     SYNC_JOB_RETRY_DELAY_SECONDS: int = 30
     SYNC_JOB_STALE_AFTER_SECONDS: int = 900
+    INLINE_SYNC_WORKER: bool = True
     LOG_LEVEL: str = "INFO"
 
     @property

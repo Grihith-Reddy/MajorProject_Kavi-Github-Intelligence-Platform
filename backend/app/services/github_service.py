@@ -1,6 +1,7 @@
 import base64
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
 
@@ -17,6 +18,18 @@ logger = logging.getLogger(__name__)
 
 class RetryableGitHubError(Exception):
     pass
+
+
+def parse_github_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 def _response_excerpt(response: requests.Response, max_chars: int = 400) -> str:
@@ -169,6 +182,100 @@ class GitHubService:
             per_page=per_page,
             max_pages=max_pages,
         )
+
+    def list_pull_requests_updated_since(
+        self,
+        full_name: str,
+        since: datetime | None = None,
+        *,
+        per_page: int = 100,
+        max_pages: int = 30,
+    ) -> list[dict[str, Any]]:
+        """List PRs newest-updated first, stopping once PRs are older than ``since``.
+
+        This turns a full re-listing into an incremental one: a resync of an
+        unchanged repository costs a single request.
+        """
+        url = f"{settings.GITHUB_API_BASE}/repos/{full_name}/pulls"
+        collected: list[dict[str, Any]] = []
+        for page in range(1, max_pages + 1):
+            payload = self._request(
+                "GET",
+                url,
+                params={
+                    "state": "all",
+                    "sort": "updated",
+                    "direction": "desc",
+                    "page": page,
+                    "per_page": per_page,
+                },
+                allow_wait=True,
+            )
+            if not isinstance(payload, list):
+                break
+            reached_cursor = False
+            for item in payload:
+                if not isinstance(item, dict):
+                    continue
+                updated_at = parse_github_datetime(item.get("updated_at"))
+                if since is not None and updated_at is not None and updated_at <= since:
+                    reached_cursor = True
+                    break
+                collected.append(item)
+            if reached_cursor or len(payload) < per_page:
+                break
+        return collected
+
+    def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+        payload = self._request(
+            "POST",
+            f"{settings.GITHUB_API_BASE}/graphql",
+            json={"query": query, "variables": variables},
+            allow_wait=True,
+        )
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="GitHub GraphQL returned no data")
+        if payload.get("errors") and not payload.get("data"):
+            message = str((payload["errors"][0] or {}).get("message") or "GitHub GraphQL error")[:200]
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=message)
+        return payload.get("data") or {}
+
+    def get_blame(self, full_name: str, file_path: str, ref: str) -> dict[str, Any]:
+        """Return blame ranges for a file, each mapped to its commit and first associated PR."""
+        owner, _, name = full_name.partition("/")
+        query = """
+        query($owner: String!, $name: String!, $expression: String!, $path: String!) {
+          repository(owner: $owner, name: $name) {
+            object(expression: $expression) {
+              ... on Commit {
+                oid
+                blame(path: $path) {
+                  ranges {
+                    startingLine
+                    endingLine
+                    age
+                    commit {
+                      oid
+                      abbreviatedOid
+                      messageHeadline
+                      committedDate
+                      author { name user { login } }
+                      associatedPullRequests(first: 1) {
+                        nodes { number title url mergedAt }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+        data = self.graphql(query, {"owner": owner, "name": name, "expression": ref, "path": file_path})
+        target = ((data.get("repository") or {}).get("object")) or {}
+        blame = target.get("blame") or {}
+        ranges = blame.get("ranges") if isinstance(blame.get("ranges"), list) else []
+        return {"commit_oid": target.get("oid"), "ranges": ranges}
 
     def get_pull_request(self, full_name: str, number: int) -> dict[str, Any]:
         url = f"{settings.GITHUB_API_BASE}/repos/{full_name}/pulls/{number}"

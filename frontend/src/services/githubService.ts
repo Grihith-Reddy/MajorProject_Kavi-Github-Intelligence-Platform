@@ -15,12 +15,39 @@ interface RepositoryListResponse {
   repositories: RepositorySummary[]
 }
 
-interface SyncRepositoryResponse {
+export interface SyncRepositoryResponse {
   status: 'queued' | 'completed'
   repo_full_name?: string
   repo_id?: string
+  job_id?: string
   synced_prs?: number
+  skipped_unchanged?: number
   errors?: Array<{ pr: number; error: string }>
+}
+
+export interface SyncJobProgress {
+  phase?: 'queued' | 'connecting' | 'listing' | 'analyzing' | 'finishing' | 'completed'
+  processed?: number
+  total?: number
+  current_pr?: number
+  current_title?: string
+}
+
+export interface SyncJob {
+  id: string
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  repo_id?: string | null
+  repo_full_name: string
+  last_error?: string | null
+  progress?: SyncJobProgress | null
+  result_summary?: {
+    repo_id?: string
+    synced_prs?: number
+    skipped_unchanged?: number
+    total_prs_fetched?: number
+    incremental?: boolean
+    errors?: Array<{ pr: number; error: string }>
+  } | null
 }
 
 export interface GitHubStatusResponse {
@@ -69,11 +96,22 @@ export const listRepositories = async (api: AxiosInstance) => {
   return data as RepositoryListResponse
 }
 
-export const syncRepository = async (api: AxiosInstance, repoFullName: string, wait = true) => {
+export const syncRepository = async (
+  api: AxiosInstance,
+  repoFullName: string,
+  options: { wait?: boolean; fullResync?: boolean } = {}
+) => {
+  const { wait = false, fullResync = false } = options
   const { data } = await api.post(`/ingestion/repositories/sync?wait=${wait}`, {
-    repo_full_name: repoFullName
+    repo_full_name: repoFullName,
+    full_resync: fullResync,
   })
   return data as SyncRepositoryResponse
+}
+
+export const getSyncJob = async (api: AxiosInstance, jobId: string) => {
+  const { data } = await api.get(`/ingestion/jobs/${jobId}`)
+  return (data as { job: SyncJob }).job
 }
 
 export const getRepositoryStatus = async (api: AxiosInstance, repoId: string) => {

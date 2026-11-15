@@ -17,8 +17,10 @@ class DatabaseMigrationTests(unittest.TestCase):
             "002_access_control_and_sync_jobs.sql",
             "003_chat_memory.sql",
             "004_github_oauth_states.sql",
+            "005_kavi_intelligence.sql",
         ]
         down_migrations = [
+            "005_kavi_intelligence_down.sql",
             "004_github_oauth_states_down.sql",
             "003_chat_memory_down.sql",
             "002_access_control_and_sync_jobs_down.sql",
@@ -49,6 +51,10 @@ class DatabaseMigrationTests(unittest.TestCase):
                     .issubset(created_tables)
                 )
                 self.assertIn("github_oauth_states", created_tables)
+                self.assertTrue(
+                    {"pr_participants", "pr_promises", "blame_cache", "kavi_tokens",
+                     "guardian_reviews", "eval_runs"}.issubset(created_tables)
+                )
 
                 for migration_name in down_migrations:
                     cursor.execute((migration_dir / migration_name).read_text(encoding="utf-8-sig"))
@@ -67,6 +73,7 @@ class DatabaseMigrationTests(unittest.TestCase):
                     .intersection(remaining_tables)
                 )
                 self.assertNotIn("github_oauth_states", remaining_tables)
+                self.assertNotIn("pr_promises", remaining_tables)
 
                 for migration_name in up_migrations:
                     cursor.execute((migration_dir / migration_name).read_text(encoding="utf-8-sig"))

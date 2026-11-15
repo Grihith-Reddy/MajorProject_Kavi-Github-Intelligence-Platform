@@ -14,6 +14,7 @@ from app.services.sync_jobs import (
     mark_sync_job_failed,
     mark_sync_job_succeeded,
     recycle_stale_jobs,
+    update_sync_job_progress,
 )
 
 
@@ -38,18 +39,34 @@ def _get_github_token(db, github_account_id: str) -> str:
     return decrypt_token(account["access_token_encrypted"])
 
 
-def process_one_job() -> bool:
-    db = SessionLocal()
-    job = None
-    try:
-        recycle_stale_jobs(db)
-        job = claim_next_sync_job(db)
-        if not job:
-            return False
+def _progress_writer(job_id: str):
+    """Persist progress through a separate session so it never commits partial ingestion state."""
 
+    def _write(progress: dict) -> None:
+        progress_db = SessionLocal()
+        try:
+            update_sync_job_progress(progress_db, job_id=job_id, progress=progress)
+        finally:
+            progress_db.close()
+
+    return _write
+
+
+def execute_job(db, job: dict) -> None:
+    try:
         token = _get_github_token(db, job["github_account_id"])
-        result = sync_repository(db, job["repo_full_name"], token, job["github_account_id"])
+        result = sync_repository(
+            db,
+            job["repo_full_name"],
+            token,
+            job["github_account_id"],
+            full_resync=bool(job.get("full_resync")),
+            progress_callback=_progress_writer(str(job["id"])),
+        )
         mark_sync_job_succeeded(db, job_id=job["id"], repo_id=result["repo_id"], result_summary=result)
+        _progress_writer(str(job["id"]))(
+            {"phase": "completed", "processed": result.get("synced_prs", 0), "total": result.get("synced_prs", 0)}
+        )
         audit_log(
             "sync.job.completed",
             job_id=job["id"],
@@ -58,19 +75,50 @@ def process_one_job() -> bool:
             synced_prs=result.get("synced_prs", 0),
             error_count=len(result.get("errors", [])),
         )
-        return True
     except Exception as exc:
         logger.exception("Sync worker job failed")
-        if job:
-            db.rollback()
-            mark_sync_job_failed(db, job_id=job["id"], error_message=str(exc))
-            audit_log(
-                "sync.job.failed",
-                job_id=job["id"],
-                repo_full_name=job["repo_full_name"],
-                error=str(exc),
-            )
+        db.rollback()
+        mark_sync_job_failed(db, job_id=job["id"], error_message=str(exc))
+        audit_log(
+            "sync.job.failed",
+            job_id=job["id"],
+            repo_full_name=job["repo_full_name"],
+            error=str(exc),
+        )
+
+
+def process_one_job() -> bool:
+    db = SessionLocal()
+    try:
+        recycle_stale_jobs(db)
+        job = claim_next_sync_job(db)
+        if not job:
+            return False
+        execute_job(db, job)
         return True
+    except Exception:
+        logger.exception("Sync worker loop failed")
+        return True
+    finally:
+        db.close()
+
+
+def process_job_by_id(job_id: str) -> bool:
+    """Run a specific queued job in-process (used right after the API enqueues it).
+
+    The claim uses FOR UPDATE SKIP LOCKED, so if a standalone worker already took
+    the job this is a no-op.
+    """
+    db = SessionLocal()
+    try:
+        job = claim_next_sync_job(db, job_id=job_id)
+        if not job:
+            return False
+        execute_job(db, job)
+        return True
+    except Exception:
+        logger.exception("Inline sync job failed")
+        return False
     finally:
         db.close()
 

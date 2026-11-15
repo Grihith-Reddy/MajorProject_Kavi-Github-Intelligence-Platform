@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+import re
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
@@ -8,9 +10,11 @@ from app.core.audit import audit_log
 from app.core.database import get_db
 from app.core.security import UserContext, decrypt_token, get_current_user
 from app.services.ingestion_service import sync_repository
-from app.services.sync_jobs import enqueue_sync_job, get_latest_sync_job_for_repo
+from app.core.settings import settings
+from app.services.sync_jobs import enqueue_sync_job, get_latest_sync_job_for_repo, get_sync_job_for_user
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
+_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 class SyncRequest(BaseModel):
@@ -19,11 +23,20 @@ class SyncRequest(BaseModel):
         max_length=250,
         pattern=r"^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+$",
     )
+    full_resync: bool = False
+
+
+def _run_job_inline(job_id: str) -> None:
+    # Imported lazily so the API module does not import the worker at startup.
+    from app.workers.ingestion_worker import process_job_by_id
+
+    process_job_by_id(job_id)
 
 
 @router.post("/repositories/sync")
 def sync_repo(
     payload: SyncRequest,
+    background_tasks: BackgroundTasks,
     wait: bool = Query(False),
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -33,7 +46,9 @@ def sync_repo(
     token = decrypt_token(gh_account["access_token_encrypted"])
 
     if wait:
-        result = sync_repository(db, payload.repo_full_name, token, gh_account["id"])
+        result = sync_repository(
+            db, payload.repo_full_name, token, gh_account["id"], full_resync=payload.full_resync
+        )
         audit_log(
             "repository.sync.request.completed",
             user_id=user_id,
@@ -50,6 +65,7 @@ def sync_repo(
             user_id=user_id,
             github_account_id=gh_account["id"],
             repo_full_name=payload.repo_full_name,
+            full_resync=payload.full_resync,
         )
     except ProgrammingError as exc:
         db.rollback()
@@ -74,6 +90,8 @@ def sync_repo(
         repo_full_name=payload.repo_full_name,
         job_id=job["id"],
     )
+    if settings.INLINE_SYNC_WORKER:
+        background_tasks.add_task(_run_job_inline, str(job["id"]))
     return {
         "status": "queued",
         "repo_full_name": job["repo_full_name"],
@@ -91,3 +109,18 @@ def repo_status(
     job = get_latest_sync_job_for_repo(db, repo_id)
     audit_log("repository.status.checked", auth0_sub=current_user.sub, repo_id=repo_id)
     return {"repository": repo, "sync_job": job}
+
+
+@router.get("/jobs/{job_id}")
+def sync_job_status(
+    job_id: str,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not _UUID_RE.fullmatch(job_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sync job not found")
+    user_id = require_user_id(db, current_user.sub)
+    job = get_sync_job_for_user(db, job_id=job_id, user_id=user_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sync job not found")
+    return {"job": job}
