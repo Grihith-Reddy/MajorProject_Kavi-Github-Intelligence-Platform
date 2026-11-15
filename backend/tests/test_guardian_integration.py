@@ -213,6 +213,27 @@ class GuardianIntegrationTests(unittest.TestCase):
         ).mappings().one()
         self.assertEqual((row["status"], row["github_pr_number"]), ("kept", 51))
 
+    def test_mcp_endpoints_resolve_repo_by_name_and_search_memory(self):
+        from app.core.tokens import create_token
+
+        token = create_token(self.session, user_id=str(self.user_id), scope="mcp", repo_id=None, label="editor")["token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        repos = self.client.get("/api/mcp/repositories", headers=headers)
+        self.assertEqual(repos.status_code, 200, repos.text)
+        self.assertEqual([r["full_name"] for r in repos.json()["repositories"]], ["org/shop"])
+
+        search = self.client.get("/api/mcp/search", params={"repo": "ORG/shop", "q": "idempotent webhooks"}, headers=headers)
+        self.assertEqual(search.status_code, 200, search.text)
+        self.assertEqual(search.json()["results"][0]["pr_number"], 42)
+
+        pr = self.client.get("/api/mcp/pull-request", params={"repo": "org/shop", "number": 42}, headers=headers)
+        self.assertEqual(pr.json()["decisions"], ["Use the provider event id as the idempotency key"])
+
+        missing = self.client.get("/api/mcp/search", params={"repo": "org/other", "q": "x"}, headers=headers)
+        self.assertEqual(missing.status_code, 404)
+        guardian = self._create_guardian_token()
+        self.assertEqual(self.client.get("/api/mcp/repositories", headers={"Authorization": f"Bearer {guardian}"}).status_code, 401)
+
     def test_tokens_are_stored_hashed(self):
         token = self._create_guardian_token()
         stored = self.session.execute(text("SELECT token_hash, token_prefix FROM kavi_tokens")).mappings().first()

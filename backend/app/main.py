@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy import text
 
-from app.api import auth, chat, github, guardian, ingestion, insights, knowledge
+from app.api import auth, chat, github, guardian, ingestion, insights, knowledge, mcp
 from app.core.database import SessionLocal
 from app.core.middleware import RateLimitMiddleware, RequestContextMiddleware, RequestSizeLimitMiddleware
 from app.core.settings import settings
@@ -44,6 +44,7 @@ app.include_router(knowledge.router, prefix=settings.API_V1_PREFIX)
 app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(insights.router, prefix=settings.API_V1_PREFIX)
 app.include_router(guardian.router, prefix=settings.API_V1_PREFIX)
+app.include_router(mcp.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")
