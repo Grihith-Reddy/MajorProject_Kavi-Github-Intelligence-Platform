@@ -64,13 +64,17 @@ async def list_repositories() -> list[dict[str, Any]]:
 
 
 @mcp.tool()
-async def ask_kavi(question: str, repo: str | None = None) -> dict[str, Any]:
+async def ask_kavi(question: str, repo: str | None = None, as_of: str | None = None) -> dict[str, Any]:
     """Ask KAVI a question about a repository's history and intent.
 
     KAVI researches with its own tools (PR memory, live code, blame) and answers with
     citations like [PR #123]. Use it for "why", "when", "who decided" and "what changed" questions.
+    as_of (YYYY-MM-DD) answers as the repository was on that date (Time-Travel).
     """
-    return await _call("POST", "/ask", json={"repo": _repo(repo), "question": question})
+    body: dict[str, Any] = {"repo": _repo(repo), "question": question}
+    if as_of:
+        body["as_of"] = as_of
+    return await _call("POST", "/ask", json=body)
 
 
 @mcp.tool()

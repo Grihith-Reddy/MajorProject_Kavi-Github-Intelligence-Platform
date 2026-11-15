@@ -226,6 +226,18 @@ class GitHubService:
                 break
         return collected
 
+    def commit_at(self, full_name: str, branch: str, until_iso: str) -> str | None:
+        """SHA of the last commit on ``branch`` at or before ``until_iso``."""
+        payload = self._request(
+            "GET",
+            f"{settings.GITHUB_API_BASE}/repos/{full_name}/commits",
+            params={"sha": branch, "until": until_iso, "per_page": 1},
+            allow_wait=True,
+        )
+        if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+            return payload[0].get("sha")
+        return None
+
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         payload = self._request(
             "POST",

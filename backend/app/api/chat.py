@@ -130,6 +130,8 @@ class ChatQuery(BaseModel):
     limit: int = Field(default=5, ge=1, le=15)
     mode: str | None = Field(default=None, max_length=32)
     conversation_id: str | None = Field(default=None, max_length=64)
+    # Time-Travel: answer as the repository was at the end of this day (YYYY-MM-DD).
+    as_of: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _ensure_user_id(db: Session, current_user: UserContext) -> str:
@@ -748,6 +750,8 @@ def _fetch_full_text_entries(db: Session, payload: ChatQuery, limit: int) -> lis
                 LEFT JOIN pull_requests pr ON pr.id = k.pr_id
                 LEFT JOIN file_mappings fm ON fm.knowledge_entry_id = k.id
                 WHERE k.repo_id = :repo_id
+                  AND (CAST(:as_of AS timestamptz) IS NULL
+                       OR COALESCE(pr.merged_at, pr.created_at, k.created_at) <= CAST(:as_of AS timestamptz))
                   AND (
                     k.search_document @@ websearch_to_tsquery('english', :query)
                     OR to_tsvector(
@@ -769,7 +773,7 @@ def _fetch_full_text_entries(db: Session, payload: ChatQuery, limit: int) -> lis
                 """
             ),
             {
-                "repo_id": payload.repo_id,
+                "repo_id": payload.repo_id, "as_of": as_of_bound(payload.as_of),
                 "query": payload.query.strip(),
                 "query_file_hint": f"%{payload.query.strip()}%",
                 "limit": limit,
@@ -813,6 +817,8 @@ def _fetch_lexical_entries(
                 LEFT JOIN pull_requests pr ON pr.id = k.pr_id
                 LEFT JOIN file_mappings fm ON fm.knowledge_entry_id = k.id
                 WHERE k.repo_id = :repo_id
+                  AND (CAST(:as_of AS timestamptz) IS NULL
+                       OR COALESCE(pr.merged_at, pr.created_at, k.created_at) <= CAST(:as_of AS timestamptz))
                   AND (
                     k.summary ILIKE :ilike_query
                     OR k.intent ILIKE :ilike_query
@@ -833,7 +839,7 @@ def _fetch_lexical_entries(
                 LIMIT :limit
                 """
             ),
-            {"repo_id": payload.repo_id, "ilike_query": ilike_query, "limit": limit, **term_params},
+            {"repo_id": payload.repo_id, "as_of": as_of_bound(payload.as_of), "as_of": as_of_bound(payload.as_of), "ilike_query": ilike_query, "limit": limit, **term_params},
         ).mappings().all()
     except Exception:
         db.rollback()
@@ -862,11 +868,13 @@ def _fetch_recency_entries(db: Session, payload: ChatQuery, limit: int) -> list[
                 FROM knowledge_entries k
                 LEFT JOIN pull_requests pr ON pr.id = k.pr_id
                 WHERE k.repo_id = :repo_id
+                  AND (CAST(:as_of AS timestamptz) IS NULL
+                       OR COALESCE(pr.merged_at, pr.created_at, k.created_at) <= CAST(:as_of AS timestamptz))
                 ORDER BY COALESCE(pr.merged_at, pr.created_at, k.created_at) DESC
                 LIMIT :limit
                 """
             ),
-            {"repo_id": payload.repo_id, "limit": limit},
+            {"repo_id": payload.repo_id, "as_of": as_of_bound(payload.as_of), "as_of": as_of_bound(payload.as_of), "limit": limit},
         ).mappings().all()
         return [dict(row) for row in rows]
     except Exception:
@@ -875,7 +883,7 @@ def _fetch_recency_entries(db: Session, payload: ChatQuery, limit: int) -> list[
         return []
 
 
-def _fetch_entries_by_ids(db: Session, repo_id: str, entry_ids: list[str]) -> list[dict[str, Any]]:
+def _fetch_entries_by_ids(db: Session, repo_id: str, entry_ids: list[str], as_of: str | None = None) -> list[dict[str, Any]]:
     if not entry_ids:
         return []
     rows = db.execute(
@@ -897,11 +905,18 @@ def _fetch_entries_by_ids(db: Session, repo_id: str, entry_ids: list[str]) -> li
             LEFT JOIN pull_requests pr ON pr.id = k.pr_id
             WHERE k.repo_id = :repo_id
               AND k.id = ANY(CAST(:entry_ids AS uuid[]))
+              AND (CAST(:as_of AS timestamptz) IS NULL
+                       OR COALESCE(pr.merged_at, pr.created_at, k.created_at) <= CAST(:as_of AS timestamptz))
             """
         ),
-        {"repo_id": repo_id, "entry_ids": entry_ids},
+        {"repo_id": repo_id, "entry_ids": entry_ids, "as_of": as_of_bound(as_of)},
     ).mappings().all()
     return [dict(row) for row in rows]
+
+
+def as_of_bound(as_of: str | None) -> str | None:
+    """End of the given day in UTC, as an ISO timestamp (None when not time-travelling)."""
+    return f"{as_of}T23:59:59+00:00" if as_of else None
 
 
 RETRIEVAL_STRATEGIES = ("fulltext", "lexical", "semantic", "hybrid")
@@ -945,8 +960,10 @@ def _fetch_candidate_entries(db: Session, payload: ChatQuery, strategy: str = "h
     for row in [*fulltext_entries, *lexical_entries]:
         rows_by_id.setdefault(str(row["id"]), dict(row))
     missing = [entry_id for entry_id in semantic_ids if entry_id not in rows_by_id]
-    for row in _fetch_entries_by_ids(db, payload.repo_id, missing):
+    for row in _fetch_entries_by_ids(db, payload.repo_id, missing, payload.as_of):
         rows_by_id[str(row["id"])] = row
+    if payload.as_of:
+        semantic_ids = [entry_id for entry_id in semantic_ids if entry_id in rows_by_id]
     semantic_scores = dict(semantic_hits)
 
     if strategy == "semantic":
@@ -1995,9 +2012,9 @@ def chat_stream(
                 session.rollback()
                 logger.warning("Chat memory unavailable for streaming chat", exc_info=True)
 
-            yield _sse("meta", {"conversation": _conversation_payload(conversation, payload.repo_id), "mode": mode})
+            yield _sse("meta", {"conversation": _conversation_payload(conversation, payload.repo_id), "mode": mode, "as_of": payload.as_of})
 
-            tools = RepoAgentTools(session, repo_meta, current_user)
+            tools = RepoAgentTools(session, repo_meta, current_user, as_of=payload.as_of)
             history, memory_note = history_from_memory(memory_context)
 
             # The agent emits events synchronously from a worker thread; the generator
@@ -2044,7 +2061,7 @@ def chat_stream(
             result = outcome.get("result") or {"answer": "", "trace": []}
             answer = result["answer"] or "I couldn't find enough evidence to answer that."
             sources = sorted(tools.sources.values(), key=lambda item: float(item.get("rank") or 0), reverse=True)[:16]
-            structured = {"format": "markdown", "summary": answer[:400], "trace": result["trace"]}
+            structured = {"format": "markdown", "summary": answer[:400], "trace": result["trace"], "as_of": payload.as_of}
 
             assistant_message_id = None
             if conversation and str(conversation.get("id") or "").strip():
