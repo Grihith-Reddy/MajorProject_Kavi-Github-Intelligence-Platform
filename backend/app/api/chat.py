@@ -14,6 +14,7 @@ from app.core.audit import audit_log
 from app.core.database import get_db
 from app.core.security import UserContext, decrypt_token, get_current_user
 from app.services.ai_service import AIService
+from app.services.embedding_service import reciprocal_rank_fusion, semantic_search
 from app.services.github_service import GitHubService
 from app.services.memory_service import (
     append_chat_message,
@@ -869,19 +870,107 @@ def _fetch_recency_entries(db: Session, payload: ChatQuery, limit: int) -> list[
         return []
 
 
-def _fetch_candidate_entries(db: Session, payload: ChatQuery) -> list[dict]:
+def _fetch_entries_by_ids(db: Session, repo_id: str, entry_ids: list[str]) -> list[dict[str, Any]]:
+    if not entry_ids:
+        return []
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                k.id,
+                k.summary,
+                k.intent,
+                k.tags,
+                pr.github_pr_number,
+                pr.title AS pr_title,
+                pr.url AS pr_url,
+                pr.created_at AS pr_created_at,
+                pr.updated_at AS pr_updated_at,
+                pr.merged_at AS pr_merged_at,
+                0 AS rank
+            FROM knowledge_entries k
+            LEFT JOIN pull_requests pr ON pr.id = k.pr_id
+            WHERE k.repo_id = :repo_id
+              AND k.id = ANY(CAST(:entry_ids AS uuid[]))
+            """
+        ),
+        {"repo_id": repo_id, "entry_ids": entry_ids},
+    ).mappings().all()
+    return [dict(row) for row in rows]
+
+
+RETRIEVAL_STRATEGIES = ("fulltext", "lexical", "semantic", "hybrid")
+
+
+def _fetch_candidate_entries(db: Session, payload: ChatQuery, strategy: str = "hybrid") -> list[dict]:
+    """Retrieve knowledge entries for a query.
+
+    ``hybrid`` fuses full-text, lexical and semantic (embedding) rankings with
+    Reciprocal Rank Fusion, then tops up with recent entries. The single-signal
+    strategies exist for the evaluation harness.
+    """
     target_limit = max(payload.limit, 8)
     query_terms = _extract_search_terms(payload.query, limit=10)
     prefer_lexical_first = _has_file_path_signal(payload.query)
 
-    fulltext_entries = _fetch_full_text_entries(db, payload, limit=target_limit * 2)
-    lexical_entries = _fetch_lexical_entries(db, payload, query_terms, limit=target_limit * 2)
+    fulltext_entries = (
+        _fetch_full_text_entries(db, payload, limit=target_limit * 2)
+        if strategy in {"fulltext", "hybrid"}
+        else []
+    )
+    lexical_entries = (
+        _fetch_lexical_entries(db, payload, query_terms, limit=target_limit * 2)
+        if strategy in {"lexical", "hybrid"}
+        else []
+    )
+    semantic_hits = (
+        semantic_search(db, payload.repo_id, payload.query, limit=target_limit * 2)
+        if strategy in {"semantic", "hybrid"}
+        else []
+    )
+    # Drop weak semantic matches so unrelated entries do not crowd out real evidence.
+    semantic_ids = [entry_id for entry_id, score in semantic_hits if score >= 0.35 or strategy == "semantic"]
 
-    primary = lexical_entries if prefer_lexical_first else fulltext_entries
-    secondary = fulltext_entries if prefer_lexical_first else lexical_entries
-    merged = _merge_entry_rows(primary, secondary, limit=target_limit)
-    if len(merged) >= target_limit:
-        return merged
+    if strategy == "fulltext":
+        return [dict(row) for row in fulltext_entries[:target_limit]]
+    if strategy == "lexical":
+        return [dict(row) for row in lexical_entries[:target_limit]]
+
+    rows_by_id: dict[str, dict[str, Any]] = {}
+    for row in [*fulltext_entries, *lexical_entries]:
+        rows_by_id.setdefault(str(row["id"]), dict(row))
+    missing = [entry_id for entry_id in semantic_ids if entry_id not in rows_by_id]
+    for row in _fetch_entries_by_ids(db, payload.repo_id, missing):
+        rows_by_id[str(row["id"])] = row
+    semantic_scores = dict(semantic_hits)
+
+    if strategy == "semantic":
+        ordered = [rows_by_id[entry_id] for entry_id in semantic_ids if entry_id in rows_by_id]
+        for row in ordered:
+            row["rank"] = round(float(semantic_scores.get(str(row["id"]), 0.0)), 4)
+        return ordered[:target_limit]
+
+    lexical_ranking = [str(row["id"]) for row in lexical_entries]
+    fulltext_ranking = [str(row["id"]) for row in fulltext_entries]
+    rankings = [lexical_ranking, fulltext_ranking] if prefer_lexical_first else [fulltext_ranking, lexical_ranking]
+    if prefer_lexical_first:
+        # Explicit file-path questions trust exact matches more than meaning.
+        rankings.append(lexical_ranking)
+    rankings.append(semantic_ids)
+    fused = reciprocal_rank_fusion(rankings)
+
+    merged: list[dict[str, Any]] = []
+    for entry_id, fused_score in fused:
+        row = rows_by_id.get(entry_id)
+        if not row:
+            continue
+        row = dict(row)
+        row["rank"] = round(fused_score * 100, 4)
+        if entry_id in semantic_scores:
+            row["semantic_score"] = round(float(semantic_scores[entry_id]), 4)
+        merged.append(row)
+        if len(merged) >= target_limit:
+            return merged
 
     recency_entries = _fetch_recency_entries(db, payload, limit=target_limit)
     return _merge_entry_rows(merged, recency_entries, limit=target_limit)
