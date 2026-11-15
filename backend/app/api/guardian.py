@@ -7,7 +7,7 @@ GITHUB_TOKEN, so KAVI's GitHub App stays read-only.
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -18,7 +18,10 @@ from app.core.audit import audit_log
 from app.core.database import get_db
 from app.core.security import UserContext, get_current_user
 from app.core.tokens import TokenPrincipal, require_token
+from app.core.access import require_github_account
+from app.core.settings import settings
 from app.services.guardian_service import review_pull_request
+from app.services.sync_jobs import enqueue_sync_job
 
 router = APIRouter(prefix="/guardian", tags=["guardian"])
 
@@ -59,6 +62,31 @@ def guardian_review(
     return result
 
 
+@router.post("/sync")
+def guardian_sync(
+    background_tasks: BackgroundTasks,
+    principal: TokenPrincipal = Depends(require_token("guardian")),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Called by the Guardian Action when a PR merges: refresh KAVI's memory incrementally."""
+    if not principal.repo_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Guardian token is not bound to a repository")
+    repo = assert_repo_access(db, principal.repo_id, principal.auth0_sub)
+    account = require_github_account(db, principal.user_id)
+    job = enqueue_sync_job(
+        db,
+        user_id=principal.user_id,
+        github_account_id=str(account["id"]),
+        repo_full_name=str(repo["full_name"]),
+    )
+    if settings.INLINE_SYNC_WORKER:
+        from app.api.ingestion import _run_job_inline
+
+        background_tasks.add_task(_run_job_inline, str(job["id"]))
+    audit_log("guardian.sync.queued", repo_id=principal.repo_id, job_id=str(job["id"]))
+    return {"status": "queued", "job_id": str(job["id"])}
+
+
 @router.get("/repositories/{repo_id}/reviews")
 def guardian_reviews(
     repo_id: str,
@@ -86,7 +114,7 @@ WORKFLOW_TEMPLATE = """name: KAVI Guardian
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, closed]
 
 permissions:
   contents: read
@@ -94,7 +122,7 @@ permissions:
 
 jobs:
   guardian:
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft || github.event.action == 'closed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -110,6 +138,24 @@ jobs:
               return;
             }
             const pr = context.payload.pull_request;
+            const api = process.env.KAVI_API_URL.replace(/\/$/, '');
+            const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KAVI_GUARDIAN_TOKEN}` };
+            if (context.payload.action === 'closed') {
+              if (!pr.merged) return;
+              // Merged: ask KAVI to learn from it (incremental sync), retrying while the API wakes up.
+              for (let attempt = 0; attempt < 5; attempt++) {
+                try {
+                  const res = await fetch(`${api}/api/guardian/sync`, { method: 'POST', headers });
+                  if (res.ok) { core.info('KAVI memory refresh queued.'); return; }
+                  if (res.status === 401 || res.status === 403) { core.warning(`KAVI rejected the token (${res.status}).`); return; }
+                } catch (error) {
+                  core.info(`KAVI not reachable yet: ${error.message}`);
+                }
+                await new Promise((r) => setTimeout(r, 15000 * (attempt + 1)));
+              }
+              core.warning('KAVI was unavailable; memory will refresh on the next sync.');
+              return;
+            }
             const files = await github.paginate(github.rest.pulls.listFiles, {
               ...context.repo, pull_number: pr.number, per_page: 100,
             });
@@ -125,9 +171,9 @@ jobs:
             let review = null;
             for (let attempt = 0; attempt < 5 && !review; attempt++) {
               try {
-                const res = await fetch(`${process.env.KAVI_API_URL.replace(/\\/$/, '')}/api/guardian/review`, {
+                const res = await fetch(`${api}/api/guardian/review`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KAVI_GUARDIAN_TOKEN}` },
+                  headers,
                   body: JSON.stringify(payload),
                 });
                 if (res.ok) review = await res.json();

@@ -372,6 +372,19 @@ class GuardianIntegrationTests(unittest.TestCase):
         self.assertEqual(stored["impact"]["likely_missing"][0]["path"], "db/migrations/sessions.sql")
         self.assertTrue(stored["reviewers"]["reviewers"])
 
+    def test_guardian_sync_queues_incremental_sync(self):
+        from app.core import settings as settings_module
+
+        token = self._create_guardian_token()
+        with patch.object(settings_module.settings, "INLINE_SYNC_WORKER", False):
+            response = self.client.post("/api/guardian/sync", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(response.status_code, 200, response.text)
+        job = self.session.execute(
+            text("SELECT repo_full_name, status FROM sync_jobs WHERE id = CAST(:id AS uuid)"), {"id": response.json()["job_id"]}
+        ).mappings().one()
+        self.assertEqual((job["repo_full_name"], job["status"]), ("org/shop", "queued"))
+        self.assertEqual(self.client.post("/api/guardian/sync").status_code, 401)
+
     def test_tokens_are_stored_hashed(self):
         token = self._create_guardian_token()
         stored = self.session.execute(text("SELECT token_hash, token_prefix FROM kavi_tokens")).mappings().first()
