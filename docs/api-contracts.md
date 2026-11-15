@@ -128,3 +128,30 @@ Lists persisted chat conversations for the authenticated user and repository.
 
 ### GET `/chat/conversations/{conversation_id}`
 Returns conversation metadata and ordered messages.
+
+## KAVI 2.0 endpoints
+
+All endpoints below require a Firebase bearer token unless noted.
+
+### Ingestion
+- `POST /ingestion/repositories/sync` body now accepts `full_resync` (default `false`). With `wait=false` the response includes `job_id` and the job starts immediately.
+- `GET /ingestion/jobs/{job_id}`: job status with `progress` (`phase`, `processed`, `total`, `current_pr`, `current_title`) and `result_summary`.
+
+### Chat
+- `POST /chat/stream`: same body as `/chat/query`; responds with Server-Sent Events `meta`, `step`, `note`, `token`, `legacy`, `done`, `error`.
+
+### Insights
+- `GET /insights/repositories/{repo_id}/tree`: live file list of the default branch.
+- `GET /insights/repositories/{repo_id}/why?path=`: Why-Lens blame segments, PR intent and file content.
+- `GET /insights/repositories/{repo_id}/promises` and `POST /insights/promises/{id}/status` (`open|kept|dismissed`).
+- `GET /insights/repositories/{repo_id}/knowledge-map`: modules, bus factor, risk, coupling edges.
+- `POST /insights/repositories/{repo_id}/quality/run` and `GET /insights/repositories/{repo_id}/quality`: evaluation runs.
+- `GET /insights/tokens`, `POST /insights/tokens` (`scope: guardian|mcp`, `repo_id` for guardian), `POST /insights/tokens/{id}/revoke`.
+
+### Guardian
+- `POST /guardian/review` (**Guardian token**): `{pr_number, head_sha, title, body, files: [{filename, status, patch}]}` → `{verdict, summary, findings, history_checked, comment_markdown}`.
+- `GET /guardian/repositories/{repo_id}/reviews`: review history.
+- `GET /guardian/workflow`: the GitHub Actions workflow file.
+
+### MCP (**editor token**)
+- `GET /mcp/repositories`, `POST /mcp/ask`, `GET /mcp/why`, `GET /mcp/search`, `GET /mcp/experts`, `GET /mcp/promises`, `GET /mcp/pull-request`. `repo` accepts a UUID or `owner/name`.

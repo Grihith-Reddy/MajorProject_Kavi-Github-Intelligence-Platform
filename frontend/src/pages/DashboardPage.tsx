@@ -142,8 +142,8 @@ type WorkspacePanelId = 'repository' | 'history' | 'focus' | 'prs' | 'files' | '
 
 const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
 const CHAT_STORAGE_PREFIX = 'kavi.chat.'
-const DEFAULT_ASSISTANT_MESSAGE = 'I am ready. Ask about architecture decisions, PR intent, file evolution, or use "Explain Entire Repo".'
-const QUICK_PROMPTS = ['Explain Entire Repo', 'Explain the main architecture', 'What are the most recent PRs doing?', 'Which files changed for auth?']
+const DEFAULT_ASSISTANT_MESSAGE = 'I am ready. Ask why code exists, who decided something, what changed and why, or use "Explain Entire Repo".'
+const QUICK_PROMPTS = ['Explain Entire Repo', 'Explain the main architecture', 'What changed recently, and why?', 'Who knows the most about auth?', 'Which promises are still open?']
 const WORKSPACE_PANEL_ITEMS: { id: WorkspacePanelId; label: string; icon: LucideIcon }[] = [
   { id: 'repository', label: 'Repository', icon: FolderGit2 },
   { id: 'history', label: 'History', icon: History },
@@ -675,6 +675,10 @@ function WorkspaceOverlayPanel({
       <Link to={`/timeline?repoId=${repoId}`} onClick={onNavigate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 20px', background: '#181D1F', color: '#fff', borderRadius: 9999, border: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
         Project timeline <ArrowRight size={13} />
       </Link>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <Link to={`/why?repoId=${repoId}`} onClick={onNavigate} className="kv-btn kv-btn-soft kv-btn-sm">Why-Lens</Link>
+        <Link to={`/insights?repoId=${repoId}`} onClick={onNavigate} className="kv-btn kv-btn-soft kv-btn-sm">Insights</Link>
+      </div>
       <Link to="/repositories" onClick={onNavigate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 20px', background: '#F4F4F5', color: '#181D1F', borderRadius: 9999, border: '1px solid #E7E7E9', fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
         Switch repository <FolderGit2 size={13} />
       </Link>

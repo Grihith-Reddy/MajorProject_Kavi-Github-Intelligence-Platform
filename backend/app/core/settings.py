@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     TOKEN_ENCRYPTION_KEY: str = "change-me"  # Must be a Fernet key
 
     AI_PROVIDER: str = "gemini"
-    AI_MODEL: str = "gemini-1.5-flash"
+    AI_MODEL: str = "gemini-2.5-flash"
     AI_API_KEY: str | None = None
     EMBEDDING_MODEL: str = "gemini-embedding-001"
     EMBEDDING_DIMENSIONS: int = 768

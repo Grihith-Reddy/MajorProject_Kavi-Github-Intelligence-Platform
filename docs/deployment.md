@@ -29,17 +29,21 @@ The Render free PostgreSQL database is intentionally not used: it expires 30 day
    - `database/migrations/002_access_control_and_sync_jobs.sql`
    - `database/migrations/003_chat_memory.sql`
    - `database/migrations/004_github_oauth_states.sql`
-3. From the repository root in PowerShell, set the Neon URL in the current terminal (do not save it in a file or commit it), then run all four files in one go:
+   - `database/migrations/005_kavi_intelligence.sql`
+3. From the repository root in PowerShell, set the Neon URL in the current terminal (do not save it in a file or commit it), then run all five files in one go:
    ```powershell
    $env:DATABASE_URL = "<paste the Neon connection string here>"
    psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 `
      -f .\database\migrations\001_init.sql `
      -f .\database\migrations\002_access_control_and_sync_jobs.sql `
      -f .\database\migrations\003_chat_memory.sql `
-     -f .\database\migrations\004_github_oauth_states.sql
+     -f .\database\migrations\004_github_oauth_states.sql `
+     -f .\database\migrations\005_kavi_intelligence.sql
    ```
+   Upgrading an existing KAVI 1.x database? Run only `005_kavi_intelligence.sql`; it is additive (new tables and nullable columns) and safe to apply before or after deploying the new code.
+
    A successful run returns to the PowerShell prompt with no SQL error. `ON_ERROR_STOP` makes `psql` stop at the first failed script. If `psql` is not installed, open each migration file in the Neon SQL Editor, paste and run the complete file in order, waiting for success before running the next.
-4. For a brand-new database you can alternatively run `database/schema.sql` once instead of the four migration files. **Do not run both approaches** on the same database.
+4. For a brand-new database you can alternatively run `database/schema.sql` once instead of the migration files. **Do not run both approaches** on the same database.
 5. Keep the connection string for the Render and GitHub Actions secret settings. The free plan has bounded storage, compute, and recovery history; export data periodically if it matters.
 
 ## 3. Configure Firebase Google sign-in
@@ -61,7 +65,7 @@ The Render free PostgreSQL database is intentionally not used: it expires 30 day
    Repository metadata is granted automatically. Do not grant write or administration permissions.
 3. Configure the app for the intended account ownership and install it only on repositories that should be available to KAVI. Keep GitHub App user-access-token expiration disabled unless token refresh is implemented and tested.
 4. Save the GitHub App **Client ID** (not App ID) as `GITHUB_CLIENT_ID` and its client secret as `GITHUB_CLIENT_SECRET` in Render.
-5. Make sure the empty Neon database is initialized through migration 004 (or the consolidated `database/schema.sql`) before deploying this backend. Existing OAuth connections are marked legacy and blocked until the user reconnects. Old OAuth App grants may still exist at GitHub: revoke them from GitHub account settings after cutover, then reconnect using the new GitHub App.
+5. Make sure the empty Neon database is initialized through migration 005 (or the consolidated `database/schema.sql`) before deploying this backend. Existing OAuth connections are marked legacy and blocked until the user reconnects. Old OAuth App grants may still exist at GitHub: revoke them from GitHub account settings after cutover, then reconnect using the new GitHub App.
 
 ## 5. Deploy the API on Render
 
