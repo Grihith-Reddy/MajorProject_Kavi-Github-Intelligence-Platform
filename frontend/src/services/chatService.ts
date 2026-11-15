@@ -17,3 +17,31 @@ export const queryChat = async (
   })
   return data
 }
+
+export interface ConversationSummary {
+  id: string
+  repo_id?: string
+  title?: string
+  status?: string
+  message_count?: number
+  last_message_at?: string | null
+}
+
+export interface ConversationMessage {
+  id: string
+  role: 'user' | 'assistant' | 'system' | 'tool'
+  content: string
+  answer_structured?: Record<string, unknown> | null
+  sources?: Array<Record<string, unknown>> | null
+  created_at?: string | null
+}
+
+export const listConversations = async (api: AxiosInstance, repoId: string) => {
+  const { data } = await api.get('/chat/conversations', { params: { repo_id: repoId } })
+  return ((data?.conversations ?? []) as ConversationSummary[])
+}
+
+export const getConversation = async (api: AxiosInstance, conversationId: string) => {
+  const { data } = await api.get(`/chat/conversations/${conversationId}`)
+  return data as { conversation: ConversationSummary; messages: ConversationMessage[] }
+}

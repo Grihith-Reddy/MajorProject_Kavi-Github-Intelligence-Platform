@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 
 // ─── Typewriter hook ──────────────────────────────────────────────────────────
 // Streams text character-by-character, mimicking ChatGPT / Claude / Gemini.
@@ -59,11 +59,11 @@ import {
   AlertCircle,
   ArrowRight,
   Compass,
-  Copy,
   File,
   FolderGit2,
   GitBranch,
   GitPullRequest,
+  History,
   Loader2,
   Send,
   X,
@@ -71,9 +71,14 @@ import {
 } from 'lucide-react'
 
 import { useAuth } from '../features/auth/useAuth'
+import { AgentTrace } from '../features/chat/AgentTrace'
+import { CodeSnippetCard, type CodeSnippet } from '../features/chat/CodeSnippetCard'
+import { ConversationHistory } from '../features/chat/ConversationHistory'
+import { MarkdownMessage } from '../features/chat/MarkdownMessage'
+import { streamChat, type AgentTraceStep } from '../services/chatStream'
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
-import { ChatMode, queryChat } from '../services/chatService'
+import { ChatMode, getConversation, queryChat } from '../services/chatService'
 import { getRepositoryStatus } from '../services/githubService'
 import {
   getGitVisualization,
@@ -88,18 +93,17 @@ import {
 interface StructuredSection { heading: string; bullets: string[] }
 interface CodeReference { file_path: string; start_line?: number | null; end_line?: number | null; pr_number?: number | null; note?: string }
 interface TimelineHighlight { label: string; detail: string }
-interface CodeSnippet {
-  title?: string
-  description?: string
-  language?: string
-  code?: string
-  file_path?: string | null
-  start_line?: number | null
-  end_line?: number | null
-  source?: string
+interface StructuredAnswer { format?: 'plain' | 'structured' | 'markdown'; trace?: AgentTraceStep[]; title?: string; summary?: string; sections?: StructuredSection[]; code_references?: CodeReference[]; code_snippets?: CodeSnippet[]; timeline_highlights?: TimelineHighlight[]; limitations?: string[] }
+interface ChatEntry {
+  role: 'user' | 'assistant'
+  content: string
+  structured?: StructuredAnswer | null
+  format?: 'markdown'
+  trace?: AgentTraceStep[]
+  notes?: string[]
+  live?: boolean
+  prUrls?: Record<number, string>
 }
-interface StructuredAnswer { format?: 'plain' | 'structured'; title?: string; summary?: string; sections?: StructuredSection[]; code_references?: CodeReference[]; code_snippets?: CodeSnippet[]; timeline_highlights?: TimelineHighlight[]; limitations?: string[] }
-interface ChatEntry { role: 'user' | 'assistant'; content: string; structured?: StructuredAnswer | null }
 interface ChatSource { [key: string]: unknown }
 interface ChatConversationSummary {
   id: string
@@ -128,11 +132,11 @@ interface ChatQueryResponse {
   conversation_id?: string | null
   conversation?: ChatConversationSummary | null
 }
-interface WorkspaceRenderProps { repoId: string; repositoryName: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; chatSources: ChatSource[]; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null }
-interface WorkspaceOverlayProps { repoId: string; repositoryName: string; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; chatSources: ChatSource[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; onNavigate?: () => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null }
-interface DashboardChatPaneProps { messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void }
+interface WorkspaceRenderProps { repoId: string; repositoryName: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; chatSources: ChatSource[]; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; renderHistory: (close: () => void) => ReactNode }
+interface WorkspaceOverlayProps { repoId: string; repositoryName: string; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; chatSources: ChatSource[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; onNavigate?: () => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; historyNode?: ReactNode }
+interface DashboardChatPaneProps { repoId: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void }
 
-type WorkspacePanelId = 'repository' | 'focus' | 'prs' | 'files' | 'git'
+type WorkspacePanelId = 'repository' | 'history' | 'focus' | 'prs' | 'files' | 'git'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -142,6 +146,7 @@ const DEFAULT_ASSISTANT_MESSAGE = 'I am ready. Ask about architecture decisions,
 const QUICK_PROMPTS = ['Explain Entire Repo', 'Explain the main architecture', 'What are the most recent PRs doing?', 'Which files changed for auth?']
 const WORKSPACE_PANEL_ITEMS: { id: WorkspacePanelId; label: string; icon: LucideIcon }[] = [
   { id: 'repository', label: 'Repository', icon: FolderGit2 },
+  { id: 'history', label: 'History', icon: History },
   { id: 'focus', label: 'Focus', icon: Compass },
   { id: 'prs', label: 'PRs', icon: GitPullRequest },
   { id: 'files', label: 'Files', icon: File },
@@ -510,237 +515,6 @@ function GitVisualizationPanel({
 
 // ─── Structured answer renderer ───────────────────────────────────────────────
 
-function snippetLanguageLabel(language?: string) {
-  const value = String(language || '').trim()
-  return value || 'text'
-}
-
-type CodeTokenKind = 'plain' | 'keyword' | 'string' | 'comment' | 'number' | 'annotation' | 'type' | 'function' | 'operator'
-
-const CODE_THEME_COLORS: Record<CodeTokenKind, string> = {
-  plain: '#E6EDF3',
-  keyword: '#C792EA',
-  string: '#ECC48D',
-  comment: '#7F9F7F',
-  number: '#F78C6C',
-  annotation: '#FFD580',
-  type: '#82AAFF',
-  function: '#7FDBCA',
-  operator: '#89A7C5',
-}
-
-const LANGUAGE_KEYWORDS: Record<string, string[]> = {
-  python: ['def', 'class', 'return', 'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally', 'import', 'from', 'as', 'with', 'pass', 'raise', 'lambda', 'None', 'True', 'False'],
-  javascript: ['function', 'return', 'if', 'else', 'for', 'while', 'const', 'let', 'var', 'class', 'new', 'import', 'from', 'export', 'default', 'try', 'catch', 'finally', 'await', 'async', 'null', 'true', 'false'],
-  typescript: ['function', 'return', 'if', 'else', 'for', 'while', 'const', 'let', 'var', 'class', 'new', 'import', 'from', 'export', 'default', 'try', 'catch', 'finally', 'await', 'async', 'interface', 'type', 'extends', 'implements', 'null', 'true', 'false'],
-  tsx: ['function', 'return', 'if', 'else', 'for', 'while', 'const', 'let', 'var', 'class', 'new', 'import', 'from', 'export', 'default', 'try', 'catch', 'finally', 'await', 'async', 'interface', 'type', 'extends', 'implements', 'null', 'true', 'false'],
-  java: ['class', 'public', 'private', 'protected', 'static', 'final', 'void', 'return', 'if', 'else', 'for', 'while', 'try', 'catch', 'new', 'extends', 'implements', 'package', 'import', 'null', 'true', 'false'],
-  go: ['func', 'package', 'import', 'return', 'if', 'else', 'for', 'range', 'switch', 'case', 'default', 'struct', 'interface', 'type', 'var', 'const', 'go', 'defer', 'nil', 'true', 'false'],
-  csharp: ['class', 'public', 'private', 'protected', 'static', 'void', 'return', 'if', 'else', 'for', 'while', 'try', 'catch', 'using', 'namespace', 'new', 'null', 'true', 'false'],
-  sql: ['select', 'from', 'where', 'join', 'left', 'right', 'inner', 'outer', 'on', 'insert', 'into', 'update', 'delete', 'group', 'order', 'by', 'limit', 'and', 'or', 'as'],
-}
-
-function codeKeywordsForLanguage(language: string): string[] {
-  const normalized = language.toLowerCase()
-  if (normalized.includes('typescript')) return LANGUAGE_KEYWORDS.typescript
-  if (normalized.includes('tsx')) return LANGUAGE_KEYWORDS.tsx
-  if (normalized.includes('javascript') || normalized === 'js') return LANGUAGE_KEYWORDS.javascript
-  if (normalized.includes('python') || normalized === 'py') return LANGUAGE_KEYWORDS.python
-  if (normalized.includes('java')) return LANGUAGE_KEYWORDS.java
-  if (normalized.includes('go')) return LANGUAGE_KEYWORDS.go
-  if (normalized.includes('csharp') || normalized.includes('c#') || normalized.includes('cs')) return LANGUAGE_KEYWORDS.csharp
-  if (normalized.includes('sql')) return LANGUAGE_KEYWORDS.sql
-  return LANGUAGE_KEYWORDS.typescript
-}
-
-function escapeRegexLiteral(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function buildSemanticPattern(keywords: string[]) {
-  const escapedKeywords = keywords.map(escapeRegexLiteral)
-  const keywordPart = escapedKeywords.length ? `\\b(?:${escapedKeywords.join('|')})\\b` : ''
-  const combined = [
-    '@[A-Za-z_][A-Za-z0-9_]*',
-    keywordPart,
-    '\\b\\d+(?:\\.\\d+)?\\b',
-    '\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()',
-    '\\b[A-Z][A-Za-z0-9_]*\\b',
-    '[{}()[\\].,;:+\\-*/%=&|!<>?]+',
-  ].filter(Boolean)
-  return new RegExp(`(${combined.join('|')})`, 'g')
-}
-
-function pushSemanticTokens(text: string, keywords: string[], out: { text: string; kind: CodeTokenKind }[]) {
-  if (!text) return
-  const semanticPattern = buildSemanticPattern(keywords)
-  const keywordSet = new Set(keywords.map((keyword) => keyword.toLowerCase()))
-  let index = 0
-  let match: RegExpExecArray | null
-  while ((match = semanticPattern.exec(text)) !== null) {
-    const start = match.index
-    if (start > index) out.push({ text: text.slice(index, start), kind: 'plain' })
-    const value = match[0]
-    const lower = value.toLowerCase()
-    let kind: CodeTokenKind = 'plain'
-    if (value.startsWith('@')) kind = 'annotation'
-    else if (keywordSet.has(lower)) kind = 'keyword'
-    else if (/^\d/.test(value)) kind = 'number'
-    else if (/^[{}()[\].,;:+\-*/%=&|!<>?]+$/.test(value)) kind = 'operator'
-    else if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
-      const trailing = text.slice(start + value.length)
-      if (/^\s*\(/.test(trailing)) kind = 'function'
-      else if (/^[A-Z]/.test(value)) kind = 'type'
-    }
-    out.push({ text: value, kind })
-    index = start + value.length
-  }
-  if (index < text.length) out.push({ text: text.slice(index), kind: 'plain' })
-}
-
-function tokenizeCodeLine(line: string, language: string): { text: string; kind: CodeTokenKind }[] {
-  const trimmed = line.trimStart()
-  if (trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('--')) {
-    return [{ text: line, kind: 'comment' }]
-  }
-
-  const keywords = codeKeywordsForLanguage(language)
-  const literalPattern = /("([^"\\]|\\.)*"|'([^'\\]|\\.)*'|`([^`\\]|\\.)*`|\b\d+(?:\.\d+)?\b|\/\/.*$|#.*$|--.*$)/g
-  const tokens: { text: string; kind: CodeTokenKind }[] = []
-  let index = 0
-  let match: RegExpExecArray | null
-
-  while ((match = literalPattern.exec(line)) !== null) {
-    const start = match.index
-    if (start > index) {
-      pushSemanticTokens(line.slice(index, start), keywords, tokens)
-    }
-    const value = match[0]
-    const kind: CodeTokenKind = value.startsWith('"') || value.startsWith("'") || value.startsWith('`')
-      ? 'string'
-      : value.startsWith('//') || value.startsWith('#') || value.startsWith('--')
-        ? 'comment'
-        : 'number'
-    tokens.push({ text: value, kind })
-    index = start + value.length
-    if (kind === 'comment') break
-  }
-
-  if (index < line.length) {
-    pushSemanticTokens(line.slice(index), keywords, tokens)
-  }
-  if (!tokens.length) tokens.push({ text: line, kind: 'plain' })
-  return tokens
-}
-
-function CodeSnippetCard({ snippet, index }: { snippet: CodeSnippet; index: number }) {
-  const code = String(snippet.code || '')
-  if (!code.trim()) return null
-
-  const onCopy = async () => {
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(code)
-        return
-      }
-      if (typeof document !== 'undefined') {
-        const probe = document.createElement('textarea')
-        probe.value = code
-        probe.setAttribute('readonly', '')
-        probe.style.position = 'absolute'
-        probe.style.left = '-9999px'
-        document.body.appendChild(probe)
-        probe.select()
-        document.execCommand('copy')
-        document.body.removeChild(probe)
-      }
-    } catch {
-      // Clipboard writes can fail in unsupported browsers or denied permissions.
-    }
-  }
-
-  const language = snippetLanguageLabel(snippet.language)
-  const filePath = String(snippet.file_path || '').trim()
-  const fileName = (filePath ? splitFilePath(filePath).fileName : String(snippet.title || `Snippet ${index + 1}`)).replace(/\s+preview$/i, '')
-  const codeLines = code.replace(/\r\n/g, '\n').split('\n')
-
-  return (
-    <div
-      key={`${snippet.title || 'snippet'}-${index}`}
-      style={{
-        borderRadius: 14,
-        border: '1px solid #262D31',
-        background: '#0B0F13',
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 12px', borderBottom: '1px solid #1F262B', background: '#10171D' }}>
-        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-          <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, fontWeight: 600, color: '#E6EDF3' }}>
-            {fileName}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCopy}
-          style={{
-            borderRadius: 10,
-            border: '1px solid rgba(255,255,255,0.22)',
-            background: 'transparent',
-            color: '#FFFFFF',
-            fontFamily: "'Gabarito', sans-serif",
-            fontSize: 11,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 8px',
-            cursor: 'pointer',
-          }}
-        >
-          <Copy size={12} color="#FFFFFF" />
-          Copy
-        </button>
-      </div>
-      {snippet.description && (
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: '#B8C5D0', lineHeight: 1.45, padding: '8px 12px 0' }}>
-          {snippet.description}
-        </p>
-      )}
-      <div
-        style={{
-          height: 220,
-          maxHeight: 220,
-          overflow: 'auto',
-          margin: 0,
-          padding: '12px 0',
-          background: 'radial-gradient(circle at top left, rgba(59, 66, 82, 0.14), rgba(13, 17, 23, 1) 58%)',
-          fontFamily: "'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
-          fontSize: 12,
-          lineHeight: 1.55,
-          color: '#E6EDF3',
-          whiteSpace: 'pre',
-        }}
-      >
-        {codeLines.map((line, lineIndex) => {
-          const lineNumber = lineIndex + 1
-          const tokens = tokenizeCodeLine(line, language)
-          return (
-            <div key={`${lineNumber}-${line.slice(0, 20)}`} style={{ display: 'grid', gridTemplateColumns: '44px minmax(0,1fr)', alignItems: 'start', paddingInline: 12 }}>
-              <span style={{ color: '#6D7B89', textAlign: 'right', paddingRight: 10, userSelect: 'none' }}>{lineNumber}</span>
-              <span>
-                {tokens.map((token, tokenIndex) => (
-                  <span key={`${lineNumber}-${tokenIndex}`} style={{ color: CODE_THEME_COLORS[token.kind] }}>{token.text}</span>
-                ))}
-                {line === '' ? '\u00A0' : ''}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function StructuredAssistantBody({ content, structured }: { content: string; structured: StructuredAnswer }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -875,6 +649,7 @@ function WorkspaceOverlayPanel({
   gitVisualization,
   gitVisualizationLoading,
   gitVisualizationError,
+  historyNode,
 }: WorkspaceOverlayProps & { panel: WorkspacePanelId }) {
   const referencedEntries = (entries.length ? entries : (chatSources as any[])).slice(0, 7)
   const shortRepo = repositoryName.includes('/') ? repositoryName.split('/').pop() ?? repositoryName : repositoryName
@@ -905,6 +680,8 @@ function WorkspaceOverlayPanel({
       </Link>
     </section>
   )
+
+  if (panel === 'history') return <>{historyNode}</>
 
   if (panel === 'focus') return (
     <section style={cardStyle}>
@@ -969,7 +746,7 @@ function WorkspaceOverlayPanel({
 
 // ─── Chat pane ────────────────────────────────────────────────────────────────
 
-function DashboardChatPane({ messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete }: DashboardChatPaneProps) {
+function DashboardChatPane({ repoId, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete }: DashboardChatPaneProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const assistantMessageRefs = useRef<Record<number, HTMLElement | null>>({})
 
@@ -1003,6 +780,16 @@ function DashboardChatPane({ messages, chatLoading, chatInput, setChatInput, noP
     if (streamingIndex === null) return
     scrollToAssistantStart(streamingIndex, 'smooth')
   }, [scrollToAssistantStart, streamingIndex])
+
+  const liveIndex = messages.length - 1
+  const liveMessage = messages[liveIndex]
+  const hasLiveAnswer = Boolean(liveMessage?.live)
+  const liveContentLength = liveMessage?.content.length ?? 0
+  const liveTraceLength = liveMessage?.trace?.length ?? 0
+  useEffect(() => {
+    if (!hasLiveAnswer) return
+    followAssistantStream(liveIndex)
+  }, [followAssistantStream, liveIndex, liveContentLength, liveTraceLength, hasLiveAnswer])
 
   return (
     <section className="db-chat-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: '#F4F4F5', borderRadius: 24, border: '1px solid #E7E7E9', overflow: 'hidden' }}>
@@ -1045,7 +832,16 @@ function DashboardChatPane({ messages, chatLoading, chatInput, setChatInput, noP
                   : { background: '#fff', color: '#181D1F', border: '1px solid #E7E7E9', boxShadow: '0 2px 8px rgba(24,29,31,0.06)' }
                 ),
               }}>
-                {useStreamingRenderer
+                {message.role === 'assistant' && (message.format === 'markdown' || message.structured?.format === 'markdown')
+                  ? (
+                    <>
+                      <AgentTrace steps={message.trace ?? message.structured?.trace ?? []} notes={message.notes} active={Boolean(message.live)} />
+                      {(message.content || !message.live) && (
+                        <MarkdownMessage content={message.content} streaming={Boolean(message.live)} repoId={repoId} prUrls={message.prUrls} />
+                      )}
+                    </>
+                  )
+                  : useStreamingRenderer
                   ? (
                     <StreamingText
                       content={message.content}
@@ -1066,7 +862,7 @@ function DashboardChatPane({ messages, chatLoading, chatInput, setChatInput, noP
           )
         })}
 
-        {chatLoading && (
+        {chatLoading && !hasLiveAnswer && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #E7E7E9', borderRadius: 9999, padding: '8px 14px', fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.55)', width: 'fit-content' }}>
             <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
             Thinking…
@@ -1243,6 +1039,7 @@ function DashboardWorkspaceV2(props: WorkspaceRenderProps) {
         <div className="db-workspace-grid" style={{ display: 'grid', gridTemplateColumns: '54px minmax(0,1fr)', gap: 12, height: '100%', minHeight: 0 }}>
           <WorkspaceIconRail activePanel={activePanel} onToggle={handlePanelToggle} />
           <DashboardChatPane
+            repoId={props.repoId}
             messages={props.messages}
             chatLoading={props.chatLoading}
             chatInput={props.chatInput}
@@ -1318,6 +1115,7 @@ function DashboardWorkspaceV2(props: WorkspaceRenderProps) {
                   gitVisualizationLoading={props.gitVisualizationLoading}
                   gitVisualizationError={props.gitVisualizationError}
                   onNavigate={closePanel}
+                  historyNode={props.renderHistory(closePanel)}
                 />
               </motion.aside>
             </>
@@ -1380,7 +1178,7 @@ export function DashboardPage() {
       const parsed = JSON.parse(raw) as { messages?: unknown; chatSources?: unknown; conversationId?: unknown }
       const persistedMessages = Array.isArray(parsed.messages)
         ? parsed.messages.filter((item): item is ChatEntry => Boolean(item) && typeof item === 'object' && (item as ChatEntry).role !== undefined && ((item as ChatEntry).role === 'assistant' || (item as ChatEntry).role === 'user') && typeof (item as ChatEntry).content === 'string')
-            .map((item) => ({ role: item.role, content: item.content, structured: item.structured && typeof item.structured === 'object' ? (item.structured as StructuredAnswer) : undefined }))
+            .map((item) => ({ role: item.role, content: item.content, structured: item.structured && typeof item.structured === 'object' ? (item.structured as StructuredAnswer) : undefined, format: item.format === 'markdown' ? 'markdown' as const : undefined, trace: Array.isArray(item.trace) ? item.trace : undefined, prUrls: item.prUrls && typeof item.prUrls === 'object' ? item.prUrls : undefined }))
         : []
       const persistedSources = Array.isArray(parsed.chatSources) ? parsed.chatSources : []
       const persistedConversationId = typeof parsed.conversationId === 'string' && parsed.conversationId.trim() ? parsed.conversationId.trim() : null
@@ -1422,41 +1220,175 @@ export function DashboardPage() {
     setStreamingIndex((current) => (current === index ? null : current))
   }, [])
 
+  const { getToken } = useAuth()
+  const streamAbortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => streamAbortRef.current?.abort(), [])
+
+  const updateLiveMessage = useCallback((updater: (message: ChatEntry) => ChatEntry) => {
+    setMessages((prev) => {
+      const index = prev.length - 1
+      if (index < 0 || !prev[index].live) return prev
+      const next = prev.slice()
+      next[index] = updater(prev[index])
+      return next
+    })
+  }, [])
+
+  const replaceLiveWith = useCallback((entry: ChatEntry, typewriter: boolean) => {
+    setMessages((prev) => {
+      const base = prev[prev.length - 1]?.live ? prev.slice(0, -1) : prev
+      const next = [...base, entry]
+      setStreamingIndex(typewriter ? next.length - 1 : null)
+      return next
+    })
+  }, [])
+
+  const sendWithLegacyEndpoint = async (trimmed: string, mode: ChatMode) => {
+    const data = (await queryChat(api, repoId as string, trimmed, mode, chatConversationId)) as ChatQueryResponse
+    const structured = data.answer_structured || null
+    replaceLiveWith({ role: 'assistant', content: data.answer || "I couldn't generate an answer.", structured }, !structured)
+    if (Array.isArray(data.sources)) setChatSources(data.sources)
+    else if (Array.isArray(data.context)) setChatSources(data.context)
+    else setChatSources([])
+    if (typeof data.conversation_id === 'string' && data.conversation_id.trim()) {
+      setChatConversationId(data.conversation_id.trim())
+    }
+  }
+
   const handleSend = async (input: string) => {
-    if (!repoId || !input.trim()) return
+    if (!repoId || !input.trim() || chatLoading) return
     const trimmed = input.trim()
     const mode = resolveChatMode(trimmed)
-    setMessages((prev) => [...prev, { role: 'user', content: trimmed }])
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: trimmed },
+      { role: 'assistant', content: '', format: 'markdown', trace: [], notes: [], live: true },
+    ])
     setChatInput('')
     setChatLoading(true)
     scrollToLatestMessage('smooth')
+
+    const controller = new AbortController()
+    streamAbortRef.current = controller
+    let receivedAnything = false
+    let legacyHandled = false
+
     try {
-      const data = (await queryChat(api, repoId, trimmed, mode, chatConversationId)) as ChatQueryResponse
-      const newAssistantMsg: ChatEntry = {
-        role: 'assistant',
-        content: data.answer || "I couldn't generate an answer.",
-        structured: data.answer_structured || null,
-      }
-      setMessages((prev) => {
-        const next = [...prev, newAssistantMsg]
-        if (newAssistantMsg.structured) setStreamingIndex(null)
-        else setStreamingIndex(next.length - 1)
-        return next
-      })
-      if (Array.isArray(data.sources)) setChatSources(data.sources)
-      else if (Array.isArray(data.context)) setChatSources(data.context)
-      else setChatSources([])
-      if (typeof data.conversation_id === 'string' && data.conversation_id.trim()) {
-        setChatConversationId(data.conversation_id.trim())
-      }
+      await streamChat(
+        { repoId, query: trimmed, mode, conversationId: chatConversationId, getToken, signal: controller.signal },
+        {
+          onMeta: (data) => {
+            receivedAnything = true
+            if (data.conversation?.id) setChatConversationId(data.conversation.id)
+          },
+          onStep: (step) => {
+            receivedAnything = true
+            updateLiveMessage((message) => {
+              const trace = message.trace ?? []
+              const existing = trace.findIndex((item) => item.id === step.id)
+              const nextTrace = existing >= 0 ? trace.map((item, i) => (i === existing ? step : item)) : [...trace, step]
+              return { ...message, trace: nextTrace }
+            })
+          },
+          onNote: (text) => {
+            updateLiveMessage((message) => ({ ...message, content: '', notes: [...(message.notes ?? []), text.trim()].filter(Boolean) }))
+          },
+          onToken: (text) => {
+            receivedAnything = true
+            updateLiveMessage((message) => ({ ...message, content: message.content + text }))
+          },
+          onLegacy: (data) => {
+            receivedAnything = true
+            legacyHandled = true
+            const legacy = data as unknown as ChatQueryResponse
+            const structured = legacy.answer_structured || null
+            replaceLiveWith({ role: 'assistant', content: legacy.answer || "I couldn't generate an answer.", structured }, !structured)
+            if (Array.isArray(legacy.sources)) setChatSources(legacy.sources)
+            if (typeof legacy.conversation_id === 'string' && legacy.conversation_id) setChatConversationId(legacy.conversation_id)
+          },
+          onDone: (data) => {
+            if (legacyHandled) return
+            const sources = Array.isArray(data.sources) ? (data.sources as ChatSource[]) : []
+            const prUrls: Record<number, string> = {}
+            for (const source of sources) {
+              const number = Number(source.pr_number)
+              if (number && typeof source.pr_url === 'string') prUrls[number] = source.pr_url
+            }
+            const finalAnswer = typeof data.answer === 'string' ? data.answer : null
+            updateLiveMessage((message) => ({
+              ...message,
+              content: finalAnswer ?? message.content,
+              trace: Array.isArray(data.trace) ? (data.trace as AgentTraceStep[]) : message.trace,
+              prUrls,
+              live: false,
+            }))
+            setChatSources(sources)
+            const conversation = data.conversation as { id?: string } | null
+            if (conversation?.id) setChatConversationId(conversation.id)
+          },
+          onError: (message) => {
+            updateLiveMessage((entry) => ({ ...entry, content: entry.content || message, live: false }))
+          },
+        }
+      )
+      // The stream ended without a terminal event: close the live bubble.
+      updateLiveMessage((message) => ({ ...message, live: false, content: message.content || 'The answer was interrupted. Please try again.' }))
     } catch {
-      setMessages((prev) => {
-        const next = [...prev, { role: 'assistant' as const, content: 'An error occurred while processing your query.' }]
-        setStreamingIndex(next.length - 1)
-        return next
-      })
-    } finally { setChatLoading(false) }
+      if (controller.signal.aborted) return
+      if (!receivedAnything) {
+        try {
+          await sendWithLegacyEndpoint(trimmed, mode)
+        } catch {
+          replaceLiveWith({ role: 'assistant', content: 'An error occurred while processing your query.' }, true)
+        }
+      } else {
+        updateLiveMessage((message) => ({ ...message, live: false, content: message.content || 'The connection dropped before the answer finished.' }))
+      }
+    } finally {
+      setChatLoading(false)
+      if (streamAbortRef.current === controller) streamAbortRef.current = null
+    }
   }
+
+  const startNewConversation = useCallback(() => {
+    streamAbortRef.current?.abort()
+    setMessages(defaultMessages(welcomeName))
+    setChatSources([])
+    setChatConversationId(null)
+    setStreamingIndex(null)
+  }, [welcomeName])
+
+  const openConversation = useCallback(async (conversationId: string) => {
+    try {
+      const { messages: rows } = await getConversation(api, conversationId)
+      const mapped: ChatEntry[] = rows
+        .filter((row) => row.role === 'user' || row.role === 'assistant')
+        .map((row) => {
+          const structured = (row.answer_structured ?? null) as StructuredAnswer | null
+          const prUrls: Record<number, string> = {}
+          for (const source of row.sources ?? []) {
+            const number = Number(source.pr_number)
+            if (number && typeof source.pr_url === 'string') prUrls[number] = source.pr_url
+          }
+          return {
+            role: row.role as 'user' | 'assistant',
+            content: row.content,
+            structured,
+            format: structured?.format === 'markdown' ? ('markdown' as const) : undefined,
+            trace: structured?.trace,
+            prUrls,
+          }
+        })
+      const lastAssistant = [...rows].reverse().find((row) => row.role === 'assistant')
+      setMessages(mapped.length ? mapped : defaultMessages(welcomeName))
+      setChatSources((lastAssistant?.sources ?? []) as ChatSource[])
+      setChatConversationId(conversationId)
+      setStreamingIndex(null)
+      scrollToLatestMessage('auto')
+    } catch {
+      // Keep the current conversation if the selected one cannot be loaded.
+    }
+  }, [api, welcomeName, scrollToLatestMessage])
 
   if (!repoId) {
     return (
@@ -1493,6 +1425,14 @@ export function DashboardPage() {
       gitVisualization={gitVisualizationData ?? null}
       gitVisualizationLoading={gitVisualizationLoading}
       gitVisualizationError={gitVisualizationError}
+      renderHistory={(close) => (
+        <ConversationHistory
+          repoId={repoId}
+          activeConversationId={chatConversationId}
+          onNew={() => { startNewConversation(); close() }}
+          onSelect={(id) => { void openConversation(id); close() }}
+        />
+      )}
     />
   )
 }
