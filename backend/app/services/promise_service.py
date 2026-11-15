@@ -117,7 +117,7 @@ def _confirm_with_ai(ai: AIService, pr_title: str, candidates: list[dict[str, An
         f"PR TITLE: {pr_title}\n"
         f"SENTENCES:\n{json.dumps([{'index': i, 'text': c['quote']} for i, c in enumerate(candidates)])}"
     )
-    raw = ai._call_gemini(prompt, temperature=0.0, max_output_tokens=800, response_mime_type="application/json")
+    raw = ai._call_gemini(prompt, temperature=0.0, max_output_tokens=2048, response_mime_type="application/json")
     parsed = ai._extract_json_object(raw)
     confirmed = []
     for item in parsed.get("promises") or []:
@@ -246,14 +246,16 @@ def resolve_promises(db: Session, repo_id: str, ai: AIService, *, max_ai_checks:
                     f"PROMISE: {promise['summary'] or promise['quote']}\n"
                     f"LATER PR #{pr['github_pr_number']}: {pr['title']}\nSUMMARY: {pr['summary']}\nINTENT: {pr['intent']}",
                     temperature=0.0,
-                    max_output_tokens=200,
+                    max_output_tokens=1024,
                     response_mime_type="application/json",
                 )
                 verdict = ai._extract_json_object(raw)
                 confirmed = bool(verdict.get("kept"))
                 note = str(verdict.get("reason") or note)[:300]
             except Exception:
-                logger.warning("Promise verification failed; using similarity only", exc_info=True)
+                # Without a verdict, only accept clearly strong matches.
+                confirmed = score >= threshold + 0.08
+                logger.warning("Promise verification failed; requiring a stronger similarity match", exc_info=True)
         if not confirmed:
             continue
         db.execute(

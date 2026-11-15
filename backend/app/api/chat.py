@@ -2116,3 +2116,53 @@ def chat_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+
+class FeedbackRequest(BaseModel):
+    rating: int = Field(ge=-1, le=1)
+    reason: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/messages/{message_id}/feedback")
+def chat_message_feedback(
+    message_id: str,
+    payload: FeedbackRequest,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Rate an assistant answer (1 helpful, -1 not helpful, 0 clears the rating)."""
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", message_id or ""):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    user_id = _ensure_user_id(db, current_user)
+    message = db.execute(
+        text(
+            """
+            SELECT id, repo_id FROM chat_messages
+            WHERE id = CAST(:id AS uuid) AND user_id = :user_id AND role = 'assistant'
+            """
+        ),
+        {"id": message_id, "user_id": user_id},
+    ).mappings().first()
+    if not message:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    if payload.rating == 0:
+        db.execute(
+            text("DELETE FROM chat_feedback WHERE message_id = CAST(:id AS uuid) AND user_id = :user_id"),
+            {"id": message_id, "user_id": user_id},
+        )
+    else:
+        db.execute(
+            text(
+                """
+                INSERT INTO chat_feedback (message_id, user_id, repo_id, rating, reason)
+                VALUES (CAST(:id AS uuid), :user_id, :repo_id, :rating, :reason)
+                ON CONFLICT (message_id, user_id)
+                DO UPDATE SET rating = EXCLUDED.rating, reason = EXCLUDED.reason, updated_at = NOW()
+                """
+            ),
+            {"id": message_id, "user_id": user_id, "repo_id": str(message["repo_id"]), "rating": payload.rating, "reason": payload.reason},
+        )
+    db.commit()
+    audit_log("chat.feedback", auth0_sub=current_user.sub, message_id=message_id, rating=payload.rating)
+    return {"status": "ok", "rating": payload.rating}

@@ -385,6 +385,42 @@ class GuardianIntegrationTests(unittest.TestCase):
         self.assertEqual((job["repo_full_name"], job["status"]), ("org/shop", "queued"))
         self.assertEqual(self.client.post("/api/guardian/sync").status_code, 401)
 
+    def test_answer_feedback_round_trip_and_summary(self):
+        from app.core.security import UserContext, get_current_user
+
+        s = self.session
+        conversation_id = s.execute(
+            text("INSERT INTO chat_conversations (user_id, repo_id, title) VALUES (:u, :r, 'Q') RETURNING id"),
+            {"u": self.user_id, "r": self.repo_id},
+        ).scalar()
+        message_id = str(
+            s.execute(
+                text(
+                    """
+                    INSERT INTO chat_messages (conversation_id, user_id, repo_id, role, content)
+                    VALUES (:c, :u, :r, 'assistant', 'Retries exist because of PR #42.') RETURNING id
+                    """
+                ),
+                {"c": conversation_id, "u": self.user_id, "r": self.repo_id},
+            ).scalar()
+        )
+        s.commit()
+        app.dependency_overrides[get_current_user] = lambda: UserContext(sub="uid-1", email="a@example.com")
+        try:
+            self.assertEqual(self.client.post(f"/api/chat/messages/{message_id}/feedback", json={"rating": 1}).status_code, 200)
+            self.assertEqual(
+                self.client.post(f"/api/chat/messages/{message_id}/feedback", json={"rating": -1, "reason": "Wrong PR"}).status_code, 200
+            )
+            summary = self.client.get(f"/api/insights/repositories/{self.repo_id}/quality").json()["feedback"]
+            self.assertEqual((summary["helpful"], summary["not_helpful"]), (0, 1))
+            self.assertEqual(summary["recent_not_helpful"][0]["reason"], "Wrong PR")
+            self.client.post(f"/api/chat/messages/{message_id}/feedback", json={"rating": 0})
+            self.assertEqual(self.client.get(f"/api/insights/repositories/{self.repo_id}/quality").json()["feedback"]["not_helpful"], 0)
+            app.dependency_overrides[get_current_user] = lambda: UserContext(sub="someone-else")
+            self.assertEqual(self.client.post(f"/api/chat/messages/{message_id}/feedback", json={"rating": 1}).status_code, 404)
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
     def test_tokens_are_stored_hashed(self):
         token = self._create_guardian_token()
         stored = self.session.execute(text("SELECT token_hash, token_prefix FROM kavi_tokens")).mappings().first()

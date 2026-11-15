@@ -68,7 +68,7 @@ def _generate_questions(ai: AIService, entries: list[dict[str, Any]]) -> list[di
             )
         )
         try:
-            raw = ai._call_gemini(prompt, temperature=0.4, max_output_tokens=1500, response_mime_type="application/json")
+            raw = ai._call_gemini(prompt, temperature=0.4, max_output_tokens=3000, response_mime_type="application/json")
             parsed = ai._extract_json_object(raw)
         except Exception:
             logger.warning("Question generation batch failed", exc_info=True)
@@ -92,6 +92,84 @@ def _template_questions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for e in entries
     ]
+
+
+FAITHFULNESS_SAMPLE = 10
+
+
+def _entry_records(db: Session, entry_ids: list[str]) -> list[dict[str, Any]]:
+    rows = db.execute(
+        text(
+            """
+            SELECT k.id, pr.github_pr_number, pr.title, k.intent, k.summary, k.decisions
+            FROM knowledge_entries k JOIN pull_requests pr ON pr.id = k.pr_id
+            WHERE k.id = ANY(CAST(:ids AS uuid[]))
+            """
+        ),
+        {"ids": entry_ids},
+    ).mappings().all()
+    order = {entry_id: index for index, entry_id in enumerate(entry_ids)}
+    return sorted(
+        (
+            {
+                "id": str(row["id"]),
+                "pr_number": row["github_pr_number"],
+                "title": row["title"],
+                "intent": (row["intent"] or "")[:500],
+                "summary": (row["summary"] or "")[:700],
+                "decisions": (row["decisions"] or [])[:5] if isinstance(row["decisions"], list) else [],
+            }
+            for row in rows
+        ),
+        key=lambda record: order.get(record["id"], 99),
+    )
+
+
+def judge_faithfulness(ai: AIService, question: str, records: list[dict[str, Any]], gold_pr: int | None) -> dict[str, Any]:
+    """Answer from retrieved records, then have a second call verify every cited claim."""
+    sources = [{k: v for k, v in record.items() if k != "id"} for record in records]
+    raw = ai._call_gemini(
+        "Answer the question using ONLY the pull-request records below, in 2-4 sentences. Break the answer into "
+        "atomic claims and cite the PR number(s) each claim relies on.\n"
+        'Return STRICT JSON: {"answer": "...", "claims": [{"text": "...", "pr_numbers": [1]}]}\n\n'
+        f"QUESTION: {question}\nRECORDS: {json.dumps(sources, default=str)}",
+        temperature=0.1,
+        max_output_tokens=2048,
+        response_mime_type="application/json",
+    )
+    answer = ai._extract_json_object(raw)
+    claims = [c for c in (answer.get("claims") or []) if isinstance(c, dict) and str(c.get("text") or "").strip()][:8]
+    if not claims:
+        return {"answer": str(answer.get("answer") or ""), "claims": [], "supported": 0, "total": 0, "cites_gold": False}
+    verdict_raw = ai._call_gemini(
+        "You are a strict fact checker. For each claim, decide whether the cited pull-request records explicitly "
+        "support it. A claim with no citations, or citing records that do not state it, is NOT supported.\n"
+        'Return STRICT JSON: {"verdicts": [{"index": 0, "supported": true}]}\n\n'
+        f"RECORDS: {json.dumps(sources, default=str)}\n"
+        f"CLAIMS: {json.dumps([{'index': i, 'text': c['text'], 'cites': c.get('pr_numbers') or []} for i, c in enumerate(claims)])}",
+        temperature=0.0,
+        max_output_tokens=2048,
+        response_mime_type="application/json",
+    )
+    verdicts = {
+        int(v.get("index")): bool(v.get("supported"))
+        for v in (ai._extract_json_object(verdict_raw).get("verdicts") or [])
+        if isinstance(v, dict) and str(v.get("index", "")).lstrip("-").isdigit()
+    }
+    known_numbers = {record["pr_number"] for record in records}
+    judged = []
+    for index, claim in enumerate(claims):
+        cites = [n for n in (claim.get("pr_numbers") or []) if isinstance(n, int)]
+        supported = verdicts.get(index, False) and bool(cites) and all(n in known_numbers for n in cites)
+        judged.append({"text": str(claim["text"])[:300], "cites": cites, "supported": supported})
+    cited = {n for claim in judged for n in claim["cites"]}
+    return {
+        "answer": str(answer.get("answer") or "")[:800],
+        "claims": judged,
+        "supported": sum(1 for claim in judged if claim["supported"]),
+        "total": len(judged),
+        "cites_gold": bool(gold_pr and gold_pr in cited),
+    }
 
 
 def run_evaluation(db: Session, repo_id: str, run_id: str) -> None:
@@ -125,8 +203,35 @@ def run_evaluation(db: Session, repo_id: str, run_id: str) -> None:
                             hits[strategy][k] += 1
             cases.append({**case, "ranks": ranks})
 
+        faithfulness = None
+        if ai._can_use_gemini():
+            supported = claims = answered = cites_gold = 0
+            for case in cases[:FAITHFULNESS_SAMPLE]:
+                payload = ChatQuery(repo_id=repo_id, query=case["question"], limit=5)
+                top_ids = [str(row["id"]) for row in _fetch_candidate_entries(db, payload, strategy="hybrid")[:5]]
+                if not top_ids:
+                    continue
+                try:
+                    result = judge_faithfulness(ai, case["question"], _entry_records(db, top_ids), case.get("pr_number"))
+                except Exception:
+                    logger.warning("Faithfulness check failed for one question", exc_info=True)
+                    continue
+                case["faithfulness"] = result
+                answered += 1
+                supported += result["supported"]
+                claims += result["total"]
+                cites_gold += 1 if result["cites_gold"] else 0
+            if answered:
+                faithfulness = {
+                    "answers": answered,
+                    "claims": claims,
+                    "supported_rate": round(supported / claims, 3) if claims else None,
+                    "cites_gold_rate": round(cites_gold / answered, 3),
+                }
+
         total = max(1, len(cases))
         metrics = {
+            "faithfulness": faithfulness,
             "question_count": len(cases),
             "question_source": cases[0]["source"] if cases else None,
             "duration_seconds": round(time.time() - started, 1),

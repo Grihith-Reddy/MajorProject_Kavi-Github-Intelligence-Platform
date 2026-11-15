@@ -171,7 +171,7 @@ def _judge_with_ai(pr: dict[str, Any], candidates: list[dict[str, Any]], promise
         f"OPEN_PROMISES:\n{json.dumps([{'promise': p.get('summary') or p.get('quote'), 'made_in_pr': p.get('github_pr_number')} for p in promises], default=str)}"
     )
     try:
-        raw = ai._call_gemini(prompt, temperature=0.1, max_output_tokens=1400, response_mime_type="application/json")
+        raw = ai._call_gemini(prompt, temperature=0.1, max_output_tokens=2560, response_mime_type="application/json")
         parsed = ai._extract_json_object(raw)
     except Exception:
         logger.warning("Guardian AI judgement failed; using history-only review", exc_info=True)
