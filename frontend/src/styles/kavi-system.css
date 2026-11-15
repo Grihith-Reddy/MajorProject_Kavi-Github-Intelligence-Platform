@@ -1,0 +1,300 @@
+@import url('https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap');
+
+/*
+ * KAVI design system: one visual language for every surface.
+ * Tokens mirror the existing light UI (ink #181D1F, mist #F4F4F5, hairline #E7E7E9,
+ * Archivo for reading, Gabarito for labels, pastel cards, pill controls, spring motion).
+ */
+
+:root {
+  --kv-ink: #181d1f;
+  --kv-ink-2: #424647;
+  --kv-ink-3: rgba(24, 29, 31, 0.55);
+  --kv-ink-4: rgba(24, 29, 31, 0.4);
+  --kv-line: #e7e7e9;
+  --kv-line-strong: rgba(24, 29, 31, 0.16);
+  --kv-surface: #ffffff;
+  --kv-mist: #f4f4f5;
+  --kv-mist-2: #f9f9fa;
+  --kv-sky-1: #15aeea;
+  --kv-sky-2: #73cef2;
+  --kv-sky-ink: #037bb5;
+  --kv-sand: #eae4dc;
+  --kv-lilac: #d7cef0;
+  --kv-peach: #fddbce;
+  --kv-ice: #dbe5f0;
+  --kv-sage: #e4eed2;
+  --kv-mint: #dceeef;
+  --kv-ok-ink: #2d4a1a;
+  --kv-warn-bg: #fdf1d8;
+  --kv-warn-ink: #7a4b06;
+  --kv-danger-bg: #fde8e3;
+  --kv-danger-ink: #9b3a26;
+  --kv-font-read: 'Archivo', sans-serif;
+  --kv-font-label: 'Gabarito', sans-serif;
+  --kv-font-mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+  --kv-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --kv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Shared primitives ────────────────────────────────────────────────── */
+
+.kv-eyebrow {
+  font-family: var(--kv-font-label);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--kv-ink-4);
+}
+
+.kv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--kv-font-label);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--kv-ink-3);
+  border: 1px solid var(--kv-line);
+  border-radius: 9999px;
+  padding: 3px 10px;
+  background: var(--kv-surface);
+  white-space: nowrap;
+}
+
+.kv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9999px;
+  padding: 11px 20px;
+  font-family: var(--kv-font-read);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.2s var(--kv-spring), opacity 0.15s ease;
+}
+.kv-btn:hover:not(:disabled) { transform: scale(1.02); }
+.kv-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.kv-btn-dark { background: var(--kv-ink); color: #fff; }
+.kv-btn-dark:hover:not(:disabled) { background: #2d3748; }
+.kv-btn-soft { background: var(--kv-mist); color: var(--kv-ink); border: 1px solid var(--kv-line); }
+.kv-btn-soft:hover:not(:disabled) { background: #ececee; }
+.kv-btn-sm { padding: 7px 14px; font-size: 13px; }
+
+/* ── Citation chips ───────────────────────────────────────────────────── */
+
+.kv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: baseline;
+  margin: 0 1px;
+  padding: 1px 8px 1px 7px;
+  border-radius: 9999px;
+  border: 1px solid var(--kv-line);
+  background: var(--kv-mist-2);
+  font-family: var(--kv-font-label);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--kv-ink);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  max-width: 100%;
+}
+a.kv-chip:hover {
+  background: var(--kv-ink);
+  border-color: var(--kv-ink);
+  color: #fff;
+}
+.kv-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.kv-chip-range { color: var(--kv-ink-3); font-variant-numeric: tabular-nums; }
+a.kv-chip:hover .kv-chip-range { color: rgba(255, 255, 255, 0.7); }
+
+/* ── Markdown answers ─────────────────────────────────────────────────── */
+
+.kv-md { display: flex; flex-direction: column; gap: 10px; font-family: var(--kv-font-read); font-size: 14px; line-height: 1.65; color: var(--kv-ink); }
+.kv-md-p { margin: 0; }
+.kv-md-h { margin: 6px 0 -2px; font-weight: 600; letter-spacing: -0.01em; color: var(--kv-ink); }
+.kv-md-h1, .kv-md-h2 { font-size: 16px; }
+.kv-md-h3, .kv-md-h4 { font-size: 14px; }
+.kv-md-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; counter-reset: kv-ol; }
+.kv-md-list li { position: relative; padding-left: 18px; }
+.kv-md-list:not(.is-ordered) li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0.68em;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--kv-ink);
+  opacity: 0.55;
+}
+.kv-md-list.is-ordered li { counter-increment: kv-ol; padding-left: 24px; }
+.kv-md-list.is-ordered li::before {
+  content: counter(kv-ol);
+  position: absolute;
+  left: 0;
+  top: 0.18em;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9999px;
+  background: var(--kv-mist);
+  border: 1px solid var(--kv-line);
+  font-family: var(--kv-font-label);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  text-align: center;
+  color: var(--kv-ink-2);
+}
+.kv-md-quote {
+  margin: 0;
+  padding: 8px 14px;
+  border-left: 3px solid var(--kv-sky-2);
+  background: var(--kv-mist-2);
+  border-radius: 0 12px 12px 0;
+  color: var(--kv-ink-2);
+}
+.kv-md strong { font-weight: 600; }
+.kv-inline-code {
+  font-family: var(--kv-font-mono);
+  font-size: 12.5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--kv-mist);
+  border: 1px solid var(--kv-line);
+}
+.kv-link { color: var(--kv-sky-ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(3, 123, 181, 0.35); }
+.kv-md-table-wrap { overflow-x: auto; border: 1px solid var(--kv-line); border-radius: 14px; }
+.kv-md-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kv-md-table th {
+  text-align: left;
+  font-family: var(--kv-font-label);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kv-ink-3);
+  background: var(--kv-mist-2);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--kv-line);
+}
+.kv-md-table td { padding: 8px 12px; border-bottom: 1px solid var(--kv-line); vertical-align: top; }
+.kv-md-table tr:last-child td { border-bottom: none; }
+
+.kv-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--kv-ink);
+  animation: kv-caret-blink 0.9s steps(2, start) infinite;
+}
+@keyframes kv-caret-blink { to { visibility: hidden; } }
+
+/* ── Agent trace ──────────────────────────────────────────────────────── */
+
+.kv-trace { margin-bottom: 10px; }
+.kv-trace-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 5px 10px 5px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--kv-line);
+  background: var(--kv-mist-2);
+  cursor: pointer;
+  font-family: var(--kv-font-label);
+  font-size: 12px;
+  color: var(--kv-ink-2);
+  transition: border-color 0.15s ease;
+}
+.kv-trace-toggle:hover { border-color: var(--kv-line-strong); }
+.kv-trace-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv-trace-pulse { position: relative; width: 8px; height: 8px; border-radius: 9999px; background: var(--kv-ink); opacity: 0.35; flex-shrink: 0; }
+.kv-trace-pulse.is-active { opacity: 1; background: var(--kv-sky-1); }
+.kv-trace-pulse.is-active::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--kv-sky-1);
+  animation: kv-pulse 1.4s var(--kv-ease-out) infinite;
+}
+@keyframes kv-pulse { from { transform: scale(0.6); opacity: 0.9; } to { transform: scale(1.6); opacity: 0; } }
+.kv-trace-icons { display: inline-flex; gap: 4px; color: var(--kv-ink-4); }
+.kv-trace-chevron { display: inline-flex; color: var(--kv-ink-4); }
+.kv-trace-list {
+  margin: 8px 0 0;
+  padding: 2px 0 2px 4px;
+  list-style: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kv-trace-step { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 4px 0; }
+.kv-trace-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 26px;
+  bottom: -6px;
+  width: 1px;
+  background: var(--kv-line);
+}
+.kv-trace-icon {
+  flex-shrink: 0;
+  width: 21px;
+  height: 21px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--kv-line);
+  background: var(--kv-surface);
+  color: var(--kv-ink-3);
+}
+.kv-trace-step.is-done .kv-trace-icon { background: var(--kv-ink); border-color: var(--kv-ink); color: #fff; }
+.kv-trace-step.is-error .kv-trace-icon { background: var(--kv-danger-bg); border-color: rgba(155, 58, 38, 0.2); color: var(--kv-danger-ink); }
+.kv-trace-step.is-running .kv-trace-icon { border-color: var(--kv-sky-1); color: var(--kv-sky-ink); animation: kv-breathe 1.2s ease-in-out infinite; }
+@keyframes kv-breathe { 50% { box-shadow: 0 0 0 4px rgba(21, 174, 234, 0.14); } }
+.kv-trace-text { display: flex; flex-direction: column; min-width: 0; padding-top: 1px; }
+.kv-trace-label { font-family: var(--kv-font-read); font-size: 13px; color: var(--kv-ink); overflow-wrap: anywhere; }
+.kv-trace-summary { font-family: var(--kv-font-label); font-size: 12px; color: var(--kv-ink-3); }
+.kv-trace-note { margin: 4px 0 2px 31px; font-family: var(--kv-font-read); font-size: 12.5px; line-height: 1.5; color: var(--kv-ink-3); font-style: italic; }
+
+/* ── Conversation history ─────────────────────────────────────────────── */
+
+.kv-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  border-radius: 16px;
+  border: 1px solid var(--kv-line);
+  background: var(--kv-mist-2);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.2s var(--kv-spring);
+}
+.kv-history-item:hover { border-color: var(--kv-line-strong); background: var(--kv-surface); transform: translateX(2px); }
+.kv-history-item.is-active { background: var(--kv-ink); border-color: var(--kv-ink); }
+.kv-history-item.is-active .kv-history-title { color: #fff; }
+.kv-history-item.is-active .kv-history-meta { color: rgba(255, 255, 255, 0.6); }
+.kv-history-title { font-family: var(--kv-font-read); font-size: 13px; font-weight: 600; color: var(--kv-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv-history-meta { font-family: var(--kv-font-label); font-size: 12px; color: var(--kv-ink-4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .kv-caret, .kv-trace-pulse.is-active::after, .kv-trace-step.is-running .kv-trace-icon { animation: none; }
+}
