@@ -8,6 +8,7 @@ import { useAuth } from '../features/auth/useAuth'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/repositories', label: 'Repositories' },
+  { to: '/why', label: 'Why-Lens' },
   { to: '/timeline', label: 'Timeline' },
   { to: '/settings', label: 'Settings' },
 ]
@@ -48,7 +49,7 @@ export function TopNav() {
 
   const resolveNavTarget = (path: string) => {
     if (!activeRepoId) return path
-    if (path === '/dashboard' || path === '/timeline') {
+    if (path === '/dashboard' || path === '/timeline' || path === '/why') {
       return `${path}?repoId=${encodeURIComponent(activeRepoId)}`
     }
     return path
