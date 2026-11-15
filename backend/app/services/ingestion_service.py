@@ -13,6 +13,7 @@ from app.core.access import grant_repository_access
 from app.core.audit import audit_log
 from app.core.settings import settings
 from app.services.ai_service import AIService
+from app.services.embedding_service import backfill_repo_embeddings
 from app.services.github_service import GitHubService, parse_github_datetime
 
 
@@ -476,7 +477,12 @@ ProgressCallback = Callable[[dict[str, Any]], None]
 
 def run_post_sync_enrichment(db: Session, repo_id: str, ai_service: AIService, results: dict[str, Any]) -> None:
     """Repository-level enrichment that runs after PR ingestion (best-effort)."""
-    return None
+    try:
+        results["embeddings"] = backfill_repo_embeddings(db, repo_id)
+    except Exception as exc:
+        db.rollback()
+        logger.warning("Embedding backfill failed for repo %s: %s", repo_id, exc)
+        results["embeddings"] = {"error": str(exc)[:200]}
 
 
 def sync_repository(

@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "gemini"
     AI_MODEL: str = "gemini-1.5-flash"
     AI_API_KEY: str | None = None
+    EMBEDDING_MODEL: str = "gemini-embedding-001"
+    EMBEDDING_DIMENSIONS: int = 768
 
     GITHUB_API_BASE: str = "https://api.github.com"
     GITHUB_OAUTH_BASE: str = "https://github.com/login/oauth"
