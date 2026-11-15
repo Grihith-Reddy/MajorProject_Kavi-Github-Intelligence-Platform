@@ -5,6 +5,7 @@ import { useAuth } from '../features/auth/useAuth'
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { verifyAuth } from '../services/authService'
+import { IntegrationsSection } from '../features/integrations/IntegrationsSection'
 
 const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid #E7E7E9', background: '#F4F4F5', padding: '24px 28px' }
 const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid #E7E7E9', background: '#fff', padding: '16px 18px' }
@@ -125,7 +126,7 @@ export function SettingsPage() {
             >
               <p style={{ ...EYEBROW }}>About</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[['Product', 'Kavi'], ['Version', '1.0'], ['Access', 'Read-only GitHub']].map(([label, value]) => (
+                {[['Product', 'Kavi'], ['Version', '2.0'], ['Access', 'Read-only GitHub']].map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.45)' }}>{label}</span>
                     <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>{value}</span>
@@ -135,6 +136,8 @@ export function SettingsPage() {
             </motion.section>
           </aside>
         </div>
+
+        <IntegrationsSection />
       </div>
     </>
   )

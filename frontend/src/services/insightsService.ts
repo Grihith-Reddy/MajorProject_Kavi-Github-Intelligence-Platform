@@ -54,3 +54,39 @@ export const getWhyLens = async (api: AxiosInstance, repoId: string, path: strin
   const { data } = await api.get(`/insights/repositories/${repoId}/why`, { params: { path } })
   return data as WhyLensResponse
 }
+
+export interface PersonalToken {
+  id: string
+  scope: 'guardian' | 'mcp'
+  repo_id?: string | null
+  repo_full_name?: string | null
+  label?: string | null
+  token_prefix: string
+  last_used_at?: string | null
+  created_at?: string | null
+  token?: string
+}
+
+export const listTokens = async (api: AxiosInstance) => {
+  const { data } = await api.get('/insights/tokens')
+  return (data?.tokens ?? []) as PersonalToken[]
+}
+
+export const createToken = async (api: AxiosInstance, scope: 'guardian' | 'mcp', repoId?: string | null, label?: string) => {
+  const { data } = await api.post('/insights/tokens', { scope, repo_id: repoId ?? null, label })
+  return data.token as PersonalToken
+}
+
+export const revokeToken = async (api: AxiosInstance, tokenId: string) => {
+  await api.post(`/insights/tokens/${tokenId}/revoke`)
+}
+
+export const getGuardianWorkflow = async (api: AxiosInstance) => {
+  const { data } = await api.get('/guardian/workflow', { responseType: 'text', transformResponse: (value) => value })
+  return String(data)
+}
+
+export const apiOrigin = (): string => {
+  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+  return base.replace(/\/api\/?$/, '')
+}
