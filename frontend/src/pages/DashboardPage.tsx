@@ -1131,7 +1131,7 @@ function DashboardWorkspaceV2(props: WorkspaceRenderProps) {
 export function DashboardPage() {
   const api = useApiClient()
   const { user } = useAuth()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryRepoId = searchParams.get('repoId')
   const [storedRepoId, setStoredRepoId] = useState<string | null>(() => readStoredRepoId())
   const repoId = queryRepoId || storedRepoId
@@ -1349,6 +1349,21 @@ export function DashboardPage() {
       if (streamAbortRef.current === controller) streamAbortRef.current = null
     }
   }
+
+  // Questions handed over from other pages (e.g. Why-Lens) via ?ask=
+  const pendingAsk = searchParams.get('ask')
+  const askHandledRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pendingAsk || !chatHydrated || !repoId || chatLoading) return
+    if (askHandledRef.current === pendingAsk) return
+    askHandledRef.current = pendingAsk
+    const next = new URLSearchParams(searchParams)
+    next.delete('ask')
+    setSearchParams(next, { replace: true })
+    void handleSend(pendingAsk)
+    // handleSend is recreated every render; the ref guard keeps this one-shot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAsk, chatHydrated, repoId])
 
   const startNewConversation = useCallback(() => {
     streamAbortRef.current?.abort()

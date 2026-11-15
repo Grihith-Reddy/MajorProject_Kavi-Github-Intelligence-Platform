@@ -19,6 +19,7 @@ const FileDetailPage = lazy(() => import('../pages/FileDetailPage').then((module
 const KnowledgeTimelinePage = lazy(() =>
   import('../pages/KnowledgeTimelinePage').then((module) => ({ default: module.KnowledgeTimelinePage }))
 )
+const WhyLensPage = lazy(() => import('../pages/WhyLensPage').then((module) => ({ default: module.WhyLensPage })))
 const SettingsPage = lazy(() => import('../pages/SettingsPage').then((module) => ({ default: module.SettingsPage })))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 
@@ -113,6 +114,14 @@ export default function App() {
                   element={
                     <PageTransition>
                       <KnowledgeTimelinePage />
+                    </PageTransition>
+                  }
+                />
+                <Route
+                  path="/why"
+                  element={
+                    <PageTransition>
+                      <WhyLensPage />
                     </PageTransition>
                   }
                 />

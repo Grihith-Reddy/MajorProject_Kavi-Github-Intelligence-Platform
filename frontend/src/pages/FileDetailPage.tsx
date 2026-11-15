@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { FileCode2, GitPullRequest } from 'lucide-react'
+import { FileCode2, GitPullRequest, ScanLine } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { useAsync } from '../hooks/useAsync'
@@ -74,6 +74,13 @@ export function FileDetailPage() {
                 {fileName}
               </h1>
               <p style={{ fontFamily: 'monospace', fontSize: 12, color: 'rgba(24,29,31,0.5)', marginTop: 6, wordBreak: 'break-all' }}>{filePath}</p>
+              <Link
+                to={`/why?repoId=${encodeURIComponent(repoId ?? '')}&path=${encodeURIComponent(filePath)}`}
+                className="kv-btn kv-btn-dark kv-btn-sm"
+                style={{ marginTop: 16 }}
+              >
+                <ScanLine size={14} /> Open in Why-Lens
+              </Link>
             </div>
           </div>
         </motion.section>
