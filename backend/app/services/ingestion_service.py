@@ -14,6 +14,7 @@ from app.core.audit import audit_log
 from app.core.settings import settings
 from app.services.ai_service import AIService
 from app.services.embedding_service import backfill_repo_embeddings
+from app.services.promise_service import extract_promises, resolve_promises
 from app.services.github_service import GitHubService, parse_github_datetime
 
 
@@ -483,6 +484,11 @@ def run_post_sync_enrichment(db: Session, repo_id: str, ai_service: AIService, r
         db.rollback()
         logger.warning("Embedding backfill failed for repo %s: %s", repo_id, exc)
         results["embeddings"] = {"error": str(exc)[:200]}
+    try:
+        results["promises"] = resolve_promises(db, repo_id, ai_service)
+    except Exception as exc:
+        db.rollback()
+        logger.warning("Promise resolution failed for repo %s: %s", repo_id, exc)
 
 
 def sync_repository(
@@ -589,6 +595,25 @@ def sync_repository(
                 db.rollback()
                 logger.warning("Failed to enrich PR %s: %s", pr_number, exc)
                 results["errors"].append({"pr": pr_number, "error": f"enrichment_failed: {str(exc)}"})
+
+            # Promise extraction is optional enrichment: isolated so it can never
+            # undo the PR or its knowledge entry.
+            try:
+                found = extract_promises(
+                    db,
+                    repo_id=repo_id,
+                    pr_id=pr_id,
+                    pr_detail=pr_detail,
+                    comments=comments,
+                    reviews=reviews,
+                    commits=commits,
+                    ai=ai_service,
+                )
+                db.commit()
+                results["promises_found"] = results.get("promises_found", 0) + found
+            except Exception as exc:
+                db.rollback()
+                logger.warning("Promise extraction failed for PR %s: %s", pr_number, exc)
         except HTTPException as exc:
             db.rollback()
             logger.warning("Failed to ingest PR %s: %s", pr_number, exc.detail)

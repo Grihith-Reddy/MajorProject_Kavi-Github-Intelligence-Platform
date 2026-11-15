@@ -1,9 +1,12 @@
 """KAVI 2.0 insight endpoints: Why-Lens, repository tree, and (later) promises, graph and quality."""
 
+import re
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.access import assert_repo_access, require_github_account, require_user_id
@@ -111,3 +114,89 @@ def revoke_personal_token(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
     audit_log("token.revoked", user_id=user_id, token_id=token_id)
     return {"status": "revoked"}
+
+
+# ── Promise Tracker ──────────────────────────────────────────────────────────
+
+
+@router.get("/repositories/{repo_id}/promises")
+def repository_promises(
+    repo_id: str,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    assert_repo_access(db, repo_id, current_user.sub)
+    rows = db.execute(
+        text(
+            """
+            SELECT p.id, p.quote, p.summary, p.kind, p.source, p.source_url, p.status, p.author_login,
+                   p.made_at, p.resolution_note, p.resolution_confidence, p.updated_at,
+                   pr.github_pr_number, pr.title AS pr_title, pr.url AS pr_url,
+                   rp.github_pr_number AS resolved_pr_number, rp.title AS resolved_pr_title,
+                   rp.url AS resolved_pr_url, rp.merged_at AS resolved_at
+            FROM pr_promises p
+            JOIN pull_requests pr ON pr.id = p.pr_id
+            LEFT JOIN pull_requests rp ON rp.id = p.resolved_pr_id
+            WHERE p.repo_id = :repo_id
+            ORDER BY p.made_at ASC NULLS LAST
+            LIMIT 500
+            """
+        ),
+        {"repo_id": repo_id},
+    ).mappings().all()
+    promises = [dict(row) for row in rows]
+    now = datetime.now(timezone.utc)
+    open_ages = [
+        (now - row["made_at"]).days for row in promises if row["status"] == "open" and row.get("made_at")
+    ]
+    kept_lags = [
+        (row["resolved_at"] - row["made_at"]).days
+        for row in promises
+        if row["status"] == "kept" and row.get("resolved_at") and row.get("made_at")
+    ]
+    stats = {
+        "total": len(promises),
+        "open": sum(1 for row in promises if row["status"] == "open"),
+        "kept": sum(1 for row in promises if row["status"] == "kept"),
+        "dismissed": sum(1 for row in promises if row["status"] == "dismissed"),
+        "oldest_open_days": max(open_ages) if open_ages else None,
+        "median_open_days": sorted(open_ages)[len(open_ages) // 2] if open_ages else None,
+        "median_days_to_keep": sorted(kept_lags)[len(kept_lags) // 2] if kept_lags else None,
+    }
+    audit_log("insights.promises.viewed", auth0_sub=current_user.sub, repo_id=repo_id, count=len(promises))
+    return {"stats": stats, "promises": promises}
+
+
+class PromiseStatusRequest(BaseModel):
+    status: str = Field(pattern=r"^(open|kept|dismissed)$")
+
+
+@router.post("/promises/{promise_id}/status")
+def update_promise_status(
+    promise_id: str,
+    payload: PromiseStatusRequest,
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", promise_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promise not found")
+    row = db.execute(
+        text("SELECT repo_id FROM pr_promises WHERE id = CAST(:id AS uuid)"), {"id": promise_id}
+    ).mappings().first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promise not found")
+    assert_repo_access(db, str(row["repo_id"]), current_user.sub)
+    db.execute(
+        text(
+            """
+            UPDATE pr_promises
+            SET status = :status, updated_at = NOW(),
+                resolution_note = CASE WHEN :status = 'open' THEN NULL ELSE COALESCE(resolution_note, 'Marked manually') END,
+                resolved_pr_id = CASE WHEN :status = 'open' THEN NULL ELSE resolved_pr_id END
+            WHERE id = CAST(:id AS uuid)
+            """
+        ),
+        {"status": payload.status, "id": promise_id},
+    )
+    db.commit()
+    return {"status": payload.status}
