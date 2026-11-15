@@ -155,6 +155,64 @@ class GuardianIntegrationTests(unittest.TestCase):
             401,
         )
 
+    def test_promise_is_marked_kept_by_a_later_pr(self):
+        from app.services import embedding_service, promise_service
+        from app.services.ai_service import AIService
+        from app.services.embedding_service import LOCAL_MODEL, local_embedding
+
+        s = self.session
+        early_pr = s.execute(text("SELECT id FROM pull_requests WHERE github_pr_number = 42")).scalar()
+        s.execute(
+            text(
+                """
+                INSERT INTO pr_promises (repo_id, pr_id, signature, quote, kind, source, made_at)
+                VALUES (:r, :p, 'sig1', 'I will add a retention policy for the webhook ledger table in a follow-up', 'follow_up', 'comment', NOW() - INTERVAL '29 days')
+                """
+            ),
+            {"r": self.repo_id, "p": early_pr},
+        )
+        later_pr = s.execute(
+            text(
+                """
+                INSERT INTO pull_requests (repo_id, github_pr_id, github_pr_number, title, state, merged_at)
+                VALUES (:r, 101, 51, 'Add retention policy for webhook ledger', 'closed', NOW() - INTERVAL '5 days') RETURNING id
+                """
+            ),
+            {"r": self.repo_id},
+        ).scalar()
+        summary = "Adds a retention policy that deletes webhook ledger rows older than 90 days."
+        s.execute(
+            text(
+                """
+                INSERT INTO knowledge_entries (repo_id, pr_id, summary, intent, embedding, embedding_model)
+                VALUES (:r, :p, :s, 'Keep the webhook ledger table small with a retention policy.', CAST(:e AS real[]), :m)
+                """
+            ),
+            {
+                "r": self.repo_id,
+                "p": later_pr,
+                "s": summary,
+                "e": local_embedding("PR #51: Add retention policy for webhook ledger\n" + summary),
+                "m": LOCAL_MODEL,
+            },
+        )
+        s.commit()
+
+        from unittest.mock import patch as _patch
+
+        with _patch.object(promise_service, "preferred_model", return_value=LOCAL_MODEL), _patch.object(
+            embedding_service, "preferred_model", return_value=LOCAL_MODEL
+        ), _patch.object(AIService, "_can_use_gemini", return_value=False):
+            result = promise_service.resolve_promises(s, self.repo_id, AIService())
+
+        self.assertEqual(result["newly_kept"], 1)
+        row = s.execute(
+            text(
+                "SELECT p.status, pr.github_pr_number FROM pr_promises p JOIN pull_requests pr ON pr.id = p.resolved_pr_id WHERE p.signature = 'sig1'"
+            )
+        ).mappings().one()
+        self.assertEqual((row["status"], row["github_pr_number"]), ("kept", 51))
+
     def test_tokens_are_stored_hashed(self):
         token = self._create_guardian_token()
         stored = self.session.execute(text("SELECT token_hash, token_prefix FROM kavi_tokens")).mappings().first()
