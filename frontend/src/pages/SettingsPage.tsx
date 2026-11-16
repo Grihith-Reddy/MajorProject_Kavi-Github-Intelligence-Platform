@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { LogOut, Mail, User, Zap } from 'lucide-react'
+import { LogOut, Mail, User } from 'lucide-react'
 
 import { useAuth } from '../features/auth/useAuth'
 import { useAsync } from '../hooks/useAsync'
@@ -7,6 +7,7 @@ import { useApiClient } from '../services/apiClient'
 import { verifyAuth } from '../services/authService'
 import { IntegrationsSection } from '../features/integrations/IntegrationsSection'
 import { AppearanceCard } from '../features/theme/AppearanceCard'
+import { KaviMark } from '../components/KaviMark'
 
 const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', padding: '24px 28px' }
 const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '16px 18px' }
@@ -60,8 +61,8 @@ export function SettingsPage() {
           >
             {/* Profile header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid var(--kv-line)' }}>
-              <div style={{ width: 48, height: 48, background: 'var(--kv-solid)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Zap size={20} color="var(--kv-on-solid)" strokeWidth={1.5} />
+              <div style={{ width: 48, height: 48, background: 'var(--kv-mist)', border: '1px solid var(--kv-line)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--kv-ink)' }}>
+                <KaviMark size={24} />
               </div>
               <div>
                 <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 16, fontWeight: 600, color: 'var(--kv-ink)' }}>{user?.name ?? 'Developer'}</p>

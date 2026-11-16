@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { motion } from 'framer-motion'
-import { Github, Shield, Link2, ArrowRight, Zap, MoveRight } from 'lucide-react'
+import { Github, Shield, Link2, ArrowRight, MoveRight } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -8,6 +8,7 @@ import { useApiClient } from '../services/apiClient'
 import { getGitHubConnectUrl } from '../services/githubService'
 import { getApiErrorMessage } from '../utils/errors'
 import cloudImg from '../assets/cloud.webp'
+import { KaviMark } from '../components/KaviMark'
 
 export function GitHubConnectPage() {
   const api = useApiClient()
@@ -209,7 +210,7 @@ export function GitHubConnectPage() {
             {/* Logo Header visual */}
             <div className="connection-visual">
               <div className="visual-circle">
-                <Zap size={24} fill="var(--kv-ink)" />
+                <span style={{ display: 'inline-flex', color: 'var(--kv-ink)' }}><KaviMark size={26} /></span>
               </div>
               <MoveRight className="text-gray-400" size={20} />
               <div className="visual-circle">

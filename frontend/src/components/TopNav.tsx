@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { LogIn, LogOut, Zap } from 'lucide-react'
+import { LogIn, LogOut } from 'lucide-react'
 
 import { useAuth } from '../features/auth/useAuth'
 import { MobileHeaderMenu, MobileNav } from './MobileNav'
+import { KaviMark } from './KaviMark'
 
 const navItems = [
   { to: '/chat', label: 'Chat' },
@@ -99,18 +100,9 @@ export function TopNav() {
           flex-shrink: 0;
         }
         .kavi-nav-logomark {
-          width: 32px; height: 32px;
-          background: var(--kv-solid);
-          border-radius: 10px;
+          width: 36px; height: 36px; color: var(--kv-ink);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
-        }
-        .kavi-nav-logoname {
-          font-family: 'Audiowide', sans-serif;
-          font-size: 18px;
-          font-weight: 600;
-          letter-spacing: 0.06em;
-          color: var(--kv-ink);
         }
 
         /* Nav links — centred absolutely so logo + button stay at edges */
@@ -174,15 +166,6 @@ export function TopNav() {
           .kavi-topnav-inner {
             padding: 6px 6px 6px 10px;
           }
-          .kavi-nav-logomark {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-          }
-          .kavi-nav-logoname {
-            font-size: 16px;
-            letter-spacing: 0.04em;
-          }
           .kavi-nav-btn {
             font-size: 13px;
             padding: 8px 12px;
@@ -193,7 +176,6 @@ export function TopNav() {
         @media (max-width: 1024px) { .kavi-nav-btn-logout { display: none; } }
 
         @media (max-width: 420px) {
-          .kavi-nav-logoname { display: none; }
           .kavi-nav-btn {
             font-size: 12px;
             padding: 7px 10px;
@@ -211,10 +193,7 @@ export function TopNav() {
         >
           {/* Logo */}
           <NavLink to="/" className="kavi-nav-logo" aria-label="Kavi home">
-            <div className="kavi-nav-logomark">
-              <Zap size={15} color="var(--kv-on-solid)" strokeWidth={2} />
-            </div>
-            <span className="kavi-nav-logoname">KAVI</span>
+            <span className="kavi-nav-logomark"><KaviMark size={26} /></span>
           </NavLink>
 
           {/* Centred nav links */}

@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import {
-  ArrowRight, GitPullRequest, DatabaseZap, MessageSquareText,
-  ShieldCheck, LockKeyhole, Zap,
-} from 'lucide-react'
+import { ArrowRight, GitPullRequest, DatabaseZap, MessageSquareText, ShieldCheck, LockKeyhole } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { firebaseAuth } from '../features/auth/firebase'
 import { useAuth } from '../features/auth/useAuth'
@@ -13,6 +10,7 @@ import { MemoryTimeline } from '../features/landing/MemoryTimeline'
 import { MemoryWindow } from '../features/landing/MemoryWindow'
 import { ParallaxHero } from '../features/landing/ParallaxHero'
 import '../features/landing/landing2.css'
+import { KaviMark } from '../components/KaviMark'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -346,11 +344,7 @@ export function LandingPage() {
           backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           box-shadow: 0 4px 22px rgba(116,130,151,0.15);
         }
-        .k-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; z-index: 10; }
-        .k-logo-mark { width: 32px; height: 32px; background: var(--kv-surface); border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: background 0.25s ease; }
-        .k-header-inner.on .k-logo-mark { background: var(--kv-solid); }
-        .k-logo-name { font-family: 'Audiowide', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.06em; color: #fff; transition: color 0.25s ease; }
-        .k-header-inner.on .k-logo-name { color: var(--kv-ink); }
+        .k-logo { display: flex; align-items: center; height: 40px; padding: 0 6px; color: var(--kv-ink); text-decoration: none; z-index: 10; }
         .k-nav { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; pointer-events: none; }
         @media (max-width: 768px) { .k-nav { display: none; } }
         .k-nav-link { pointer-events: auto; padding: 8px 20px; border-radius: 9999px; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; color: #fff; background: transparent; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.25s ease; }
@@ -570,7 +564,6 @@ export function LandingPage() {
         @media (max-width: 480px) {
           .k-header { padding: 8px; }
           .k-header-inner { padding: 6px 6px 6px 10px; }
-          .k-logo-name { font-size: 16px; }
           .k-btn-dark { font-size: 13px; padding: 7px 12px; gap: 4px; }
           .k-hero { padding: 8px; }
           .k-hero-card.expanded { border-radius: 16px; }
@@ -597,8 +590,7 @@ export function LandingPage() {
       <header className={`k-header ${isReady ? 'ready' : ''}`}>
         <div className={`k-header-inner${scrolled ? ' on' : ''}`}>
           <a href="/" className="k-logo" aria-label="Kavi">
-            <div className="k-logo-mark"><Zap size={15} color={scrolled ? 'var(--kv-on-solid)' : 'var(--kv-ink)'} strokeWidth={2} /></div>
-            <span className="k-logo-name">KAVI</span>
+            <KaviMark size={28} />
           </a>
           <nav className="k-nav" aria-label="Main navigation">
             {[['About','about'],["What's new",'new'],['How it works','how'],['Impact','impact'],['Security','trust'],['FAQ','faq']].map(([l,id]) => (
@@ -700,9 +692,7 @@ export function LandingPage() {
                     <Words text="Oddly, though, nobody built a way to query them. Until now." />
                   </p>
                   <div style={{ margin: '4px 0' }}>
-                    <div style={{ width: 36, height: 36, background: 'var(--kv-solid)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Zap size={18} color="var(--kv-on-solid)" strokeWidth={2} />
-                    </div>
+                    <span style={{ display: 'inline-flex', color: 'var(--kv-ink)' }}><KaviMark size={30} /></span>
                   </div>
                   <p className="k-body-xl font-archivo">
                     <Words text="With Kavi, we're changing that." />
@@ -1113,15 +1103,10 @@ export function LandingPage() {
           <div className="k-inner">
             <div className="k-footer-card">
               <div className="k-footer-top">
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ width:32, height:32, background:'rgb(var(--kv-veil-rgb) / 0.12)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <Zap size={15} color="var(--kv-on-solid)" strokeWidth={2}/>
-                  </div>
-                  <span style={{ fontFamily:"'Gabarito', sans-serif", fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:'var(--kv-on-solid)' }}>KAVI</span>
-                </div>
+                <span style={{ display:'inline-flex', color:'var(--kv-on-solid)' }}><KaviMark size={30} title="KAVI" /></span>
                 <div className="k-footer-links">
                   <div className="k-footer-col">
-                    <span style={{ fontFamily:"'Audiowide', sans-serif", fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:'var(--kv-on-solid)' }}>KAVI</span>
+                    <span style={{ fontFamily:"'Archivo', sans-serif", fontSize:15, fontWeight:600, color:'var(--kv-on-solid)' }}>Product</span>
                     <button type="button" className="k-footer-a font-archivo" onClick={() => scrollTo('about')}>About</button>
                     <button type="button" className="k-footer-a font-archivo" onClick={() => scrollTo('faq')}>FAQ</button>
                   </div>
