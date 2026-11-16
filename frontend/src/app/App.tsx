@@ -14,7 +14,7 @@ const GitHubConnectPage = lazy(() =>
 const RepositorySelectionPage = lazy(() =>
   import('../pages/RepositorySelectionPage').then((module) => ({ default: module.RepositorySelectionPage }))
 )
-const DashboardPage = lazy(() => import('../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
+const ChatPage = lazy(() => import('../pages/ChatPage').then((module) => ({ default: module.ChatPage })))
 const FileDetailPage = lazy(() => import('../pages/FileDetailPage').then((module) => ({ default: module.FileDetailPage })))
 const KnowledgeTimelinePage = lazy(() =>
   import('../pages/KnowledgeTimelinePage').then((module) => ({ default: module.KnowledgeTimelinePage }))
@@ -103,7 +103,7 @@ export default function App() {
                   path="/chat"
                   element={
                     <PageTransition>
-                      <DashboardPage />
+                      <ChatPage />
                     </PageTransition>
                   }
                 />
