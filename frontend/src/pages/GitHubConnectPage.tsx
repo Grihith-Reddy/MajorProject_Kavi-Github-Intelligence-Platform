@@ -41,7 +41,7 @@ export function GitHubConnectPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Audiowide&display=swap');        
         .connect-page-wrapper {
-          background: #fff;
+          background: var(--kv-surface);
           min-height: 100vh;
           padding: 16px;
           display: flex;
@@ -55,7 +55,7 @@ export function GitHubConnectPage() {
           width: 100%;
           max-width: 1440px;
           margin: 0 auto;
-          background: linear-gradient(170deg, #15aeea 0%, #73cef2 100%);
+          background: linear-gradient(170deg, var(--kv-sky-1) 0%, var(--kv-sky-2) 100%);
           border-radius: 32px;
           overflow: hidden;
           display: flex;
@@ -76,7 +76,7 @@ export function GitHubConnectPage() {
         }
 
         .inner-content {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgb(var(--kv-veil-rgb) / 0.9);
           backdrop-filter: blur(20px);
           border-radius: 24px;
           padding: 40px;
@@ -92,13 +92,13 @@ export function GitHubConnectPage() {
           justify-content: center;
           gap: 16px;
           margin-bottom: 32px;
-          color: #181D1F;
+          color: var(--kv-ink);
         }
 
         .visual-circle {
           width: 48px;
           height: 48px;
-          background: #fff;
+          background: var(--kv-surface);
           border-radius: 14px;
           display: flex;
           align-items: center;
@@ -127,8 +127,8 @@ export function GitHubConnectPage() {
         .btn-github {
           width: 100%;
           padding: 14px;
-          background: #181D1F;
-          color: #fff;
+          background: var(--kv-solid);
+          color: var(--kv-on-solid);
           border-radius: 9999px;
           border: none;
           font-weight: 600;
@@ -209,36 +209,36 @@ export function GitHubConnectPage() {
             {/* Logo Header visual */}
             <div className="connection-visual">
               <div className="visual-circle">
-                <Zap size={24} fill="#181D1F" />
+                <Zap size={24} fill="var(--kv-ink)" />
               </div>
               <MoveRight className="text-gray-400" size={20} />
               <div className="visual-circle">
-                <Github size={24} fill="#181D1F" />
+                <Github size={24} fill="var(--kv-ink)" />
               </div>
             </div>
 
-            <h1 className="text-center font-archivo" style={{ fontSize: 'clamp(22px, 6vw, 28px)', fontWeight: 700, color: '#181D1F', marginBottom: '8px' }}>
+            <h1 className="text-center font-archivo" style={{ fontSize: 'clamp(22px, 6vw, 28px)', fontWeight: 700, color: 'var(--kv-ink)', marginBottom: '8px' }}>
               Connect GitHub
             </h1>
             
-            <p className="text-center" style={{ color: '#424647', fontSize: '15px', marginBottom: '32px', lineHeight: 1.5 }}>
+            <p className="text-center" style={{ color: 'var(--kv-ink-2)', fontSize: '15px', marginBottom: '32px', lineHeight: 1.5 }}>
               Kavi builds your team's architecture memory by indexing pull-request discussions.
             </p>
 
             <div className="features">
               <div className="feature-row">
-                <Shield size={18} style={{ color: '#181D1F', marginTop: '2px' }} />
+                <Shield size={18} style={{ color: 'var(--kv-ink)', marginTop: '2px' }} />
                 <div>
-                  <p className="font-archivo" style={{ fontWeight: 600, fontSize: '14px', color: '#181D1F' }}>Read-only Access</p>
-                  <p style={{ fontSize: '13px', color: '#424647' }}>Kavi never modifies your code or settings.</p>
+                  <p className="font-archivo" style={{ fontWeight: 600, fontSize: '14px', color: 'var(--kv-ink)' }}>Read-only Access</p>
+                  <p style={{ fontSize: '13px', color: 'var(--kv-ink-2)' }}>Kavi never modifies your code or settings.</p>
                 </div>
               </div>
 
               <div className="feature-row">
-                <Link2 size={18} style={{ color: '#181D1F', marginTop: '2px' }} />
+                <Link2 size={18} style={{ color: 'var(--kv-ink)', marginTop: '2px' }} />
                 <div>
-                  <p className="font-archivo" style={{ fontWeight: 600, fontSize: '14px', color: '#181D1F' }}>Context Indexing</p>
-                  <p style={{ fontSize: '13px', color: '#424647' }}>We only index metadata from your PR threads.</p>
+                  <p className="font-archivo" style={{ fontWeight: 600, fontSize: '14px', color: 'var(--kv-ink)' }}>Context Indexing</p>
+                  <p style={{ fontSize: '13px', color: 'var(--kv-ink-2)' }}>We only index metadata from your PR threads.</p>
                 </div>
               </div>
             </div>

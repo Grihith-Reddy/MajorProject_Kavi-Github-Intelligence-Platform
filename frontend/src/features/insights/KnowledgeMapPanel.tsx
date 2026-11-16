@@ -12,7 +12,7 @@ import { PanelError, PanelSkeleton } from './PanelStates'
 const WIDTH = 720
 const HEIGHT = 480
 const RISK_META: Record<ModuleRisk, { label: string; fill: string; ring: string; note: string }> = {
-  healthy: { label: 'Shared context', fill: '#E4EED2', ring: '#9DB97A', note: 'Several people understand this module.' },
+  healthy: { label: 'Shared context', fill: 'var(--kv-sage)', ring: '#9DB97A', note: 'Several people understand this module.' },
   single_expert: { label: 'Single expert', fill: '#FDF1D8', ring: '#D9A441', note: 'Most context sits with one active person.' },
   at_risk: { label: 'At risk', fill: '#FDE1D6', ring: '#C0583A', note: 'One person held the context and has gone quiet.' },
 }
@@ -90,7 +90,7 @@ export function KnowledgeMapPanel({ repoId }: { repoId: string }) {
               <line
                 key={`${edge.source}-${edge.target}`}
                 x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke="#181D1F"
+                stroke="var(--kv-ink)"
                 strokeOpacity={active ? 0.12 + edge.strength * 0.35 : 0.04}
                 strokeWidth={1 + edge.strength * 4}
                 strokeLinecap="round"

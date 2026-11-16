@@ -6,7 +6,7 @@ import { LogIn, LogOut, Zap } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
+  { to: '/chat', label: 'Chat' },
   { to: '/repositories', label: 'Repositories' },
   { to: '/why', label: 'Why-Lens' },
   { to: '/insights', label: 'Insights' },
@@ -50,7 +50,7 @@ export function TopNav() {
 
   const resolveNavTarget = (path: string) => {
     if (!activeRepoId) return path
-    if (path === '/dashboard' || path === '/timeline' || path === '/why' || path === '/insights') {
+    if (path === '/chat' || path === '/timeline' || path === '/why' || path === '/insights') {
       return `${path}?repoId=${encodeURIComponent(activeRepoId)}`
     }
     return path
@@ -83,7 +83,7 @@ export function TopNav() {
           transition: background 0.25s ease, box-shadow 0.25s ease;
         }
         .kavi-topnav-inner.on {
-          background: rgba(255, 255, 255, 0.88);
+          background: rgb(var(--kv-veil-rgb) / 0.88);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
           box-shadow: 0 4px 24px rgba(116, 130, 151, 0.14);
@@ -99,7 +99,7 @@ export function TopNav() {
         }
         .kavi-nav-logomark {
           width: 32px; height: 32px;
-          background: #181D1F;
+          background: var(--kv-solid);
           border-radius: 10px;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
@@ -109,7 +109,7 @@ export function TopNav() {
           font-size: 18px;
           font-weight: 600;
           letter-spacing: 0.06em;
-          color: #181D1F;
+          color: var(--kv-ink);
         }
 
         /* Nav links — centred absolutely so logo + button stay at edges */
@@ -129,19 +129,19 @@ export function TopNav() {
           font-family: 'Archivo', sans-serif;
           font-size: 15px;
           font-weight: 500;
-          color: #181D1F;
+          color: var(--kv-ink);
           text-decoration: none;
           padding: 8px 18px;
           border-radius: 9999px;
           transition: background 0.15s;
           white-space: nowrap;
         }
-        .kavi-nav-link:hover { background: rgba(24, 29, 31, 0.07); }
+        .kavi-nav-link:hover { background: rgb(var(--kv-ink-rgb) / 0.07); }
         .kavi-nav-link.active {
-          background: #181D1F;
-          color: #fff;
+          background: var(--kv-solid);
+          color: var(--kv-on-solid);
         }
-        .kavi-nav-link.active:hover { background: #181D1F; }
+        .kavi-nav-link.active:hover { background: var(--kv-solid); }
 
         /* Right side */
         .kavi-nav-right {
@@ -163,10 +163,10 @@ export function TopNav() {
           letter-spacing: 0.01em;
           white-space: nowrap;
           transition: background 0.15s;
-          background: #181D1F;
-          color: #fff;
+          background: var(--kv-solid);
+          color: var(--kv-on-solid);
         }
-        .kavi-nav-btn:hover { background: #2d3748; }
+        .kavi-nav-btn:hover { background: var(--kv-solid-hover); }
 
         @media (max-width: 560px) {
           .kavi-topnav-inner {
@@ -208,7 +208,7 @@ export function TopNav() {
           {/* Logo */}
           <NavLink to="/" className="kavi-nav-logo" aria-label="Kavi home">
             <div className="kavi-nav-logomark">
-              <Zap size={15} color="#fff" strokeWidth={2} />
+              <Zap size={15} color="var(--kv-on-solid)" strokeWidth={2} />
             </div>
             <span className="kavi-nav-logoname">KAVI</span>
           </NavLink>

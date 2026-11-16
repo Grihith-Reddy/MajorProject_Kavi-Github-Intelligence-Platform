@@ -10,7 +10,7 @@ export function AppShell({ children }: AppShellProps) {
     <div
       style={{
         minHeight: '100vh',
-        background: '#fff',
+        background: 'var(--kv-surface)',
         overflowX: 'hidden',
       }}
     >

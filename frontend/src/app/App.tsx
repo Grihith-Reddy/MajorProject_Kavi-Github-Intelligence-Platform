@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Suspense, lazy, useEffect, type ReactNode } from 'react'
-import { Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppShell } from '../components/AppShell'
 import { RequireAuth } from '../features/auth/RequireAuth'
@@ -37,6 +37,11 @@ function PageTransition({ children }: { children: ReactNode }) {
   )
 }
 
+function LegacyDashboardRedirect() {
+  const location = useLocation()
+  return <Navigate to={`/chat${location.search}`} replace />
+}
+
 function ShellOutlet() {
   return (
     <AppShell>
@@ -53,7 +58,7 @@ export default function App() {
   }, [location.pathname])
 
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#fff' }} />}>
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--kv-surface)' }} />}>
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route
@@ -95,13 +100,14 @@ export default function App() {
                   }
                 />
                 <Route
-                  path="/dashboard"
+                  path="/chat"
                   element={
                     <PageTransition>
                       <DashboardPage />
                     </PageTransition>
                   }
                 />
+                <Route path="/dashboard" element={<LegacyDashboardRedirect />} />
                 <Route
                   path="/file"
                   element={

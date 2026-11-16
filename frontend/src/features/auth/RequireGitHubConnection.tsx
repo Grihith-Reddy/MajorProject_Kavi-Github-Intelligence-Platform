@@ -11,7 +11,7 @@ export function RequireGitHubConnection() {
   const { data, error, loading } = useAsync(() => getGitHubStatus(api), [api])
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', background: '#fff' }} />
+    return <div style={{ minHeight: '100vh', background: 'var(--kv-surface)' }} />
   }
 
   if (error) {

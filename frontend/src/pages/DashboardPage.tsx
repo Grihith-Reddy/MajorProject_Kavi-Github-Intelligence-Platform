@@ -48,7 +48,7 @@ function StreamingText({ content, active, onTick, onComplete }: { content: strin
     <span style={{ whiteSpace: 'pre-wrap' }}>
       {displayed}
       {active && displayed.length < content.length && (
-        <span style={{ display: 'inline-block', width: 2, height: '1em', background: '#181D1F', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'kavi-cursor-blink 0.8s step-end infinite' }} />
+        <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--kv-solid)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'kavi-cursor-blink 0.8s step-end infinite' }} />
       )}
     </span>
   )
@@ -409,11 +409,11 @@ function GitVisualizationPanel({
   error: Error | null
 }) {
   if (loading) {
-    return <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.5)' }}>Loading branch graph...</p>
+    return <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Loading branch graph...</p>
   }
 
   if (error) {
-    return <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#9B3A26', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12} /> Unable to load Git visualization.</p>
+    return <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-danger-ink)', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12} /> Unable to load Git visualization.</p>
   }
 
   const pullRequests = Array.isArray(data?.pull_requests) ? data.pull_requests : []
@@ -421,17 +421,17 @@ function GitVisualizationPanel({
   const layout = buildGitGraphLayout(pullRequests, defaultBranch)
 
   if (!pullRequests.length) {
-    return <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.5)' }}>No pull requests are synced yet, so there is no branch graph to render.</p>
+    return <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>No pull requests are synced yet, so there is no branch graph to render.</p>
   }
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ borderRadius: 16, border: '1px solid #E7E7E9', background: '#F9F9FA', padding: '10px 12px' }}>
-        <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.45)', marginBottom: 4 }}>Main branch</p>
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: '#181D1F' }}>{layout.mainBranch}</p>
+      <div style={{ borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-mist-2)', padding: '10px 12px' }}>
+        <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 4 }}>Main branch</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--kv-ink)' }}>{layout.mainBranch}</p>
       </div>
 
-      <div style={{ borderRadius: 16, border: '1px solid #E7E7E9', background: '#fff', overflow: 'auto', maxHeight: '62vh' }}>
+      <div style={{ borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', overflow: 'auto', maxHeight: '62vh' }}>
         <svg width={layout.width} height={layout.height} role="img" aria-label="Git branch visualization">
           {layout.lanes.map((lane) => (
             <g key={`lane-${lane.branch}`}>
@@ -440,7 +440,7 @@ function GitVisualizationPanel({
                 y1={28}
                 x2={lane.x}
                 y2={layout.height - 24}
-                stroke={lane.side === 'center' ? 'rgba(24,29,31,0.45)' : 'rgba(24,29,31,0.18)'}
+                stroke={lane.side === 'center' ? 'rgb(var(--kv-ink-rgb) / 0.45)' : 'rgb(var(--kv-ink-rgb) / 0.18)'}
                 strokeWidth={lane.side === 'center' ? 2.4 : 1.6}
               />
               <text
@@ -453,7 +453,7 @@ function GitVisualizationPanel({
                   fontWeight: lane.side === 'center' ? 700 : 500,
                   letterSpacing: '0.05em',
                   textTransform: 'uppercase',
-                  fill: lane.side === 'center' ? '#181D1F' : 'rgba(24,29,31,0.6)',
+                  fill: lane.side === 'center' ? 'var(--kv-ink)' : 'rgb(var(--kv-ink-rgb) / 0.6)',
                 }}
               >
                 {lane.branch}
@@ -468,7 +468,7 @@ function GitVisualizationPanel({
               <path
                 key={edge.id}
                 d={`M ${edge.fromX} ${edge.fromY} Q ${controlX} ${controlY} ${edge.toX} ${edge.toY}`}
-                stroke={edge.merged ? 'rgba(24,29,31,0.55)' : 'rgba(24,29,31,0.3)'}
+                stroke={edge.merged ? 'rgb(var(--kv-ink-rgb) / 0.55)' : 'rgb(var(--kv-ink-rgb) / 0.3)'}
                 strokeDasharray={edge.merged ? undefined : '4 5'}
                 strokeWidth={edge.merged ? 1.8 : 1.4}
                 fill="none"
@@ -482,7 +482,7 @@ function GitVisualizationPanel({
                 cx={node.x}
                 cy={node.y}
                 r={node.kind === 'source' ? 7 : 6}
-                fill={node.kind === 'target' && !node.merged ? '#fff' : node.color}
+                fill={node.kind === 'target' && !node.merged ? 'var(--kv-surface)' : node.color}
                 stroke={node.color}
                 strokeWidth={node.kind === 'target' && !node.merged ? 2.2 : 1.4}
               />
@@ -490,7 +490,7 @@ function GitVisualizationPanel({
                 <text
                   x={node.x + 10}
                   y={node.y + 3}
-                  style={{ fontFamily: "'Archivo', sans-serif", fontSize: 10, fill: 'rgba(24,29,31,0.55)' }}
+                  style={{ fontFamily: "'Archivo', sans-serif", fontSize: 10, fill: 'rgb(var(--kv-ink-rgb) / 0.55)' }}
                 >
                   #{node.prNumber}
                 </text>
@@ -507,7 +507,7 @@ function GitVisualizationPanel({
               fontSize: 11,
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              fill: 'rgba(24,29,31,0.5)',
+              fill: 'rgb(var(--kv-ink-rgb) / 0.5)',
             }}
           >
             Time up
@@ -524,10 +524,10 @@ function StructuredAssistantBody({ content, structured }: { content: string; str
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div>
-        <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.45)', marginBottom: 6 }}>
+        <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 6 }}>
           {structured.title ?? 'Answer'}
         </p>
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, lineHeight: 1.6, color: '#181D1F', whiteSpace: 'pre-wrap' }}>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, lineHeight: 1.6, color: 'var(--kv-ink)', whiteSpace: 'pre-wrap' }}>
           {structured.summary || content}
         </p>
       </div>
@@ -535,11 +535,11 @@ function StructuredAssistantBody({ content, structured }: { content: string; str
       {Array.isArray(structured.sections) && structured.sections.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {structured.sections.slice(0, 6).map((section, i) => (
-            <div key={`${section.heading}-${i}`} style={{ borderRadius: 14, border: '1px solid #E7E7E9', background: '#F9F9FA', padding: '12px 14px' }}>
-              <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(24,29,31,0.55)', textTransform: 'uppercase', marginBottom: 6 }}>{section.heading}</p>
+            <div key={`${section.heading}-${i}`} style={{ borderRadius: 14, border: '1px solid var(--kv-line)', background: 'var(--kv-mist-2)', padding: '12px 14px' }}>
+              <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', color: 'rgb(var(--kv-ink-rgb) / 0.55)', textTransform: 'uppercase', marginBottom: 6 }}>{section.heading}</p>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: 4, listStyleType: 'disc', paddingInlineStart: 18 }}>
                 {section.bullets.slice(0, 5).map((bullet, bi) => (
-                  <li key={bi} style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.5, color: '#424647' }}>{bullet}</li>
+                  <li key={bi} style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--kv-ink-2)' }}>{bullet}</li>
                 ))}
               </ul>
             </div>
@@ -549,16 +549,16 @@ function StructuredAssistantBody({ content, structured }: { content: string; str
 
       {Array.isArray(structured.code_references) && structured.code_references.length > 0 && (
         <div>
-          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.45)', marginBottom: 8 }}>Code References</p>
+          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 8 }}>Code References</p>
           <div className="db-code-ref-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {structured.code_references.slice(0, 6).map((ref, i) => (
-              <div key={`${ref.file_path}-${i}`} style={{ borderRadius: 12, border: '1px solid #E7E7E9', background: '#F9F9FA', padding: '10px 12px' }}>
-                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, fontWeight: 600, color: '#181D1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{splitFilePath(ref.file_path).fileName}</p>
+              <div key={`${ref.file_path}-${i}`} style={{ borderRadius: 12, border: '1px solid var(--kv-line)', background: 'var(--kv-mist-2)', padding: '10px 12px' }}>
+                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, fontWeight: 600, color: 'var(--kv-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{splitFilePath(ref.file_path).fileName}</p>
                 <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.5)', border: '1px solid #E7E7E9', borderRadius: 9999, padding: '2px 8px' }}>{lineLabel(ref.start_line, ref.end_line)}</span>
-                  {ref.pr_number && <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.5)', border: '1px solid #E7E7E9', borderRadius: 9999, padding: '2px 8px' }}>PR #{ref.pr_number}</span>}
+                  <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.5)', border: '1px solid var(--kv-line)', borderRadius: 9999, padding: '2px 8px' }}>{lineLabel(ref.start_line, ref.end_line)}</span>
+                  {ref.pr_number && <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.5)', border: '1px solid var(--kv-line)', borderRadius: 9999, padding: '2px 8px' }}>PR #{ref.pr_number}</span>}
                 </div>
-                {ref.note && <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: '#424647', marginTop: 6 }}>{ref.note}</p>}
+                {ref.note && <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'var(--kv-ink-2)', marginTop: 6 }}>{ref.note}</p>}
               </div>
             ))}
           </div>
@@ -567,7 +567,7 @@ function StructuredAssistantBody({ content, structured }: { content: string; str
 
       {Array.isArray(structured.code_snippets) && structured.code_snippets.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.45)' }}>
+          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.45)' }}>
             Code Preview
           </p>
           {structured.code_snippets.slice(0, 4).map((snippet, i) => (
@@ -578,11 +578,11 @@ function StructuredAssistantBody({ content, structured }: { content: string; str
 
       {Array.isArray(structured.timeline_highlights) && structured.timeline_highlights.length > 0 && (
         <div>
-          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.45)', marginBottom: 8 }}>Evolution Highlights</p>
+          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 8 }}>Evolution Highlights</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {structured.timeline_highlights.slice(0, 5).map((item, i) => (
-              <p key={`${item.label}-${i}`} style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.5, color: '#424647' }}>
-                <span style={{ fontWeight: 600, color: '#181D1F' }}>{item.label}:</span> {item.detail}
+              <p key={`${item.label}-${i}`} style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--kv-ink-2)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--kv-ink)' }}>{item.label}:</span> {item.detail}
               </p>
             ))}
           </div>
@@ -590,11 +590,11 @@ function StructuredAssistantBody({ content, structured }: { content: string; str
       )}
 
       {Array.isArray(structured.limitations) && structured.limitations.length > 0 && (
-        <div style={{ borderRadius: 14, border: '1px solid #E7E7E9', background: '#F9F9FA', padding: '12px 14px' }}>
-          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.45)', marginBottom: 6 }}>Limits</p>
+        <div style={{ borderRadius: 14, border: '1px solid var(--kv-line)', background: 'var(--kv-mist-2)', padding: '12px 14px' }}>
+          <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 6 }}>Limits</p>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: 4, listStyleType: 'disc', paddingInlineStart: 18 }}>
             {structured.limitations.slice(0, 4).map((item, i) => (
-              <li key={i} style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#424647' }}>{item}</li>
+              <li key={i} style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-ink-2)' }}>{item}</li>
             ))}
           </ul>
         </div>
@@ -607,7 +607,7 @@ function StructuredAssistantBody({ content, structured }: { content: string; str
 
 function WorkspaceIconRail({ activePanel, onToggle }: { activePanel: WorkspacePanelId | null; onToggle: (panel: WorkspacePanelId) => void }) {
   return (
-    <aside className="db-icon-rail" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 8px', background: '#F4F4F5', borderRadius: 24, border: '1px solid #E7E7E9' }}>
+    <aside className="db-icon-rail" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 8px', background: 'var(--kv-mist)', borderRadius: 24, border: '1px solid var(--kv-line)' }}>
       {WORKSPACE_PANEL_ITEMS.map((item) => {
         const Icon = item.icon
         const active = activePanel === item.id
@@ -622,9 +622,9 @@ function WorkspaceIconRail({ activePanel, onToggle }: { activePanel: WorkspacePa
               width: 40, height: 40,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 14,
-              border: active ? 'none' : '1px solid #E7E7E9',
-              background: active ? '#181D1F' : '#fff',
-              color: active ? '#fff' : 'rgba(24,29,31,0.6)',
+              border: active ? 'none' : '1px solid var(--kv-line)',
+              background: active ? 'var(--kv-solid)' : 'var(--kv-surface)',
+              color: active ? 'var(--kv-on-solid)' : 'rgb(var(--kv-ink-rgb) / 0.6)',
               cursor: 'pointer',
               transition: 'all 0.18s cubic-bezier(0.34,1.56,0.64,1)',
             }}
@@ -659,32 +659,32 @@ function WorkspaceOverlayPanel({
   const referencedEntries = (entries.length ? entries : (chatSources as any[])).slice(0, 7)
   const shortRepo = repositoryName.includes('/') ? repositoryName.split('/').pop() ?? repositoryName : repositoryName
 
-  const pillStyle: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 11, border: '1px solid #E7E7E9', borderRadius: 9999, padding: '3px 10px', color: 'rgba(24,29,31,0.55)', background: '#fff' }
-  const cardStyle: React.CSSProperties = { borderRadius: 16, border: '1px solid #E7E7E9', background: '#F9F9FA', padding: '12px 14px', marginBottom: 8 }
-  const labelStyle: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'rgba(24,29,31,0.4)', marginBottom: 10 }
+  const pillStyle: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 11, border: '1px solid var(--kv-line)', borderRadius: 9999, padding: '3px 10px', color: 'rgb(var(--kv-ink-rgb) / 0.55)', background: 'var(--kv-surface)' }
+  const cardStyle: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-mist-2)', padding: '12px 14px', marginBottom: 8 }
+  const labelStyle: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'rgb(var(--kv-ink-rgb) / 0.4)', marginBottom: 10 }
 
   if (panel === 'repository') return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={cardStyle}>
         <p style={labelStyle}>Repository</p>
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: '#181D1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortRepo}</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: 'var(--kv-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortRepo}</p>
       </div>
       <div className="db-repo-stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {[['PR Contexts', entries.length], ['Indexed Files', files.length]].map(([label, value]) => (
-          <div key={label as string} style={{ borderRadius: 14, border: '1px solid #E7E7E9', background: '#F9F9FA', padding: '10px 14px' }}>
-            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.5)', marginBottom: 4 }}>{label}</p>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 20, fontWeight: 600, color: '#181D1F' }}>{value}</p>
+          <div key={label as string} style={{ borderRadius: 14, border: '1px solid var(--kv-line)', background: 'var(--kv-mist-2)', padding: '10px 14px' }}>
+            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.5)', marginBottom: 4 }}>{label}</p>
+            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 20, fontWeight: 600, color: 'var(--kv-ink)' }}>{value}</p>
           </div>
         ))}
       </div>
-      <Link to={`/timeline?repoId=${repoId}`} onClick={onNavigate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 20px', background: '#181D1F', color: '#fff', borderRadius: 9999, border: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
+      <Link to={`/timeline?repoId=${repoId}`} onClick={onNavigate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 20px', background: 'var(--kv-solid)', color: 'var(--kv-on-solid)', borderRadius: 9999, border: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
         Project timeline <ArrowRight size={13} />
       </Link>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <Link to={`/why?repoId=${repoId}`} onClick={onNavigate} className="kv-btn kv-btn-soft kv-btn-sm">Why-Lens</Link>
         <Link to={`/insights?repoId=${repoId}`} onClick={onNavigate} className="kv-btn kv-btn-soft kv-btn-sm">Insights</Link>
       </div>
-      <Link to="/repositories" onClick={onNavigate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 20px', background: '#F4F4F5', color: '#181D1F', borderRadius: 9999, border: '1px solid #E7E7E9', fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
+      <Link to="/repositories" onClick={onNavigate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 20px', background: 'var(--kv-mist)', color: 'var(--kv-ink)', borderRadius: 9999, border: '1px solid var(--kv-line)', fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}>
         Switch repository <FolderGit2 size={13} />
       </Link>
     </section>
@@ -695,9 +695,9 @@ function WorkspaceOverlayPanel({
   if (panel === 'focus') return (
     <section style={cardStyle}>
       <p style={labelStyle}>Workspace Focus</p>
-      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.6, color: '#424647', marginBottom: 8 }}>Ask architecture-level questions and trace PR evolution quickly.</p>
-      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.6, color: '#424647', marginBottom: 8 }}>Use concise prompts to get cleaner structured responses.</p>
-      <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgba(24,29,31,0.45)' }}>Tip: start with "Explain Entire Repo" for baseline context.</p>
+      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.6, color: 'var(--kv-ink-2)', marginBottom: 8 }}>Ask architecture-level questions and trace PR evolution quickly.</p>
+      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, lineHeight: 1.6, color: 'var(--kv-ink-2)', marginBottom: 8 }}>Use concise prompts to get cleaner structured responses.</p>
+      <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.45)' }}>Tip: start with "Explain Entire Repo" for baseline context.</p>
     </section>
   )
 
@@ -705,9 +705,9 @@ function WorkspaceOverlayPanel({
     <section>
       <p style={labelStyle}>Referenced PRs</p>
       {entriesLoading ? (
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.5)' }}>Loading pull requests…</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Loading pull requests…</p>
       ) : entriesError ? (
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#9B3A26', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12} /> Unable to load PR context.</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-danger-ink)', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12} /> Unable to load PR context.</p>
       ) : referencedEntries.length ? referencedEntries.map((entry: any, i: number) => {
         const prNumber = entry?.pr_number ?? entry?.github_pr_number ?? entry?.pr ?? '?'
         const title = entry?.pr_title ?? entry?.title ?? 'Untitled pull request'
@@ -715,18 +715,18 @@ function WorkspaceOverlayPanel({
         return (
           <div key={`${title}-${i}`} style={cardStyle}>
             <p style={{ ...pillStyle, display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 6 }}><GitPullRequest size={11} /> PR #{prNumber}</p>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</p>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: '#424647', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</p>
+            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</p>
+            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'var(--kv-ink-2)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{summary}</p>
           </div>
         )
-      }) : <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.5)' }}>No PR context available yet.</p>}
+      }) : <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>No PR context available yet.</p>}
     </section>
   )
 
   if (panel === 'git') return (
     <section>
       <p style={labelStyle}>Git Visualization</p>
-      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'rgba(24,29,31,0.55)', marginBottom: 10 }}>
+      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.55)', marginBottom: 10 }}>
         Main branch stays centered while side branches are split left and right, with merge paths connected per PR.
       </p>
       <GitVisualizationPanel data={gitVisualization} loading={gitVisualizationLoading} error={gitVisualizationError} />
@@ -737,18 +737,18 @@ function WorkspaceOverlayPanel({
     <section>
       <p style={labelStyle}>Indexed Files</p>
       {filesLoading ? (
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.5)' }}>Loading files…</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Loading files…</p>
       ) : filesError ? (
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#9B3A26', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12} /> Unable to load files.</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-danger-ink)', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12} /> Unable to load files.</p>
       ) : files.length ? files.slice(0, 14).map((file: any) => {
         const { fileName, directory } = splitFilePath(file.file_path)
         return (
           <Link key={file.file_path} to={`/file?repoId=${repoId}&path=${encodeURIComponent(file.file_path)}`} onClick={onNavigate} style={{ display: 'block', ...cardStyle, textDecoration: 'none' }}>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</p>
-            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgba(24,29,31,0.45)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{directory || '(repository root)'}</p>
+            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</p>
+            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{directory || '(repository root)'}</p>
           </Link>
         )
-      }) : <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.5)' }}>No files indexed.</p>}
+      }) : <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>No files indexed.</p>}
     </section>
   )
 }
@@ -801,14 +801,14 @@ function DashboardChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLo
   }, [followAssistantStream, liveIndex, liveContentLength, liveTraceLength, hasLiveAnswer])
 
   return (
-    <section className="db-chat-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: '#F4F4F5', borderRadius: 24, border: '1px solid #E7E7E9', overflow: 'hidden' }}>
+    <section className="db-chat-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--kv-mist)', borderRadius: 24, border: '1px solid var(--kv-line)', overflow: 'hidden' }}>
       {/* Messages */}
       <div className="db-chat-messages" ref={messagesContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}>
 
         {noPrContext && (
-          <div style={{ borderRadius: 16, border: '1px solid #E7E7E9', background: '#fff', padding: '14px 18px' }}>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: '#181D1F', marginBottom: 4 }}>No pull-request discussions found yet.</p>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#424647', lineHeight: 1.5 }}>You can still query the repository. Answers will improve as richer PR context is indexed.</p>
+          <div style={{ borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '14px 18px' }}>
+            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 4 }}>No pull-request discussions found yet.</p>
+            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-ink-2)', lineHeight: 1.5 }}>You can still query the repository. Answers will improve as richer PR context is indexed.</p>
           </div>
         )}
 
@@ -837,8 +837,8 @@ function DashboardChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLo
                 fontSize: 14,
                 lineHeight: 1.6,
                 ...(message.role === 'user'
-                  ? { background: '#181D1F', color: '#fff', boxShadow: '0 4px 16px rgba(24,29,31,0.18)' }
-                  : { background: '#fff', color: '#181D1F', border: '1px solid #E7E7E9', boxShadow: '0 2px 8px rgba(24,29,31,0.06)' }
+                  ? { background: 'var(--kv-solid)', color: 'var(--kv-on-solid)', boxShadow: '0 4px 16px rgb(var(--kv-ink-rgb) / 0.18)' }
+                  : { background: 'var(--kv-surface)', color: 'var(--kv-ink)', border: '1px solid var(--kv-line)', boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.06)' }
                 ),
               }}>
                 {message.role === 'assistant' && (message.format === 'markdown' || message.structured?.format === 'markdown')
@@ -876,7 +876,7 @@ function DashboardChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLo
         })}
 
         {chatLoading && !hasLiveAnswer && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #E7E7E9', borderRadius: 9999, padding: '8px 14px', fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.55)', width: 'fit-content' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--kv-surface)', border: '1px solid var(--kv-line)', borderRadius: 9999, padding: '8px 14px', fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.55)', width: 'fit-content' }}>
             <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
             Thinking…
           </div>
@@ -887,20 +887,34 @@ function DashboardChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLo
 
       {/* Quick prompts + input */}
       <div className="db-chat-compose" style={{ padding: '8px 16px 14px', flexShrink: 0 }}>
-        {/* Quick prompts */}
-        <div className="db-quick-prompt-row" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
-          {QUICK_PROMPTS.map((prompt) => (
-            <button
-              key={prompt}
-              onClick={() => onSend(prompt)}
-              style={{ flexShrink: 0, whiteSpace: 'nowrap', padding: '7px 14px', background: '#fff', border: '1px solid #E7E7E9', borderRadius: 9999, fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 500, color: '#424647', cursor: 'pointer', transition: 'all 0.15s' }}
-              onMouseEnter={(e) => { (e.target as HTMLElement).style.background = '#181D1F'; (e.target as HTMLElement).style.color = '#fff'; (e.target as HTMLElement).style.borderColor = '#181D1F' }}
-              onMouseLeave={(e) => { (e.target as HTMLElement).style.background = '#fff'; (e.target as HTMLElement).style.color = '#424647'; (e.target as HTMLElement).style.borderColor = '#E7E7E9' }}
+        {/* Starter prompts: only until the first question is asked */}
+        <AnimatePresence initial={false}>
+          {!messages.some((message) => message.role === 'user') && (
+            <motion.div
+              key="starter-prompts"
+              className="db-quick-prompt-row"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+              style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}
             >
-              {prompt}
-            </button>
-          ))}
-        </div>
+              {QUICK_PROMPTS.map((prompt, index) => (
+                <motion.button
+                  key={prompt}
+                  type="button"
+                  className="kv-prompt-chip"
+                  onClick={() => onSend(prompt)}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.04, type: 'spring', stiffness: 320, damping: 26 }}
+                >
+                  {prompt}
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input bar */}
         <AnimatePresence>
@@ -908,9 +922,9 @@ function DashboardChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLo
         </AnimatePresence>
         <div
           className="db-chat-input-row"
-          style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: '#fff', border: '1.5px solid #E7E7E9', borderRadius: 20, padding: '10px 10px 10px 16px', boxShadow: '0 2px 8px rgba(24,29,31,0.06)', transition: 'border-color 0.15s' }}
-          onFocusCapture={(e) => (e.currentTarget.style.borderColor = '#181D1F')}
-          onBlurCapture={(e) => (e.currentTarget.style.borderColor = '#E7E7E9')}
+          style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: 'var(--kv-surface)', border: '1.5px solid var(--kv-line)', borderRadius: 20, padding: '10px 10px 10px 16px', boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.06)', transition: 'border-color 0.15s' }}
+          onFocusCapture={(e) => (e.currentTarget.style.borderColor = 'var(--kv-ink)')}
+          onBlurCapture={(e) => (e.currentTarget.style.borderColor = 'var(--kv-line)')}
         >
           <TimeTravelButton value={timeTravel} onChange={setTimeTravel} disabled={chatLoading} />
           <textarea
@@ -921,16 +935,16 @@ function DashboardChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLo
             rows={1}
             disabled={chatLoading}
             placeholder="Ask about architecture, PR evolution, or type 'Explain Entire Repo'…"
-            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: '#181D1F', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0 }}
+            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink)', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0 }}
           />
           <button
             className="db-send-btn"
             type="button"
             onClick={() => onSend(chatInput)}
             disabled={chatLoading || !chatInput.trim()}
-            style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 12, background: '#181D1F', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (!chatInput.trim() || chatLoading) ? 0.4 : 1, transition: 'opacity 0.15s' }}
+            style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 12, background: 'var(--kv-solid)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (!chatInput.trim() || chatLoading) ? 0.4 : 1, transition: 'opacity 0.15s' }}
           >
-            <Send size={15} color="#fff" />
+            <Send size={15} color="var(--kv-on-solid)" />
           </button>
         </div>
       </div>
@@ -1083,7 +1097,7 @@ function DashboardWorkspaceV2(props: WorkspaceRenderProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ position: 'absolute', inset: 0, zIndex: 28, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)', border: 'none', cursor: 'pointer' }}
+                style={{ position: 'absolute', inset: 0, zIndex: 28, background: 'rgb(var(--kv-veil-rgb) / 0.7)', backdropFilter: 'blur(4px)', border: 'none', cursor: 'pointer' }}
               />
               <motion.aside
                 key={`panel-${activePanel}`}
@@ -1096,10 +1110,10 @@ function DashboardWorkspaceV2(props: WorkspaceRenderProps) {
                   position: 'absolute', insetBlock: 0, left: 62,
                   width: 'min(400px, calc(100% - 70px))',
                   zIndex: 36,
-                  background: '#fff',
+                  background: 'var(--kv-surface)',
                   borderRadius: 24,
-                  border: '1px solid #E7E7E9',
-                  boxShadow: '0 24px 48px rgba(24,29,31,0.12)',
+                  border: '1px solid var(--kv-line)',
+                  boxShadow: '0 24px 48px rgb(var(--kv-ink-rgb) / 0.12)',
                   padding: 16,
                   overflowY: 'auto',
                   scrollbarWidth: 'none',
@@ -1107,13 +1121,13 @@ function DashboardWorkspaceV2(props: WorkspaceRenderProps) {
               >
                 {/* Panel header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: '#181D1F' }}>
+                  <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: 'var(--kv-ink)' }}>
                     {WORKSPACE_PANEL_ITEMS.find((i) => i.id === activePanel)?.label ?? 'Workspace'}
                   </p>
                   <button
                     type="button"
                     onClick={closePanel}
-                    style={{ width: 30, height: 30, borderRadius: 9999, border: '1px solid #E7E7E9', background: '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#181D1F' }}
+                    style={{ width: 30, height: 30, borderRadius: 9999, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--kv-ink)' }}
                   >
                     <X size={14} />
                   </button>
@@ -1430,10 +1444,10 @@ export function DashboardPage() {
 
   if (!repoId) {
     return (
-      <div style={{ borderRadius: 32, background: '#F4F4F5', border: '1px solid #E7E7E9', padding: '64px 48px', textAlign: 'center' }}>
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 22, fontWeight: 600, color: '#181D1F', marginBottom: 8 }}>No repository selected</p>
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, color: '#424647', marginBottom: 28 }}>Pick a synced repository before opening chat.</p>
-        <Link to="/repositories" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#181D1F', color: '#fff', borderRadius: 9999, fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
+      <div style={{ borderRadius: 32, background: 'var(--kv-mist)', border: '1px solid var(--kv-line)', padding: '64px 48px', textAlign: 'center' }}>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 22, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 8 }}>No repository selected</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, color: 'var(--kv-ink-2)', marginBottom: 28 }}>Pick a synced repository before opening chat.</p>
+        <Link to="/repositories" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: 'var(--kv-solid)', color: 'var(--kv-on-solid)', borderRadius: 9999, fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
           Open repositories <ArrowRight size={15} />
         </Link>
       </div>

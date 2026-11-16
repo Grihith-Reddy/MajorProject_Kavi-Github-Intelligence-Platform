@@ -6,10 +6,11 @@ import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { verifyAuth } from '../services/authService'
 import { IntegrationsSection } from '../features/integrations/IntegrationsSection'
+import { AppearanceCard } from '../features/theme/AppearanceCard'
 
-const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid #E7E7E9', background: '#F4F4F5', padding: '24px 28px' }
-const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid #E7E7E9', background: '#fff', padding: '16px 18px' }
-const EYEBROW: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: 'rgba(24,29,31,0.45)', marginBottom: 12 }
+const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', padding: '24px 28px' }
+const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '16px 18px' }
+const EYEBROW: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 12 }
 
 export function SettingsPage() {
   const api = useApiClient()
@@ -37,14 +38,14 @@ export function SettingsPage() {
         {/* ── Hero ── */}
         <motion.section
           className="st-hero-card"
-          style={{ ...CARD, background: '#DCEEEF', border: 'none', padding: '40px 48px' }}
+          style={{ ...CARD, background: 'var(--kv-mint)', border: 'none', padding: '40px 48px' }}
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <p style={{ ...EYEBROW }}>Account</p>
-          <h1 style={{ fontFamily: "'Archivo', sans-serif", fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 600, letterSpacing: '-0.025em', color: '#181D1F', lineHeight: 1.1, marginBottom: 8 }}>Settings.</h1>
-          <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, color: '#424647' }}>Profile and workspace controls for your Kavi session.</p>
+          <h1 style={{ fontFamily: "'Archivo', sans-serif", fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--kv-ink)', lineHeight: 1.1, marginBottom: 8 }}>Settings.</h1>
+          <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, color: 'var(--kv-ink-2)' }}>Profile and workspace controls for your Kavi session.</p>
         </motion.section>
 
         <div className="st-layout">
@@ -58,13 +59,13 @@ export function SettingsPage() {
             transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.06 }}
           >
             {/* Profile header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #E7E7E9' }}>
-              <div style={{ width: 48, height: 48, background: '#181D1F', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Zap size={20} color="#fff" strokeWidth={1.5} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid var(--kv-line)' }}>
+              <div style={{ width: 48, height: 48, background: 'var(--kv-solid)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Zap size={20} color="var(--kv-on-solid)" strokeWidth={1.5} />
               </div>
               <div>
-                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 16, fontWeight: 600, color: '#181D1F' }}>{user?.name ?? 'Developer'}</p>
-                <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.5)', marginTop: 2 }}>Personal workspace</p>
+                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 16, fontWeight: 600, color: 'var(--kv-ink)' }}>{user?.name ?? 'Developer'}</p>
+                <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)', marginTop: 2 }}>Personal workspace</p>
               </div>
             </div>
 
@@ -72,34 +73,36 @@ export function SettingsPage() {
             <div className="st-fields" style={{ marginBottom: 12 }}>
               <div style={{ ...INNER_CARD }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <User size={12} color="rgba(24,29,31,0.4)" />
-                  <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.4)' }}>Full Name</p>
+                  <User size={12} color="rgb(var(--kv-ink-rgb) / 0.4)" />
+                  <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.4)' }}>Full Name</p>
                 </div>
-                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: '#181D1F' }}>{user?.name ?? 'Developer'}</p>
+                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: 'var(--kv-ink)' }}>{user?.name ?? 'Developer'}</p>
               </div>
               <div style={{ ...INNER_CARD }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <Mail size={12} color="rgba(24,29,31,0.4)" />
-                  <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.4)' }}>Email</p>
+                  <Mail size={12} color="rgb(var(--kv-ink-rgb) / 0.4)" />
+                  <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.4)' }}>Email</p>
                 </div>
-                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: '#181D1F' }}>{user?.email ?? 'Not available'}</p>
+                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: 'var(--kv-ink)' }}>{user?.email ?? 'Not available'}</p>
               </div>
             </div>
 
             {/* Auth sub */}
             <div style={{ ...INNER_CARD }}>
-              <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(24,29,31,0.4)', marginBottom: 8 }}>External Identifier</p>
-              <p style={{ fontFamily: 'monospace', fontSize: 12, color: '#424647', wordBreak: 'break-all', lineHeight: 1.5 }}>{data?.user?.auth0_sub ?? 'not synced'}</p>
+              <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.4)', marginBottom: 8 }}>External Identifier</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--kv-ink-2)', wordBreak: 'break-all', lineHeight: 1.5 }}>{data?.user?.auth0_sub ?? 'not synced'}</p>
             </div>
           </motion.section>
 
           {/* ── Sidebar ── */}
           <aside style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
+            <AppearanceCard />
+
             {/* Session */}
             <motion.section
               className="st-session-card"
-              style={{ ...CARD, background: '#E4EED2', border: 'none', padding: '20px 24px' }}
+              style={{ ...CARD, background: 'var(--kv-sage)', border: 'none', padding: '20px 24px' }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.1 }}
@@ -107,9 +110,9 @@ export function SettingsPage() {
               <p style={{ ...EYEBROW }}>Session</p>
               <button
                 onClick={logout}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 20px', background: '#181D1F', color: '#fff', borderRadius: 9999, border: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#2d3748')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#181D1F')}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 20px', background: 'var(--kv-solid)', color: 'var(--kv-on-solid)', borderRadius: 9999, border: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'background 0.15s' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--kv-solid-hover)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--kv-solid)')}
               >
                 <LogOut size={15} />
                 Sign out
@@ -128,8 +131,8 @@ export function SettingsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[['Product', 'Kavi'], ['Version', '2.0'], ['Access', 'Read-only GitHub']].map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.45)' }}>{label}</span>
-                    <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>{value}</span>
+                    <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.45)' }}>{label}</span>
+                    <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>{value}</span>
                   </div>
                 ))}
               </div>

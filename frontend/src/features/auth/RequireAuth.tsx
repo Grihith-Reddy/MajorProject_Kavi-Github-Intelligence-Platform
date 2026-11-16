@@ -11,7 +11,7 @@ export function RequireAuth() {
     return (
       <div
         className="flex min-h-screen items-center justify-center"
-        style={{ background: '#fff' }}
+        style={{ background: 'var(--kv-surface)' }}
       >
         <LoadingState label="Authenticating..." />
       </div>
