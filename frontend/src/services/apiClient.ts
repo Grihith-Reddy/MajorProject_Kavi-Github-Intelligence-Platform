@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'ax
 import { useEffect, useRef } from 'react'
 
 import { useAuth } from '../features/auth/useAuth'
+import { reportApiUnreachable } from './networkEvents'
 
 type RetryableConfig = InternalAxiosRequestConfig & { _authRetries?: number }
 
@@ -32,6 +33,8 @@ export function createApiClient(
 
   client.interceptors.response.use(undefined, async (error: AxiosError) => {
     const config = error.config as RetryableConfig | undefined
+    // No response at all: offline, or the free-tier server is still waking up.
+    if (!error.response && !axios.isCancel(error)) reportApiUnreachable()
     if (error.response?.status !== 401 || !config) throw error
     const attempt = (config._authRetries ?? 0) + 1
     if (attempt > 2) {

@@ -14,6 +14,7 @@ import { useAuth } from '../features/auth/useAuth'
 import { KaviMark } from '../components/KaviMark'
 import { SkyCanvas } from '../features/landing/SkyCanvas'
 import { ThemeToggle } from '../features/theme/ThemeToggle'
+import { isInternalPath } from '../utils/safeUrl'
 
 function GoogleIcon() {
   return (
@@ -30,7 +31,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const returnToParam = new URLSearchParams(location.search).get('returnTo')
-  const returnTo = returnToParam && returnToParam.startsWith('/') ? returnToParam : null
+  const returnTo = returnToParam && isInternalPath(returnToParam) ? returnToParam : null
   const { isAuthenticated, isLoading } = useAuth()
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin')
   const [email, setEmail] = useState('')

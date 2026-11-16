@@ -648,6 +648,37 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
   .kv-followup ~ .kv-followup { display: none; }
 }
 
+/* ── Status pages (crash, 404) and the offline bar ─────────────────────── */
+
+.kv-status-page { min-height: 100vh; min-height: 100svh; padding: 16px; display: flex; background: var(--kv-surface); }
+.kv-status-frame {
+  position: relative; flex: 1; border-radius: 32px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 48px 20px;
+  background: linear-gradient(170deg, var(--kv-sky-1) 0%, var(--kv-sky-2) 100%);
+}
+.kv-status-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.kv-status-card {
+  position: relative; z-index: 1; width: min(460px, 100%); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;
+  padding: 36px 28px 30px; border-radius: 28px; background: rgb(var(--kv-veil-rgb) / 0.9); border: 1px solid rgb(var(--kv-veil-rgb) / 0.6);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 24px 60px rgb(var(--kv-shadow-rgb) / 0.16);
+}
+.kv-status-mark { color: var(--kv-ink); display: inline-flex; margin-bottom: 4px; }
+.kv-status-code { margin: 0; font-family: var(--kv-font-label); font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--kv-sky-ink); }
+.kv-status-title { margin: 0; font-family: var(--kv-font-read); font-size: clamp(26px, 5vw, 34px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; color: var(--kv-ink); }
+.kv-status-text { margin: 0; max-width: 36ch; font-family: var(--kv-font-read); font-size: 15px; line-height: 1.6; color: var(--kv-ink-2); }
+.kv-status-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
+.kv-status-actions .kv-btn { min-height: 44px; }
+.kv-status-details { width: 100%; margin-top: 6px; text-align: left; font-family: var(--kv-font-label); font-size: 12px; color: var(--kv-ink-3); }
+.kv-status-details summary { cursor: pointer; text-align: center; }
+.kv-status-details pre { margin: 8px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--kv-mist); white-space: pre-wrap; word-break: break-word; font-family: var(--kv-font-mono); }
+@media (max-width: 640px) { .kv-status-page { padding: 8px; } .kv-status-frame { border-radius: 22px; } }
+
+.kv-offline {
+  position: fixed; z-index: 1300; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 24px); padding: 10px 16px; border-radius: 9999px;
+  background: var(--kv-solid); color: var(--kv-on-solid); font-family: var(--kv-font-read); font-size: 13px; font-weight: 600;
+  box-shadow: 0 12px 30px rgb(var(--kv-shadow-rgb) / 0.2);
+}
+
 /* ── Error / empty states ─────────────────────────────────────────────── */
 
 .kv-state-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--kv-surface); }
@@ -683,6 +714,13 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
 @media (pointer: coarse) {
   .kv-chat-menu-btn { height: 44px; }
   .kv-chat-toolbar .kv-msg-action, .kv-sheet .kv-icon-btn, .db-send-btn, .kv-tt-btn { width: 44px !important; height: 44px !important; }
+  .kv-prompt-chip { min-height: 40px; }
+  /* Small links and icon buttons keep their look; an invisible halo widens what a finger can hit. */
+  a.kv-chip, a.repo-health-chip, .int-link, .kv-icon-btn { position: relative; }
+  a.kv-chip::before, a.repo-health-chip::before, .int-link::before, .kv-icon-btn::before {
+    content: ''; position: absolute; inset: -8px -4px;
+  }
+  .kv-icon-btn::before { inset: -6px; border-radius: 9999px; }
 }
 
 /* ── Jump to latest (adapted from 21st.dev Message Scroller) ───────── */

@@ -129,6 +129,10 @@ Lists persisted chat conversations for the authenticated user and repository.
 ### GET `/chat/conversations/{conversation_id}`
 Returns conversation metadata and ordered messages.
 
+## Errors
+
+Errors return `{"detail": "..."}` with a matching HTTP status. Unexpected server errors return 500 with a generic message and a `request_id`; the same id is in the `X-Request-ID` response header and the server log. Rate-limited requests return 429 with `Retry-After`.
+
 ## KAVI 2.0 endpoints
 
 All endpoints below require a Firebase bearer token unless noted.
@@ -139,8 +143,14 @@ All endpoints below require a Firebase bearer token unless noted.
 
 ### Chat
 - `POST /chat/stream`: same body as `/chat/query`; responds with Server-Sent Events `meta`, `step`, `note`, `token`, `legacy`, `done`, `error`.
+- `POST /chat/messages/{message_id}/feedback`: `{rating: 1 | -1, reason?}` records a thumbs up or down on an assistant answer (one per user, updated on repeat).
+
+### Knowledge
+- `GET /knowledge/repositories/{repo_id}/evolution`: monthly PR activity, milestones, most-changed files and contributors.
+- `GET /knowledge/repositories/{repo_id}/git-visualization?limit=300`: recent pull requests with branches and merge times.
 
 ### Insights
+- `GET /insights/health`: per-repository summary (sync time, PR and indexed counts, open and kept promises, at-risk and single-expert modules) for every repository the user can open.
 - `GET /insights/repositories/{repo_id}/tree`: live file list of the default branch.
 - `GET /insights/repositories/{repo_id}/why?path=`: Why-Lens blame segments, PR intent and file content.
 - `GET /insights/repositories/{repo_id}/promises` and `POST /insights/promises/{id}/status` (`open|kept|dismissed`).
@@ -150,7 +160,8 @@ All endpoints below require a Firebase bearer token unless noted.
 
 ### Guardian
 - `POST /guardian/review` (**Guardian token**): `{pr_number, head_sha, title, body, files: [{filename, status, patch}]}` → `{verdict, summary, findings, history_checked, comment_markdown}`.
-- `GET /guardian/repositories/{repo_id}/reviews`: review history.
+- `POST /guardian/sync` (**Guardian token**): called by the Action after a merge; queues an incremental sync.
+- `GET /guardian/repositories/{repo_id}/reviews`: review history, including `impact` and suggested `reviewers`.
 - `GET /guardian/workflow`: the GitHub Actions workflow file.
 
 ### MCP (**editor token**)

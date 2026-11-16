@@ -29,3 +29,8 @@ Thumbs.db
 
 # Local tooling
 .playwright-mcp/
+
+# Editors and local AI tooling
+.vscode/
+.idea/
+.claude/

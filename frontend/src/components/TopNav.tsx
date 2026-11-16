@@ -6,6 +6,7 @@ import { LogIn, LogOut } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 import { MobileHeaderMenu, MobileNav } from './MobileNav'
 import { KaviMark } from './KaviMark'
+import { ACTIVE_REPO_STORAGE_KEY, asRepoId, readStoredRepoId } from '../utils/repoId'
 
 const navItems = [
   { to: '/chat', label: 'Chat' },
@@ -16,7 +17,6 @@ const navItems = [
   { to: '/settings', label: 'Settings' },
 ]
 
-const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
 
 export function TopNav() {
   const { isAuthenticated, logout } = useAuth()
@@ -24,11 +24,11 @@ export function TopNav() {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [storedRepoId, setStoredRepoId] = useState<string | null>(() => {
-    try { return window.localStorage.getItem(ACTIVE_REPO_STORAGE_KEY) } catch { return null }
+    return readStoredRepoId()
   })
 
   const activeRepoId = useMemo(() => {
-    const queryRepoId = new URLSearchParams(location.search).get('repoId')
+    const queryRepoId = asRepoId(new URLSearchParams(location.search).get('repoId'))
     return queryRepoId || storedRepoId
   }, [location.search, storedRepoId])
 
@@ -40,7 +40,7 @@ export function TopNav() {
   }, [])
 
   useEffect(() => {
-    const queryRepoId = new URLSearchParams(location.search).get('repoId')
+    const queryRepoId = asRepoId(new URLSearchParams(location.search).get('repoId'))
     if (!queryRepoId) return
     setStoredRepoId(queryRepoId)
     try {

@@ -1,20 +1,20 @@
 import { Link } from 'react-router-dom'
+import { ArrowLeft, Home } from 'lucide-react'
 
-import { EmptyState } from '../components/EmptyState'
+import { StatusPage } from '../components/StatusPage'
 
 export function NotFoundPage() {
   return (
-    <div className="kv-state-page">
-    <EmptyState
-      title="Page not found"
-      description="The page you're looking for doesn't exist yet."
-      action={
-        <Link to="/" className="kv-btn kv-btn-dark kv-btn-sm">
-          Back to home
-        </Link>
+    <StatusPage
+      code="404"
+      title="Lost in the clouds"
+      message="This page doesn't exist, or it moved. Head back home and pick up from there."
+      actions={
+        <>
+          <Link to="/" className="kv-btn kv-btn-dark"><Home size={15} /> Home</Link>
+          <button type="button" className="kv-btn kv-btn-soft" onClick={() => window.history.back()}><ArrowLeft size={15} /> Go back</button>
+        </>
       }
     />
-    </div>
   )
 }
-

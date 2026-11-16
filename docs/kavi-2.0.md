@@ -117,6 +117,8 @@ Create the editor token in Settings → Integrations. `KAVI_REPO=owner/name` set
 
 `database/migrations/005_kavi_intelligence.sql` is additive: `pr_participants`, `pr_promises`, `blame_cache`, `kavi_tokens`, `guardian_reviews`, `eval_runs`, plus `knowledge_entries.embedding`, `embedding_model`, `repositories.last_pr_updated_at` and `sync_jobs.progress` / `full_resync`. A down migration is provided.
 
+`database/migrations/006_impact_and_feedback.sql` adds `guardian_reviews.impact` and `reviewers` (change impact and suggested reviewers) and the `chat_feedback` table for thumbs up/down on answers.
+
 ## Tests
 
 `backend/tests` covers incremental listing, embeddings and fusion, the agent loop (with mocked Gemini streams, including thought signatures), Why-Lens segment merging, promise extraction, bus factor, and PostgreSQL integration tests (run when `TEST_DATABASE_URL` points to a `*_test` database, as in CI) for tokens, Guardian, MCP endpoints, promise resolution, the knowledge map and the evaluation harness.

@@ -6,7 +6,7 @@
 - Terminate TLS at the edge and expose only the frontend origin configured in `FRONTEND_URL`.
 
 ## Required launch gates
-- Apply the versioned database migrations in order: `001_init.sql`, `002_access_control_and_sync_jobs.sql`, `003_chat_memory.sql`, `004_github_oauth_states.sql`, and `005_kavi_intelligence.sql`. Do not apply the consolidated `database/schema.sql` as well.
+- Apply the versioned database migrations in order: `001_init.sql`, `002_access_control_and_sync_jobs.sql`, `003_chat_memory.sql`, `004_github_oauth_states.sql`, `005_kavi_intelligence.sql`, and `006_impact_and_feedback.sql`. Do not apply the consolidated `database/schema.sql` as well.
 - Set real values for `GITHUB_STATE_SECRET` and `TOKEN_ENCRYPTION_KEY`.
 - Confirm `GET /health/live` and `GET /health/ready` both return success in the deployed environment.
 - Require the CI backend tests, PostgreSQL migration/rollback test, frontend lint, and production build to pass on every push.
