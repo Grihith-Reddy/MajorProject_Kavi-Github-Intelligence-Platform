@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Download, FileDown, FileText, Loader2, Menu, MessageSquarePlus, Send, Square } from 'lucide-react'
+import { ArrowDown, Download, FileDown, FileText, Loader2, Menu, MessageSquarePlus, Send, Square } from 'lucide-react'
 import { AgentTrace } from '../../../features/chat/AgentTrace'
 import { AnswerFeedback } from '../../../features/chat/AnswerFeedback'
 import { TimeTravelBanner, TimeTravelButton } from '../../../features/chat/TimeTravelControl'
@@ -14,6 +14,9 @@ import { type ChatPaneProps } from './chatTypes'
 
 // ─── Chat pane ────────────────────────────────────────────────────────────────
 
+/** Further than this from the newest message counts as "reading back". */
+const LIVE_EDGE_PX = 120
+
 export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete, onOpenMenu, menuOpen }: ChatPaneProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const assistantMessageRefs = useRef<Record<number, HTMLElement | null>>({})
@@ -24,10 +27,53 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
     node.scrollIntoView({ behavior, block: 'start', inline: 'nearest' })
   }, [])
 
+  const [awayFromLatest, setAwayFromLatest] = useState(false)
+  const [readingBack, setReadingBackState] = useState(false)
+  const readingBackRef = useRef(false)   // the reader scrolled up on purpose: stop following
+  const gestureDirRef = useRef<'up' | 'down' | null>(null)
+  const touchYRef = useRef<number | null>(null)
+  const setReadingBack = useCallback((value: boolean) => {
+    readingBackRef.current = value
+    setReadingBackState(value)
+  }, [])
+
+  const measureEdge = useCallback(() => {
+    const el = messagesContainerRef.current
+    if (!el) return false
+    const away = el.scrollHeight - el.scrollTop - el.clientHeight > LIVE_EDGE_PX
+    setAwayFromLatest(away)
+    return away
+  }, [])
+
+  // Any upward wheel, swipe or key means "let me read": stop following at once. Reaching the
+  // newest message again by scrolling down resumes it. Our own programmatic scrolls never count.
+  const readUp = useCallback(() => { gestureDirRef.current = 'up'; setReadingBack(true) }, [setReadingBack])
+  const readDown = useCallback(() => { gestureDirRef.current = 'down' }, [])
+
+  const onMessagesScroll = useCallback(() => {
+    const away = measureEdge()
+    if (!away && gestureDirRef.current === 'down') setReadingBack(false)
+  }, [measureEdge, setReadingBack])
+
+  const onWheel = useCallback((event: React.WheelEvent) => { if (event.deltaY < 0) readUp(); else if (event.deltaY > 0) readDown() }, [readUp, readDown])
+  const onTouchStart = useCallback((event: React.TouchEvent) => { touchYRef.current = event.touches[0]?.clientY ?? null }, [])
+  const onTouchMove = useCallback((event: React.TouchEvent) => {
+    const y = event.touches[0]?.clientY
+    if (y === undefined || touchYRef.current === null) return
+    if (y > touchYRef.current + 4) readUp()       // finger moves down: content scrolls up
+    else if (y < touchYRef.current - 4) readDown()
+    touchYRef.current = y
+  }, [readUp, readDown])
+  const onKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) readUp()
+    else if (['ArrowDown', 'PageDown', 'End', ' '].includes(event.key)) readDown()
+  }, [readUp, readDown])
+
+
   const followAssistantStream = useCallback((index: number) => {
     const container = messagesContainerRef.current
     const node = assistantMessageRefs.current[index]
-    if (!container || !node) return
+    if (!container || !node || readingBackRef.current) return
 
     const containerRect = container.getBoundingClientRect()
     const nodeRect = node.getBoundingClientRect()
@@ -46,8 +92,9 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
 
   useEffect(() => {
     if (streamingIndex === null) return
+    setReadingBack(false)   // a new question always brings its answer into view
     scrollToAssistantStart(streamingIndex, 'smooth')
-  }, [scrollToAssistantStart, streamingIndex])
+  }, [scrollToAssistantStart, setReadingBack, streamingIndex])
 
   const liveIndex = messages.length - 1
   const liveMessage = messages[liveIndex]
@@ -58,6 +105,21 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
     if (!hasLiveAnswer) return
     followAssistantStream(liveIndex)
   }, [followAssistantStream, liveIndex, liveContentLength, liveTraceLength, hasLiveAnswer])
+
+  // Growing content does not fire scroll events, so re-measure after every render that changes it.
+  useLayoutEffect(() => { measureEdge() }, [measureEdge, messages.length, liveContentLength, liveTraceLength])
+
+  // While an answer streams and we are following it, there is nothing to jump to.
+  const showJump = awayFromLatest && (!hasLiveAnswer || readingBack)
+  const jumpToLatest = useCallback(() => {
+    const el = messagesContainerRef.current
+    if (!el) return
+    setReadingBack(false)
+    const behavior: ScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    // Mid-answer, land on the answer's start (where following keeps it); otherwise the very end.
+    if (hasLiveAnswer) scrollToAssistantStart(liveIndex, behavior)
+    else el.scrollTo({ top: el.scrollHeight, behavior })
+  }, [hasLiveAnswer, liveIndex, scrollToAssistantStart, setReadingBack])
 
   const [exportOpen, setExportOpen] = useState(false)
   const questionCount = messages.filter((message) => message.role === 'user').length
@@ -108,7 +170,17 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
       </div>
 
       {/* Messages */}
-      <div className="db-chat-messages" ref={messagesContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}>
+      <div className="db-chat-scroller">
+      <div
+        className="db-chat-messages"
+        ref={messagesContainerRef}
+        onScroll={onMessagesScroll}
+        onWheel={onWheel}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onKeyDown={onKeyDown}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}
+      >
 
         {noPrContext && (
           <div style={{ borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '14px 18px' }}>
@@ -212,6 +284,23 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
         </AnimatePresence>
 
         <div ref={messagesEndRef} />
+      </div>
+      <button
+        type="button"
+        className={`kv-jump-latest${showJump ? ' is-active' : ''}${showJump && hasLiveAnswer ? ' is-live' : ''}`}
+        onClick={(event) => {
+          jumpToLatest()
+          // The button hides itself: hand focus on rather than leave it on a hidden control.
+          if (event.detail === 0) document.querySelector<HTMLTextAreaElement>('.db-chat-textarea')?.focus()
+          else event.currentTarget.blur()
+        }}
+        aria-label={hasLiveAnswer ? 'Jump to the answer being written' : 'Jump to latest message'}
+        aria-hidden={!showJump}
+        tabIndex={showJump ? 0 : -1}
+        data-tip="Jump to latest"
+      >
+        <ArrowDown size={16} />
+      </button>
       </div>
 
       {/* Quick prompts + input */}

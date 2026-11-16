@@ -676,6 +676,35 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
   .kv-chat-toolbar .kv-msg-action, .kv-sheet .kv-icon-btn, .db-send-btn, .kv-tt-btn { width: 44px !important; height: 44px !important; }
 }
 
+/* ── Jump to latest (adapted from 21st.dev Message Scroller) ───────── */
+
+.db-chat-scroller { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.kv-jump-latest {
+  position: absolute; left: 50%; bottom: 12px; z-index: 5; width: 40px; height: 40px; border-radius: 9999px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  border: 1px solid var(--kv-line); background: var(--kv-surface); color: var(--kv-ink);
+  box-shadow: 0 10px 28px rgb(var(--kv-shadow-rgb) / 0.14);
+  /* Resting: tucked below and faded, never clickable. Exit is quick and eases in. */
+  opacity: 0; pointer-events: none; transform: translate(-50%, 100%) scale(0.95);
+  transition: opacity 150ms cubic-bezier(0.7, 0, 0.84, 0), transform 150ms cubic-bezier(0.7, 0, 0.84, 0), background 0.15s ease;
+}
+.kv-jump-latest.is-active {
+  opacity: 1; pointer-events: auto; transform: translate(-50%, 0) scale(1);
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1), transform 200ms cubic-bezier(0.23, 1, 0.32, 1), background 0.15s ease;
+}
+.kv-jump-latest:hover { background: var(--kv-mist); }
+.kv-jump-latest:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+/* A reply is still being written below: a small sky dot says so. */
+.kv-jump-latest.is-live::before {
+  content: ''; position: absolute; top: 1px; right: 1px; width: 10px; height: 10px; border-radius: 9999px;
+  background: var(--kv-sky-1); border: 2px solid var(--kv-surface);
+}
+@media (pointer: coarse) { .kv-jump-latest { width: 44px; height: 44px; } }
+@media (prefers-reduced-motion: reduce) {
+  .kv-jump-latest, .kv-jump-latest.is-active { transform: translate(-50%, 0); transition: opacity 100ms linear; }
+}
+@media print { .kv-jump-latest { display: none !important; } }
+
 /* ── Chat workspace rail ──────────────────────────────────────────────── */
 
 .db-rail-wrap { position: relative; z-index: 40; min-height: 0; }
