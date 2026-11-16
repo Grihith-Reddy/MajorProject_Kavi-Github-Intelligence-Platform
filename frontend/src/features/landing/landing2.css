@@ -153,10 +153,10 @@
   .px .k-hero-new-tag { font-size: 11px; padding: 4px 8px; }
 }
 
-/* The wordmark stands behind the front hill, which hides its lower edge. */
+/* The wordmark stands above the crest; the top of the glass mark just overlaps its lower edge. */
 .px-wordmark {
-  position: absolute; left: 50%; bottom: 47%; transform: translateX(-50%); white-space: nowrap;
-  font-family: 'Audiowide', sans-serif; font-size: min(14cqw, 24vw, 28cqh); line-height: 0.8; letter-spacing: 0.02em;
+  position: absolute; left: 50%; bottom: 64%; transform: translateX(-50%); white-space: nowrap;
+  font-family: 'Audiowide', sans-serif; font-size: min(19cqw, 25vw, 34cqh); line-height: 0.8; letter-spacing: 0.02em;
   color: rgb(255 255 255 / 0.94); text-shadow: 0 12px 48px rgb(40 70 100 / 0.2);
 }
 :root[data-theme='dark'] .px-wordmark { color: rgb(214 226 240 / 0.88); text-shadow: 0 12px 48px rgb(0 0 0 / 0.35); }
@@ -167,7 +167,6 @@
 /* Headline sits in the sky; the existing fade-in after the card opens still applies. */
 .px-copy { position: absolute; inset: 0; z-index: 6; }
 .px .k-hero-center { justify-content: flex-start; padding-top: clamp(96px, 13cqh, 160px); }
-.px .k-hero-h1 { font-size: clamp(34px, min(6.2vw, 9.5cqh), 92px); line-height: 1.04; }
 
 /* ── Glass GitHub mark ── */
 .gm {
@@ -199,9 +198,3 @@
   .gm-body, .gm-sheen { animation: none; }
   .px-img { transition: none; }
 }
-
-/* Day sky is a deeper blue than the old hero, so the headline turns white there (night keeps its pale tokens). */
-:root:not([data-theme='dark']) .px { --kv-hero-text-from: rgb(255 255 255 / 0.99); --kv-hero-text-to: rgb(226 242 252 / 0.97); }
-:root:not([data-theme='dark']) .px .k-hero-eyebrow { color: rgb(255 255 255 / 0.92); }
-.px .k-hero-h1 { filter: drop-shadow(0 4px 18px rgb(18 60 104 / 0.28)); }
-.px .k-hero-eyebrow { text-shadow: 0 1px 10px rgb(18 60 104 / 0.3); }
