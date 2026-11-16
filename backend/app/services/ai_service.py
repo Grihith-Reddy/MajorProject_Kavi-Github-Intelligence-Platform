@@ -264,10 +264,6 @@ class AIService:
                 fallback_reason=fallback_reason,
             )
 
-    def generate_chat_response(self, query: str, context_sources: list[dict[str, Any]]) -> str:
-        payload = self.generate_chat_payload(query, context_sources)
-        return str(payload.get("answer") or "")
-
     def _gemini_summary_raw(self, pr_payload: dict[str, Any]) -> str:
         prompt = (
             "You are a senior software engineer analyzing a GitHub pull request.\n"
@@ -608,71 +604,6 @@ class AIService:
         end = min(len(lines), start + max_lines)
         excerpt = "\n".join(lines[start:end]).strip()
         return excerpt, start + 1, end
-
-    def _is_general_query(
-        self,
-        query: str,
-        context_sources: list[dict[str, Any]],
-        repo_overview_context: dict[str, Any] | None,
-    ) -> bool:
-        lowered = str(query or "").strip().lower()
-        if not lowered:
-            return False
-
-        repo_signals = (
-            "pull request",
-            " pr ",
-            "repo",
-            "repository",
-            "timeline",
-            "commit",
-            "branch",
-            "file ",
-            "line ",
-            "codebase",
-            "this project",
-            "this code",
-            "explain entire repo",
-            "entire repo",
-            "whole repo",
-        )
-        if any(signal in lowered for signal in repo_signals):
-            return False
-
-        query_terms = {token.lower() for token in _WORD_RE.findall(lowered)}
-        if not query_terms:
-            return False
-
-        source_terms: set[str] = set()
-        for source in context_sources[:12]:
-            for key in ("pr_title", "summary", "intent"):
-                source_terms.update(token.lower() for token in _WORD_RE.findall(str(source.get(key) or "")))
-            for path in self._source_file_paths(source):
-                source_terms.update(token.lower() for token in _WORD_RE.findall(path.replace("/", " ")))
-
-        repository = (repo_overview_context or {}).get("repository")
-        if isinstance(repository, dict):
-            source_terms.update(token.lower() for token in _WORD_RE.findall(str(repository.get("full_name") or "")))
-
-        overlap = len(query_terms & source_terms)
-        if overlap >= 2:
-            return False
-
-        general_starters = (
-            "what is",
-            "how to",
-            "how do i",
-            "difference between",
-            "best practice",
-            "best practices",
-            "why does",
-            "when should",
-            "tips for",
-            "explain ",
-        )
-        if any(lowered.startswith(starter) for starter in general_starters):
-            return True
-        return overlap == 0 and len(query_terms) >= 2
 
     def _source_file_paths(self, source: dict[str, Any]) -> list[str]:
         files = source.get("files") if isinstance(source.get("files"), list) else []

@@ -557,8 +557,8 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
   .db-workspace-shell { bottom: 92px !important; }
 }
 .kv-tab {
-  position: relative; display: flex; align-items: center; justify-content: center;
-  padding: 7px 4px; border-radius: 18px; border: none; background: transparent; cursor: pointer;
+  position: relative; display: flex; align-items: center; justify-content: center; min-width: 0;
+  padding: 7px 2px; border-radius: 18px; border: none; background: transparent; cursor: pointer;
   color: var(--kv-ink-3); text-decoration: none; transition: color 0.2s ease;
 }
 .kv-tab:hover { color: var(--kv-ink); }
@@ -566,7 +566,8 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
 .kv-tab:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
 .kv-tab-pill { position: absolute; inset: 0; border-radius: 18px; background: var(--kv-solid); }
 .kv-tab-content { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.kv-tab-label { font-family: var(--kv-font-label); font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
+.kv-tab-label { font-family: var(--kv-font-label); font-size: 11px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; line-height: 1.2; }
+@media (max-width: 360px) { .kv-tab-label { font-size: 10px; letter-spacing: 0; } }
 .kv-sheet-backdrop { position: fixed; inset: 0; z-index: 1150; border: none; background: rgb(var(--kv-shadow-rgb) / 0.3); cursor: pointer; }
 .kv-sheet {
   position: fixed; z-index: 1200; left: 12px; right: 12px; bottom: 12px;
