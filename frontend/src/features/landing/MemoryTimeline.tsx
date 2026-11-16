@@ -107,7 +107,8 @@ export function MemoryTimeline() {
   }, [])
 
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ['start 10%', 'end 50%'] })
-  const beamHeight = useTransform(scrollYProgress, [0, 1], [0, height])
+  // Grow the beam with scaleY (compositor only) rather than height, which would re-lay out every frame.
+  const beamScale = useTransform(scrollYProgress, [0, 1], [0, 1])
   const beamOpacity = useTransform(scrollYProgress, [0, 0.1], [0, 1])
 
   return (
@@ -140,7 +141,7 @@ export function MemoryTimeline() {
           </div>
         ))}
         <div className="tl-rail" style={{ height }}>
-          <motion.div className="tl-beam" style={{ height: beamHeight, opacity: beamOpacity }} />
+          <motion.div className="tl-beam" style={{ scaleY: beamScale, opacity: beamOpacity }} />
         </div>
       </div>
     </div>

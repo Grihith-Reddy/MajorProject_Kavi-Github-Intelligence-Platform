@@ -204,6 +204,14 @@ class HardeningTests(unittest.TestCase):
         self.assertFalse(is_expensive("/api/chat/conversations", "GET"))
         self.assertTrue(is_expensive("/api/ingestion/repositories/sync", "POST"))
 
+    def test_remote_database_connections_require_tls(self):
+        from app.core.database import tls_connect_args
+
+        self.assertEqual(tls_connect_args("postgresql+psycopg2://u:p@ep-x.neon.tech/db"), {"sslmode": "require"})
+        # An explicit mode is kept as written (never downgraded), and local databases are left alone.
+        self.assertEqual(tls_connect_args("postgresql+psycopg2://u:p@ep-x.neon.tech/db?sslmode=verify-full"), {})
+        self.assertEqual(tls_connect_args("postgresql+psycopg2://u:p@localhost:5432/kavi"), {})
+
     def test_every_expensive_prefix_is_a_real_route(self):
         from app.core.middleware import EXPENSIVE_PATH_PREFIXES
         from app.main import app

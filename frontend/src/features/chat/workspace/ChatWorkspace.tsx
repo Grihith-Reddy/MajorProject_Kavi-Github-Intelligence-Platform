@@ -21,7 +21,7 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [activePanel, menuOpen])
 
-  // Phone header: New chat + Export live in the header's More menu.
+  // Phone header: New chat, Export and Clear all live in the header's More menu.
   const controlsRef = useRef(props.controls)
   controlsRef.current = props.controls
   const hasConversation = props.messages.some((message) => message.role === 'user')
@@ -29,6 +29,7 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
     setChatHeaderActions({
       onNewChat: () => controlsRef.current.onNewChat(),
       onExport: (format) => controlsRef.current.onExport(format),
+      onClearAll: () => controlsRef.current.onClearAll(),
       hasConversation,
     })
   }, [hasConversation])
@@ -47,6 +48,8 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
           <ChatPane
             controls={props.controls}
             repoId={props.repoId}
+            repositoryName={props.repositoryName}
+            userName={props.userName}
             timeTravel={props.timeTravel}
             setTimeTravel={props.setTimeTravel}
             messages={props.messages}

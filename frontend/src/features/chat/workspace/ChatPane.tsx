@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowDown, Download, FileDown, FileText, Loader2, Menu, MessageSquarePlus, Send, Square } from 'lucide-react'
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
+import { ArrowDown, ArrowUp, FileDown, FileText, Menu, MessageSquarePlus, MoreHorizontal, Square, Trash2 } from 'lucide-react'
+import { KaviMark } from '../../../components/KaviMark'
 import { AgentTrace } from '../../../features/chat/AgentTrace'
 import { AnswerFeedback } from '../../../features/chat/AnswerFeedback'
 import { TimeTravelBanner, TimeTravelButton } from '../../../features/chat/TimeTravelControl'
@@ -9,7 +10,7 @@ import { MarkdownMessage } from '../../../features/chat/MarkdownMessage'
 import { AnswerActions, EditQuestionButton } from '../../../features/chat/MessageActions'
 import { StreamingText } from './StreamingText'
 import { StructuredAssistantBody } from './StructuredAssistantBody'
-import { QUICK_PROMPTS, followUpsFor, shouldRenderStructuredAnswer } from './chatHelpers'
+import { QUICK_PROMPTS, followUpsFor, isWelcomeMessage, shouldRenderStructuredAnswer } from './chatHelpers'
 import { type ChatPaneProps } from './chatTypes'
 
 // ─── Chat pane ────────────────────────────────────────────────────────────────
@@ -17,7 +18,7 @@ import { type ChatPaneProps } from './chatTypes'
 /** Further than this from the newest message counts as "reading back". */
 const LIVE_EDGE_PX = 120
 
-export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete, onOpenMenu, menuOpen }: ChatPaneProps) {
+export function ChatPane({ controls, repoId, repositoryName, userName, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete, onOpenMenu, menuOpen }: ChatPaneProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const assistantMessageRefs = useRef<Record<number, HTMLElement | null>>({})
 
@@ -121,8 +122,20 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
     else el.scrollTo({ top: el.scrollHeight, behavior })
   }, [hasLiveAnswer, liveIndex, scrollToAssistantStart, setReadingBack])
 
-  const [exportOpen, setExportOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!moreOpen) return
+    const onPointer = (event: PointerEvent) => { if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false) }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreOpen(false) }
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey) }
+  }, [moreOpen])
+
   const questionCount = messages.filter((message) => message.role === 'user').length
+  // Before the first question the pane is a centred start screen; the composer moves down after.
+  const isEmpty = questionCount === 0
   const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user')
   const lastAssistantIndex = messages.map((message) => message.role).lastIndexOf('assistant')
   const lastAssistant = messages[lastAssistantIndex]
@@ -130,9 +143,58 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
     ? followUpsFor(lastAssistant.sources, lastAssistant.asOf)
     : []
 
+  // The field grows with what is typed, up to a few lines, then scrolls.
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [multiline, setMultiline] = useState(false)
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    // Empty: one line, even if the placeholder is longer than the field.
+    el.style.height = 'auto'
+    const lineBox = el.clientHeight
+    if (chatInput) el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+    // A full pill for one line; softer corners once the text wraps, so no line is clipped.
+    setMultiline(Boolean(chatInput) && el.scrollHeight > lineBox + 4)
+  }, [chatInput, isEmpty])
+
+  const repoShortName = repositoryName.split('/').pop() || repositoryName
+  const firstName = userName?.split(/\s+/)[0] ?? null
+  const canSend = Boolean(chatInput.trim())
+
+  const composer = (
+    <motion.div layoutId="kv-composer" className="kv-composer-wrap" transition={{ type: 'spring', stiffness: 260, damping: 32 }}>
+      <AnimatePresence>
+        {timeTravel && <TimeTravelBanner value={timeTravel} onClear={() => setTimeTravel(null)} />}
+      </AnimatePresence>
+      <div className={`kv-composer${multiline ? ' is-multiline' : ''}`}>
+        <TimeTravelButton value={timeTravel} onChange={setTimeTravel} disabled={chatLoading} />
+        <textarea
+          ref={textareaRef}
+          className="db-chat-textarea kv-composer-input"
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(chatInput) } }}
+          rows={1}
+          disabled={chatLoading}
+          aria-label="Ask KAVI about this repository"
+          placeholder={isEmpty ? `Ask about ${repoShortName}…` : 'Ask a follow-up…'}
+        />
+        {chatLoading ? (
+          <button className="kv-composer-btn is-stop" type="button" onClick={controls.onStop} aria-label="Stop answering" data-tip="Stop answering">
+            <Square size={13} fill="currentColor" />
+          </button>
+        ) : (
+          <button className="kv-composer-btn is-send" type="button" onClick={() => onSend(chatInput)} disabled={!canSend} aria-label="Send" data-tip={canSend ? 'Send' : undefined}>
+            <ArrowUp size={18} strokeWidth={2.25} />
+          </button>
+        )}
+      </div>
+    </motion.div>
+  )
+
   return (
-    <section className="db-chat-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--kv-mist)', borderRadius: 24, border: '1px solid var(--kv-line)', overflow: 'hidden' }}>
-      <div className={`kv-chat-toolbar${questionCount === 0 ? ' is-bare' : ''}`}>
+    <section className={`db-chat-pane${isEmpty ? ' is-empty' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--kv-mist)', borderRadius: 24, border: '1px solid var(--kv-line)', overflow: 'hidden' }}>
+      <div className={`kv-chat-toolbar${isEmpty ? ' is-bare' : ''}`}>
         {/* Phones: the workspace rail collapses into this one button */}
         <button type="button" className="kv-chat-menu-btn" onClick={onOpenMenu} aria-haspopup="dialog" aria-expanded={menuOpen}>
           <Menu size={16} /> Workspace
@@ -140,35 +202,67 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
         {questionCount > 0 && (
           <span className="kv-chat-toolbar-meta">{questionCount} question{questionCount === 1 ? '' : 's'} in this conversation</span>
         )}
-        {questionCount > 0 && (
-          <div className="kv-chat-toolbar-actions">
+        <div className="kv-chat-toolbar-actions">
+          {questionCount > 0 && (
             <button type="button" className="kv-msg-action" onClick={controls.onNewChat} aria-label="Start new chat" data-tip="Start new chat" data-tip-pos="below">
-              <MessageSquarePlus size={14} />
+              <MessageSquarePlus size={15} />
             </button>
-            <div className="kv-export">
-              <button type="button" className="kv-msg-action" onClick={() => setExportOpen((open) => !open)} aria-expanded={exportOpen} aria-label="Export chat" data-tip="Export chat" data-tip-pos="below">
-                <Download size={14} />
-              </button>
-              <AnimatePresence>
-                {exportOpen && (
-                  <motion.div
-                    className="kv-export-menu"
-                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                    onMouseLeave={() => setExportOpen(false)}
-                  >
-                    <button type="button" onClick={() => { controls.onExport('markdown'); setExportOpen(false) }}><FileText size={14} /> Markdown file</button>
-                    <button type="button" onClick={() => { controls.onExport('pdf'); setExportOpen(false) }}><FileDown size={14} /> PDF (print)</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+          )}
+          <div className="kv-export" ref={moreRef}>
+            <button type="button" className="kv-msg-action" onClick={() => setMoreOpen((open) => !open)} aria-expanded={moreOpen} aria-haspopup="menu" aria-label="More options" data-tip={moreOpen ? undefined : 'More options'} data-tip-pos="below">
+              <MoreHorizontal size={16} />
+            </button>
+            <AnimatePresence>
+              {moreOpen && (
+                <motion.div
+                  className="kv-export-menu"
+                  role="menu"
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                >
+                  <button type="button" role="menuitem" disabled={isEmpty} onClick={() => { controls.onExport('markdown'); setMoreOpen(false) }}><FileText size={14} /> Download as Markdown</button>
+                  <button type="button" role="menuitem" disabled={isEmpty} onClick={() => { controls.onExport('pdf'); setMoreOpen(false) }}><FileDown size={14} /> Save as PDF</button>
+                  <div className="kv-menu-divider" role="separator" />
+                  <button type="button" role="menuitem" className="is-danger" onClick={() => { setMoreOpen(false); controls.onClearAll() }}><Trash2 size={14} /> Clear all chats</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        )}
+        </div>
       </div>
 
+      <LayoutGroup>
+      {isEmpty ? (
+        <div className="kv-chat-empty">
+          <motion.div className="kv-empty-hero" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 220, damping: 26 }}>
+            <KaviMark size={30} className="kv-empty-mark" />
+            <h2 className="kv-empty-title">{firstName ? `Hi ${firstName}, what would you like to know?` : 'What would you like to know?'}</h2>
+            <p className="kv-empty-sub">Ask why code in <strong>{repoShortName}</strong> exists, who decided something, or what changed.</p>
+          </motion.div>
+          {composer}
+          <div className="kv-empty-prompts">
+            {QUICK_PROMPTS.map((prompt, index) => (
+              <motion.button
+                key={prompt}
+                type="button"
+                className="kv-prompt-chip"
+                onClick={() => onSend(prompt)}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 + index * 0.04, type: 'spring', stiffness: 320, damping: 26 }}
+              >
+                {prompt}
+              </motion.button>
+            ))}
+          </div>
+          {noPrContext && (
+            <p className="kv-empty-note">No pull-request discussions are indexed yet. You can still ask; answers improve as more PRs are synced.</p>
+          )}
+        </div>
+      ) : (
+      <>
       {/* Messages */}
       <div className="db-chat-scroller">
       <div
@@ -182,14 +276,9 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
         style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}
       >
 
-        {noPrContext && (
-          <div style={{ borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '14px 18px' }}>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 4 }}>No pull-request discussions found yet.</p>
-            <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-ink-2)', lineHeight: 1.5 }}>You can still query the repository. Answers will improve as richer PR context is indexed.</p>
-          </div>
-        )}
-
         {messages.map((message, index) => {
+          // The welcome line belongs to the start screen now.
+          if (isWelcomeMessage(message)) return null
           const isStreaming = message.role === 'assistant' && index === streamingIndex
           const hasStructuredAnswer = message.role === 'assistant' && shouldRenderStructuredAnswer(message.structured)
           const useStreamingRenderer = message.role === 'assistant' && isStreaming && !hasStructuredAnswer
@@ -259,9 +348,9 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
         })}
 
         {chatLoading && !hasLiveAnswer && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--kv-surface)', border: '1px solid var(--kv-line)', borderRadius: 9999, padding: '8px 14px', fontFamily: "'Gabarito', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.55)', width: 'fit-content' }}>
-            <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
-            Thinking…
+          <div className="kv-trace-toggle is-active" role="status">
+            <span className="kv-trace-pulse is-active" aria-hidden />
+            <span className="kv-trace-title kv-shimmer">Thinking</span>
           </div>
         )}
 
@@ -303,80 +392,15 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
       </button>
       </div>
 
-      {/* Quick prompts + input */}
-      <div className="db-chat-compose" style={{ padding: '8px 16px 14px', flexShrink: 0 }}>
-        {/* Starter prompts: only until the first question is asked */}
-        <AnimatePresence initial={false}>
-          {!messages.some((message) => message.role === 'user') && (
-            <motion.div
-              key="starter-prompts"
-              className="db-quick-prompt-row"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-              style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}
-            >
-              {QUICK_PROMPTS.map((prompt, index) => (
-                <motion.button
-                  key={prompt}
-                  type="button"
-                  className="kv-prompt-chip"
-                  onClick={() => onSend(prompt)}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.04, type: 'spring', stiffness: 320, damping: 26 }}
-                >
-                  {prompt}
-                </motion.button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* Input bar */}
-        <AnimatePresence>
-          {timeTravel && <TimeTravelBanner value={timeTravel} onClear={() => setTimeTravel(null)} />}
-        </AnimatePresence>
-        <div
-          className="db-chat-input-row"
-          style={{ display: 'flex', alignItems: 'flex-end', gap: 10, background: 'var(--kv-surface)', border: '1.5px solid var(--kv-line)', borderRadius: 20, padding: '10px 10px 10px 16px', boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.06)', transition: 'border-color 0.15s' }}
-          onFocusCapture={(e) => (e.currentTarget.style.borderColor = 'var(--kv-ink)')}
-          onBlurCapture={(e) => (e.currentTarget.style.borderColor = 'var(--kv-line)')}
-        >
-          <TimeTravelButton value={timeTravel} onChange={setTimeTravel} disabled={chatLoading} />
-          <textarea
-            className="db-chat-textarea"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(chatInput) } }}
-            rows={1}
-            disabled={chatLoading}
-            aria-label="Ask KAVI about this repository"
-            placeholder="Ask about this repository…"
-            style={{ flex: '1 1 0', minWidth: 0, width: '100%', resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink)', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0, scrollbarWidth: 'none' }}
-          />
-          {chatLoading ? (
-            <button className="db-send-btn kv-stop-btn" type="button" onClick={controls.onStop} aria-label="Stop answering" data-tip="Stop answering">
-              <Square size={12} fill="currentColor" />
-            </button>
-          ) : (
-            <button
-              className="db-send-btn"
-              type="button"
-              onClick={() => onSend(chatInput)}
-              disabled={!chatInput.trim()}
-              aria-label="Send"
-              style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 12, background: 'var(--kv-solid)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: !chatInput.trim() ? 0.4 : 1, transition: 'opacity 0.15s, transform 0.2s var(--kv-spring)' }}
-            >
-              <Send size={15} color="var(--kv-on-solid)" />
-            </button>
-          )}
-        </div>
+      <div className="db-chat-compose">
+        {composer}
       </div>
+      </>
+      )}
+      </LayoutGroup>
 
       <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes kavi-cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         textarea:focus { outline: none !important; box-shadow: none !important; }
 
@@ -412,33 +436,6 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
             font-size: 13px !important;
           }
 
-          .db-chat-compose {
-            padding: 6px 10px 10px !important;
-          }
-
-          .db-chat-input-row {
-            border-radius: 9999px !important;
-            padding: 5px !important;
-            gap: 6px !important;
-            align-items: center !important;
-          }
-
-          .db-chat-input-row .kv-tt-btn,
-          .db-chat-input-row .db-send-btn {
-            width: 44px !important;
-            height: 44px !important;
-            border-radius: 9999px !important;
-          }
-
-          /* 16px keeps iOS Safari from zooming the page when the field is focused. */
-          .db-chat-textarea {
-            font-size: 16px !important;
-            line-height: 24px !important;
-            min-height: 44px !important;
-            max-height: 44px !important;
-            padding: 10px 6px !important;
-          }
-
 
           .db-overlay-panel {
             left: 0 !important;
@@ -454,11 +451,6 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
             top: 74px !important;
             left: 6px !important;
             right: 6px !important;
-          }
-
-          .db-quick-prompt-row button {
-            font-size: 12px !important;
-            padding: 6px 11px !important;
           }
 
           .db-repo-stats-grid {

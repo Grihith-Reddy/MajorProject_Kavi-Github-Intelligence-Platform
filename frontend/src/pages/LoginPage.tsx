@@ -57,6 +57,8 @@ export function LoginPage() {
       case 'auth/user-not-found':
       case 'auth/wrong-password':
       case 'auth/invalid-credential': return 'Incorrect email or password.'
+      case 'auth/network-request-failed': return "Can't reach the sign-in service. Check your connection and try again."
+      case 'auth/popup-blocked': return 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.'
       case 'auth/email-already-in-use': return 'An account with this email already exists.'
       case 'auth/weak-password': return 'Password must be at least 6 characters.'
       case 'auth/invalid-email': return 'Please enter a valid email address.'

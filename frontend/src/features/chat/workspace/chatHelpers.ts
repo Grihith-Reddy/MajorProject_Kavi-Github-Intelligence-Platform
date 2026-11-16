@@ -25,6 +25,11 @@ export function defaultMessages(name?: string | null): ChatEntry[] {
   return [{ role: 'assistant', content: `${greeting} ${DEFAULT_ASSISTANT_MESSAGE}` }]
 }
 
+/** The greeting KAVI used to open every chat with; the start screen shows it now, so the list skips it. */
+export function isWelcomeMessage(message: ChatEntry): boolean {
+  return message.role === 'assistant' && !message.messageId && message.content.endsWith(DEFAULT_ASSISTANT_MESSAGE)
+}
+
 export function shouldRenderStructuredAnswer(structured: StructuredAnswer | null | undefined): boolean {
   if (!structured || structured.format === 'plain') return false
   if (structured.format === 'structured') return true

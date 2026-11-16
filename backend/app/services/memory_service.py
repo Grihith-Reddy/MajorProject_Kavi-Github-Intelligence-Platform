@@ -236,6 +236,24 @@ def append_chat_message(
     return dict(inserted or {})
 
 
+def delete_repository_conversations(db: Session, *, user_id: str, repo_id: str) -> int:
+    """Delete every conversation this user has in one repository, and what KAVI learned from them.
+
+    Messages, answer feedback and conversation-scoped memory go with their conversation (ON DELETE
+    CASCADE); repository-scoped memory items learned from chat are removed explicitly. Other users'
+    chats in the same repository are never touched.
+    """
+    deleted = db.execute(
+        text("DELETE FROM chat_conversations WHERE user_id = :user_id AND repo_id = :repo_id"),
+        {"user_id": user_id, "repo_id": repo_id},
+    ).rowcount or 0
+    db.execute(
+        text("DELETE FROM chat_memory_items WHERE user_id = :user_id AND repo_id = :repo_id"),
+        {"user_id": user_id, "repo_id": repo_id},
+    )
+    return int(deleted)
+
+
 def list_conversations(
     db: Session,
     *,

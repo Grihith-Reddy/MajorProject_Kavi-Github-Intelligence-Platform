@@ -46,12 +46,12 @@ export function AgentTrace({ steps, notes = [], active }: { steps: AgentTraceSte
     <div className="kv-trace">
       <button
         type="button"
-        className="kv-trace-toggle"
+        className={`kv-trace-toggle${active ? ' is-active' : ''}`}
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
       >
         <span className={`kv-trace-pulse${active ? ' is-active' : ''}`} aria-hidden />
-        <span className="kv-trace-title">
+        <span className={`kv-trace-title${active ? ' kv-shimmer' : ''}`}>
           {active
             ? running
               ? steps[steps.length - 1]?.label ?? 'Working'

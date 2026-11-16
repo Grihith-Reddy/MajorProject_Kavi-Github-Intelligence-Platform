@@ -24,6 +24,7 @@ from app.services.github_service import GitHubService
 from app.services.memory_service import (
     append_chat_message,
     build_memory_context,
+    delete_repository_conversations,
     ensure_chat_conversation,
     extract_turn_memory_items,
     get_conversation_with_messages,
@@ -1636,6 +1637,21 @@ def list_chat_conversations(
         count=len(conversations),
     )
     return {"conversations": conversations}
+
+
+@router.delete("/conversations")
+def clear_chat_conversations(
+    repo_id: str = Query(...),
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Clear all of the signed-in user's chats in one repository."""
+    assert_repo_access(db, repo_id, current_user.sub)
+    user_id = _ensure_user_id(db, current_user)
+    deleted = delete_repository_conversations(db, user_id=user_id, repo_id=repo_id)
+    db.commit()
+    audit_log("chat.conversations.cleared", auth0_sub=current_user.sub, repo_id=repo_id, count=deleted)
+    return {"deleted": deleted}
 
 
 @router.get("/conversations/{conversation_id}")
