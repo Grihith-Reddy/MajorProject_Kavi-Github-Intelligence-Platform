@@ -188,7 +188,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
         <span className="kfaq-q">{q}</span>
         <span className="kfaq-icon" style={{ transform: open ? 'rotate(45deg)' : 'rotate(0deg)' }}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <path d="M10.625 2H9.375V9.375H2V10.625H9.375V18H10.625V10.625H18V9.375H10.625V2Z" fill="#181D1F"/>
+            <path d="M10.625 2H9.375V9.375H2V10.625H9.375V18H10.625V10.625H18V9.375H10.625V2Z" fill="var(--kv-ink)"/>
           </svg>
         </span>
       </button>
@@ -311,13 +311,13 @@ export function LandingPage() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
           font-family: 'Gabarito', -apple-system, BlinkMacSystemFont, sans-serif;
-          background: #fff; min-height: 100vh; overflow-x: hidden;
+          background: var(--kv-surface); min-height: 100vh; overflow-x: hidden;
         }
         .font-archivo { font-family: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif !important; }
 
-        .skip-nav { position: absolute; top: auto; left: -9999px; width: 1px; height: 1px; overflow: hidden; z-index: 9999; background: #181D1F; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; }
+        .skip-nav { position: absolute; top: auto; left: -9999px; width: 1px; height: 1px; overflow: hidden; z-index: 9999; background: var(--kv-solid); color: var(--kv-on-solid); padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; }
         .skip-nav:focus { position: fixed; top: 16px; left: 16px; width: auto; height: auto; overflow: visible; }
-        :focus-visible { outline: 2px solid #181D1F; outline-offset: 2px; }
+        :focus-visible { outline: 2px solid var(--kv-ink); outline-offset: 2px; }
 
         .k-header {
           position: fixed; inset-inline: 0; top: 0; z-index: 1000; padding: 24px;
@@ -335,37 +335,37 @@ export function LandingPage() {
           transition: background 0.2s, box-shadow 0.2s;
         }
         .k-header-inner.on {
-          background: rgba(255,255,255,0.88);
+          background: rgb(var(--kv-veil-rgb) / 0.88);
           backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           box-shadow: 0 4px 22px rgba(116,130,151,0.15);
         }
         .k-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; z-index: 10; }
-        .k-logo-mark { width: 32px; height: 32px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: background 0.25s ease; }
-        .k-header-inner.on .k-logo-mark { background: #181D1F; }
-        .k-logo-name { font-family: 'Audiowide', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.06em;color: #fff; transition: color 0.25s ease;  }
-        .k-header-inner.on .k-logo-name { color: #181D1F; }
+        .k-logo-mark { width: 32px; height: 32px; background: var(--kv-surface); border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: background 0.25s ease; }
+        .k-header-inner.on .k-logo-mark { background: var(--kv-solid); }
+        .k-logo-name { font-family: 'Audiowide', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.06em;color: var(--kv-on-solid); transition: color 0.25s ease;  }
+        .k-header-inner.on .k-logo-name { color: var(--kv-ink); }
         .k-nav { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; pointer-events: none; }
         @media (max-width: 768px) { .k-nav { display: none; } }
-        .k-nav-link { pointer-events: auto; padding: 8px 20px; border-radius: 9999px; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; color: #fff; background: transparent; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.25s ease; }
-        .k-nav-link:hover { background: rgba(255,255,255,0.15); }
-        .k-header-inner.on .k-nav-link { color: #181D1F; }
-        .k-header-inner.on .k-nav-link:hover { background: rgba(24,29,31,0.08); }
+        .k-nav-link { pointer-events: auto; padding: 8px 20px; border-radius: 9999px; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; color: var(--kv-on-solid); background: transparent; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.25s ease; }
+        .k-nav-link:hover { background: rgb(var(--kv-veil-rgb) / 0.15); }
+        .k-header-inner.on .k-nav-link { color: var(--kv-ink); }
+        .k-header-inner.on .k-nav-link:hover { background: rgb(var(--kv-ink-rgb) / 0.08); }
         .k-header-right { position: relative; z-index: 10; }
-        .k-btn-dark { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: rgba(255,255,255,0.18); color: #fff; border: 1.5px solid rgba(255,255,255,0.4); border-radius: 9999px; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease; backdrop-filter: blur(8px); }
+        .k-btn-dark { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: rgb(var(--kv-veil-rgb) / 0.18); color: var(--kv-on-solid); border: 1.5px solid rgb(var(--kv-veil-rgb) / 0.4); border-radius: 9999px; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease; backdrop-filter: blur(8px); }
         @media (max-width: 768px) { .k-btn-dark { font-size: 16px; padding: 8px 16px; } }
-        .k-btn-dark:hover { background: rgba(255,255,255,0.28); }
-        .k-header-inner.on .k-btn-dark { background: #181D1F; color: #fff; border-color: transparent; }
-        .k-header-inner.on .k-btn-dark:hover { background: #2d3748; }
+        .k-btn-dark:hover { background: rgb(var(--kv-veil-rgb) / 0.28); }
+        .k-header-inner.on .k-btn-dark { background: var(--kv-solid); color: var(--kv-on-solid); border-color: transparent; }
+        .k-header-inner.on .k-btn-dark:hover { background: var(--kv-solid-hover); }
 
         .k-hero {
           height: 100vh; max-height: 1440px; padding: 16px;
-          display: flex; flex-direction: column; background: #fff;
+          display: flex; flex-direction: column; background: var(--kv-surface);
         }
         @media (max-width: 768px) { .k-hero { padding: 12px; } }
 
         .k-hero-card {
           position: relative; flex: 1; width: 100%; max-width: 1440px; margin: 0 auto;
-          background: linear-gradient(170deg, #15aeea 0%, #73cef2 100%);
+          background: linear-gradient(170deg, var(--kv-sky-1) 0%, var(--kv-sky-2) 100%);
           overflow: hidden;
           transform: scale(0.6); border-radius: 80px; opacity: 0;
           transition: transform 1.6s cubic-bezier(0.85, 0, 0.15, 1),
@@ -389,113 +389,113 @@ export function LandingPage() {
         }
         .k-hero-card.expanded .k-hero-center { opacity: 1; }
 
-        .k-hero-eyebrow { font-family: 'Gabarito', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #037BB5; margin-bottom: 12px; }
+        .k-hero-eyebrow { font-family: 'Gabarito', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kv-sky-ink); margin-bottom: 12px; }
         .k-hero-h1 {
           font-family: 'Archivo', sans-serif; font-weight: 600; font-size: 128px;
           line-height: 1.09; letter-spacing: -0.015em;
-          background: linear-gradient(169deg, rgba(3,123,181,0.85) 20%, rgba(3,120,176,0.9) 74%);
+          background: linear-gradient(169deg, var(--kv-hero-text-from) 20%, var(--kv-hero-text-to) 74%);
           -webkit-background-clip: text; background-clip: text;
           -webkit-text-fill-color: transparent; color: transparent;
         }
         @media (max-width: 1200px) { .k-hero-h1 { font-size: clamp(48px, 8vw, 120px); line-height: 1.1; } }
         @media (max-width: 768px) { .k-hero-h1 { font-size: clamp(40px, 12vw, 72px); line-height: 1.15; } }
 
-        .k-page { background: #fff; }
-        .k-sec { background: #fff; padding: 0 16px 16px; }
+        .k-page { background: var(--kv-surface); }
+        .k-sec { background: var(--kv-surface); padding: 0 16px 16px; }
         .k-inner { max-width: 1440px; margin: 0 auto; }
 
         /* About */
-        .k-about-card { min-height: 760px; border-radius: 32px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; background: #FDDBCE; }
+        .k-about-card { min-height: 760px; border-radius: 32px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; background: var(--kv-peach); }
         .k-about-inner { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 80px 48px; max-width: 820px; text-align: center; }
-        .k-eyebrow { font-family: 'Gabarito', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #181D1F; }
-        .k-body-xl { font-family: 'Archivo', sans-serif; font-size: 32px; font-weight: 400; line-height: 1.25; letter-spacing: -0.015em; color: #181D1F; }
+        .k-eyebrow { font-family: 'Gabarito', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kv-ink); }
+        .k-body-xl { font-family: 'Archivo', sans-serif; font-size: 32px; font-weight: 400; line-height: 1.25; letter-spacing: -0.015em; color: var(--kv-ink); }
 
         /* Features */
         .k-feat-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 16px; }
         @media (max-width: 1024px) { .k-feat-grid { grid-template-columns: 1fr; } }
         .k-feat-card { height: 760px; border-radius: 32px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
         .k-feat-text { padding: 48px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; z-index: 4; }
-        .k-feat-h2 { font-family: 'Archivo', sans-serif; font-size: 40px; font-weight: 600; line-height: 1.2; letter-spacing: -0.015em; color: #181D1F; }
-        .k-feat-p { font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 400; line-height: 1.4; letter-spacing: 0.025em; color: #424647; }
+        .k-feat-h2 { font-family: 'Archivo', sans-serif; font-size: 40px; font-weight: 600; line-height: 1.2; letter-spacing: -0.015em; color: var(--kv-ink); }
+        .k-feat-p { font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 400; line-height: 1.4; letter-spacing: 0.025em; color: var(--kv-ink-2); }
 
         /* Marquee */
-        .k-marquee-sec { overflow: hidden; border-top: 1px solid #E7E7E9; border-bottom: 1px solid #E7E7E9; padding: 16px 0; background: #fff; }
+        .k-marquee-sec { overflow: hidden; border-top: 1px solid var(--kv-line); border-bottom: 1px solid var(--kv-line); padding: 16px 0; background: var(--kv-surface); }
         .k-marquee-row { position: relative; overflow: hidden; margin-bottom: 12px; }
         .k-track { display: flex; gap: 12px; width: max-content; will-change: transform; backface-visibility: hidden; }
         .k-fwd { animation: k-marquee-fwd 30s linear infinite; }
         .k-rev { animation: k-marquee-rev 24s linear infinite; }
         @keyframes k-marquee-fwd { from { transform: translateX(0); } to { transform: translateX(-33.333%); } }
         @keyframes k-marquee-rev { from { transform: translateX(-33.333%); } to { transform: translateX(0); } }
-        .k-token { display: inline-flex; align-items: center; flex-shrink: 0; border: 1px solid #E7E7E9; border-radius: 9999px; padding: 6px 16px; font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 400; color: #424647; white-space: nowrap; background: #fff; }
+        .k-token { display: inline-flex; align-items: center; flex-shrink: 0; border: 1px solid var(--kv-line); border-radius: 9999px; padding: 6px 16px; font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 400; color: var(--kv-ink-2); white-space: nowrap; background: var(--kv-surface); }
 
         /* How it works */
-        .k-how-card { border-radius: 32px; background: #EAE4DC; padding: 64px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+        .k-how-card { border-radius: 32px; background: var(--kv-sand); padding: 64px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
         @media (max-width: 900px) { .k-how-card { grid-template-columns: 1fr; gap: 32px; } }
-        .k-how-h2 { font-family: 'Archivo', sans-serif; font-size: clamp(32px, 4vw, 56px); font-weight: 600; letter-spacing: -0.015em; line-height: 1.1; color: #181D1F; margin-bottom: 16px; }
+        .k-how-h2 { font-family: 'Archivo', sans-serif; font-size: clamp(32px, 4vw, 56px); font-weight: 600; letter-spacing: -0.015em; line-height: 1.1; color: var(--kv-ink); margin-bottom: 16px; }
         .k-step { display: flex; gap: 16px; align-items: flex-start; padding: 16px; border-radius: 16px; background: transparent; transition: background 0.18s; }
-        .k-step-num { font-family: 'Archivo', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.1em; color: rgba(24,29,31,0.35); min-width: 28px; }
+        .k-step-num { font-family: 'Archivo', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.1em; color: rgb(var(--kv-ink-rgb) / 0.35); min-width: 28px; }
         /* ✅ Fixed: step title and body were rendering white */
-        .k-step-title { font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 600; color: #181D1F; margin-bottom: 4px; }
-        .k-step-body { font-family: 'Archivo', sans-serif; font-size: 14px; color: #424647; line-height: 1.55; }
+        .k-step-title { font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 600; color: var(--kv-ink); margin-bottom: 4px; }
+        .k-step-body { font-family: 'Archivo', sans-serif; font-size: 14px; color: var(--kv-ink-2); line-height: 1.55; }
 
         /* Outcomes */
-        .k-out-card { border-radius: 32px; background: #D7CEF0; padding: 48px; }
-        .k-sec-h2 { font-family: 'Archivo', sans-serif; font-size: 64px; font-weight: 600; line-height: 1.12; letter-spacing: -0.015em; color: #181D1F; }
+        .k-out-card { border-radius: 32px; background: var(--kv-lilac); padding: 48px; }
+        .k-sec-h2 { font-family: 'Archivo', sans-serif; font-size: 64px; font-weight: 600; line-height: 1.12; letter-spacing: -0.015em; color: var(--kv-ink); }
         @media (max-width: 768px) { .k-sec-h2 { font-size: clamp(32px, 8vw, 56px); } }
-        .k-out-item { display: grid; grid-template-columns: 72px 1fr auto; gap: 16px; align-items: start; padding: 24px 0; border-bottom: 1px solid rgba(24,29,31,0.1); cursor: default; transition: transform 0.18s ease; }
-        .k-out-num { font-family: 'Archivo', sans-serif; font-size: 32px; font-weight: 600; color: rgba(24,29,31,0.22); }
+        .k-out-item { display: grid; grid-template-columns: 72px 1fr auto; gap: 16px; align-items: start; padding: 24px 0; border-bottom: 1px solid rgb(var(--kv-ink-rgb) / 0.1); cursor: default; transition: transform 0.18s ease; }
+        .k-out-num { font-family: 'Archivo', sans-serif; font-size: 32px; font-weight: 600; color: rgb(var(--kv-ink-rgb) / 0.22); }
         /* ✅ Fixed: outcome title and body were rendering white */
-        .k-out-title { font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 600; color: #181D1F; margin-bottom: 6px; }
-        .k-out-body { font-family: 'Archivo', sans-serif; font-size: 15px; color: #424647; line-height: 1.5; }
-        .k-out-tag { display: inline-flex; align-items: center; height: fit-content; border: 1px solid rgba(24,29,31,0.18); border-radius: 9999px; padding: 4px 14px; font-family: 'Gabarito', sans-serif; font-size: 13px; font-weight: 500; color: #424647; white-space: nowrap; }
+        .k-out-title { font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 600; color: var(--kv-ink); margin-bottom: 6px; }
+        .k-out-body { font-family: 'Archivo', sans-serif; font-size: 15px; color: var(--kv-ink-2); line-height: 1.5; }
+        .k-out-tag { display: inline-flex; align-items: center; height: fit-content; border: 1px solid rgb(var(--kv-ink-rgb) / 0.18); border-radius: 9999px; padding: 4px 14px; font-family: 'Gabarito', sans-serif; font-size: 13px; font-weight: 500; color: var(--kv-ink-2); white-space: nowrap; }
 
         /* Trust */
-        .k-trust-card { border-radius: 32px; overflow: hidden; background: #DBE5F0; }
+        .k-trust-card { border-radius: 32px; overflow: hidden; background: var(--kv-ice); }
         .k-trust-header { padding: 48px 48px 32px; }
         .k-trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
         @media (max-width: 768px) { .k-trust-grid { grid-template-columns: 1fr; } }
         .k-trust-item { padding: 32px 40px 40px; position: relative; }
-        .k-trust-icon { margin-bottom: 16px; color: #181D1F; }
-        .k-trust-title { font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 600; color: #181D1F; margin-bottom: 8px; }
+        .k-trust-icon { margin-bottom: 16px; color: var(--kv-ink); }
+        .k-trust-title { font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 600; color: var(--kv-ink); margin-bottom: 8px; }
         /* ✅ Fixed: trust body was rendering white */
-        .k-trust-body { font-family: 'Archivo', sans-serif; font-size: 15px; color: #424647; line-height: 1.55; }
+        .k-trust-body { font-family: 'Archivo', sans-serif; font-size: 15px; color: var(--kv-ink-2); line-height: 1.55; }
 
         /* Testimonials */
-        .k-testi-card { border-radius: 32px; background: #E4EED2; padding: 48px; }
+        .k-testi-card { border-radius: 32px; background: var(--kv-sage); padding: 48px; }
         .k-testi-header { margin-bottom: 32px; }
         .k-testi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
         @media (max-width: 1024px) { .k-testi-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 600px) { .k-testi-grid { grid-template-columns: 1fr; } }
-        .k-testi-item { display: flex; flex-direction: column; justify-content: space-between; border: 2px solid rgba(24,29,31,0.2); border-radius: 24px; padding: 24px; min-height: 180px; background: rgba(255,255,255,0.5); }
+        .k-testi-item { display: flex; flex-direction: column; justify-content: space-between; border: 2px solid rgb(var(--kv-ink-rgb) / 0.2); border-radius: 24px; padding: 24px; min-height: 180px; background: rgb(var(--kv-veil-rgb) / 0.5); }
         /* ✅ Fixed: testimonial quote and author were rendering white */
-        .k-testi-q { font-family: 'Archivo', sans-serif; font-size: 15px; color: #181D1F; line-height: 1.55; margin-bottom: 16px; }
-        .k-testi-author { font-family: 'Gabarito', sans-serif; font-size: 14px; font-weight: 600; color: rgba(24,29,31,0.55); }
+        .k-testi-q { font-family: 'Archivo', sans-serif; font-size: 15px; color: var(--kv-ink); line-height: 1.55; margin-bottom: 16px; }
+        .k-testi-author { font-family: 'Gabarito', sans-serif; font-size: 14px; font-weight: 600; color: rgb(var(--kv-ink-rgb) / 0.55); }
 
         /* CTA */
-        .k-cta-card { border-radius: 32px; background: #181D1F; padding: 64px 48px; display: grid; grid-template-columns: 1fr auto; gap: 48px; align-items: center; }
+        .k-cta-card { border-radius: 32px; background: var(--kv-solid); padding: 64px 48px; display: grid; grid-template-columns: 1fr auto; gap: 48px; align-items: center; }
         @media (max-width: 768px) { .k-cta-card { grid-template-columns: 1fr; gap: 24px; } }
-        .k-cta-h2 { font-family: 'Archivo', sans-serif; font-size: clamp(28px, 3.5vw, 48px); font-weight: 600; color: #fff; }
-        .k-btn-white { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: #fff; color: #181D1F; border-radius: 9999px; border: none; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 600; white-space: nowrap; transition: background 0.15s; }
+        .k-cta-h2 { font-family: 'Archivo', sans-serif; font-size: clamp(28px, 3.5vw, 48px); font-weight: 600; color: var(--kv-on-solid); }
+        .k-btn-white { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; background: var(--kv-surface); color: var(--kv-ink); border-radius: 9999px; border: none; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 600; white-space: nowrap; transition: background 0.15s; }
         .k-btn-white:hover { background: #f0f0f0; }
 
         /* FAQ */
-        .k-faq-card { border-radius: 32px; background: #DCEEEF; padding: 48px; }
+        .k-faq-card { border-radius: 32px; background: var(--kv-mint); padding: 48px; }
         .k-faq-header { margin-bottom: 24px; }
-        .kfaq-item { background: #fff; border-radius: 24px; overflow: hidden; margin-bottom: 12px; }
+        .kfaq-item { background: var(--kv-surface); border-radius: 24px; overflow: hidden; margin-bottom: 12px; }
         .kfaq-btn { width: 100%; display: flex; gap: 48px; align-items: flex-start; padding: 20px 16px 20px 24px; cursor: pointer; background: none; border: none; text-align: left; }
-        .kfaq-q { flex: 1; font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 600; color: #181D1F; line-height: 1.3; }
+        .kfaq-q { flex: 1; font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 600; color: var(--kv-ink); line-height: 1.3; }
         .kfaq-icon { flex-shrink: 0; transition: transform 0.25s ease; }
         .kfaq-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; }
-        .kfaq-a { font-family: 'Archivo', sans-serif; font-size: 18px; color: #424647; line-height: 1.5; padding: 0 24px 24px; }
+        .kfaq-a { font-family: 'Archivo', sans-serif; font-size: 18px; color: var(--kv-ink-2); line-height: 1.5; padding: 0 24px 24px; }
 
         /* Footer */
-        .k-footer-card { border-radius: 32px; background: #181D1F; padding: 48px; display: flex; flex-direction: column; gap: 48px; }
+        .k-footer-card { border-radius: 32px; background: var(--kv-solid); padding: 48px; display: flex; flex-direction: column; gap: 48px; }
         .k-footer-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 32px; }
         .k-footer-links { display: flex; gap: 96px; }
         .k-footer-col { display: flex; flex-direction: column; gap: 8px; }
-        .k-footer-a { font-family: 'Archivo', sans-serif; font-size: 18px; color: #fff; text-decoration: none; background: none; border: none; cursor: pointer; padding: 0; text-align: left; transition: color 0.15s; }
-        .k-footer-a:hover { color: rgba(255,255,255,0.7); }
-        .k-footer-copy { font-family: 'Archivo', sans-serif; font-size: 16px; color: rgba(255,255,255,0.4); }
+        .k-footer-a { font-family: 'Archivo', sans-serif; font-size: 18px; color: var(--kv-on-solid); text-decoration: none; background: none; border: none; cursor: pointer; padding: 0; text-align: left; transition: color 0.15s; }
+        .k-footer-a:hover { color: rgb(var(--kv-veil-rgb) / 0.7); }
+        .k-footer-copy { font-family: 'Archivo', sans-serif; font-size: 16px; color: rgb(var(--kv-veil-rgb) / 0.4); }
 
         @media (max-width: 1100px) {
           .k-about-card { min-height: 620px; }
@@ -586,7 +586,7 @@ export function LandingPage() {
       <header className={`k-header ${isReady ? 'ready' : ''}`}>
         <div className={`k-header-inner${scrolled ? ' on' : ''}`}>
           <a href="/" className="k-logo" aria-label="Kavi">
-            <div className="k-logo-mark"><Zap size={15} color={scrolled ? '#fff' : '#181D1F'} strokeWidth={2} /></div>
+            <div className="k-logo-mark"><Zap size={15} color={scrolled ? 'var(--kv-on-solid)' : 'var(--kv-ink)'} strokeWidth={2} /></div>
             <span className="k-logo-name">KAVI</span>
           </a>
           <nav className="k-nav" aria-label="Main navigation">
@@ -650,25 +650,25 @@ export function LandingPage() {
                       top: pr.top,
                       left: pr.left,
                       width: 180,
-                      background: '#fff',
+                      background: 'var(--kv-surface)',
                       borderRadius: 14,
                       padding: '10px 13px',
                       opacity: pr.opacity,
                       transform: `rotate(${pr.rotate})`,
                       pointerEvents: 'none',
-                      boxShadow: '0 4px 16px rgba(24,29,31,0.10)',
+                      boxShadow: '0 4px 16px rgb(var(--kv-ink-rgb) / 0.10)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                      <div style={{ width: 16, height: 16, borderRadius: 5, background: '#181D1F', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="3" r="1.5" stroke="#fff" strokeWidth="1.4"/><circle cx="4" cy="13" r="1.5" stroke="#fff" strokeWidth="1.4"/><circle cx="12" cy="13" r="1.5" stroke="#fff" strokeWidth="1.4"/><path d="M4 4.5v7M4 11.5c2 0 5.5-.8 5.5-4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                      <div style={{ width: 16, height: 16, borderRadius: 5, background: 'var(--kv-solid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="3" r="1.5" stroke="var(--kv-on-solid)" strokeWidth="1.4"/><circle cx="4" cy="13" r="1.5" stroke="var(--kv-on-solid)" strokeWidth="1.4"/><circle cx="12" cy="13" r="1.5" stroke="var(--kv-on-solid)" strokeWidth="1.4"/><path d="M4 4.5v7M4 11.5c2 0 5.5-.8 5.5-4" stroke="var(--kv-on-solid)" strokeWidth="1.4" strokeLinecap="round"/></svg>
                       </div>
                       <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 700, color: '#C2522B' }}>PR #{pr.num}</span>
                     </div>
-                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, fontWeight: 600, color: '#181D1F', lineHeight: 1.3, marginBottom: 5 }}>{pr.title}</p>
-                    <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.5)' }}>@{pr.author}</p>
+                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, fontWeight: 600, color: 'var(--kv-ink)', lineHeight: 1.3, marginBottom: 5 }}>{pr.title}</p>
+                    <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>@{pr.author}</p>
                     <div style={{ marginTop: 7, height: 3, borderRadius: 9999, background: '#F0EDE8' }}>
-                      <div style={{ height: 3, borderRadius: 9999, background: 'rgba(24,29,31,0.2)', width: `${50 + (pr.num % 5) * 8}%` }} />
+                      <div style={{ height: 3, borderRadius: 9999, background: 'rgb(var(--kv-ink-rgb) / 0.2)', width: `${50 + (pr.num % 5) * 8}%` }} />
                     </div>
                   </div>
                 ))}
@@ -676,7 +676,7 @@ export function LandingPage() {
                 {/* Radial vignette to fade cards near centre */}
                 <div style={{
                   position: 'absolute', inset: 0, pointerEvents: 'none',
-                  background: 'radial-gradient(ellipse 55% 60% at 50% 50%, #FDDBCE 38%, transparent 75%)',
+                  background: 'radial-gradient(ellipse 55% 60% at 50% 50%, var(--kv-peach) 38%, transparent 75%)',
                   zIndex: 1,
                 }} />
 
@@ -690,8 +690,8 @@ export function LandingPage() {
                     <Words text="Oddly, though, nobody built a way to query them. Until now." />
                   </p>
                   <div style={{ margin: '4px 0' }}>
-                    <div style={{ width: 36, height: 36, background: '#181D1F', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Zap size={18} color="#fff" strokeWidth={2} />
+                    <div style={{ width: 36, height: 36, background: 'var(--kv-solid)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Zap size={18} color="var(--kv-on-solid)" strokeWidth={2} />
                     </div>
                   </div>
                   <p className="k-body-xl font-archivo">
@@ -705,7 +705,7 @@ export function LandingPage() {
           <section aria-label="Key features" className="k-sec">
             <div className="k-inner">
               <div className="k-feat-grid" ref={featRef as React.RefObject<HTMLDivElement>}>
-                <div className="k-feat-card" style={{ background: '#EAE4DC' }}>
+                <div className="k-feat-card" style={{ background: 'var(--kv-sand)' }}>
                   <div className="k-feat-text">
                     <h2 className="k-feat-h2 font-archivo">
                       {['The','antidote','to','context','rot'].map((w, i) => (
@@ -720,64 +720,64 @@ export function LandingPage() {
 
                     {/* PR header pill */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', borderRadius: 9999, padding: '5px 12px 5px 8px', boxShadow: '0 1px 4px rgba(24,29,31,0.08)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--kv-surface)', borderRadius: 9999, padding: '5px 12px 5px 8px', boxShadow: '0 1px 4px rgb(var(--kv-ink-rgb) / 0.08)' }}>
                         <div style={{ width: 18, height: 18, background: '#6E5BC2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="3" r="2" stroke="#fff" strokeWidth="1.5"/><circle cx="4" cy="13" r="2" stroke="#fff" strokeWidth="1.5"/><circle cx="12" cy="13" r="2" stroke="#fff" strokeWidth="1.5"/><path d="M4 5v6M4 11c2 0 6-.5 6-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="3" r="2" stroke="var(--kv-on-solid)" strokeWidth="1.5"/><circle cx="4" cy="13" r="2" stroke="var(--kv-on-solid)" strokeWidth="1.5"/><circle cx="12" cy="13" r="2" stroke="var(--kv-on-solid)" strokeWidth="1.5"/><path d="M4 5v6M4 11c2 0 6-.5 6-4" stroke="var(--kv-on-solid)" strokeWidth="1.5" strokeLinecap="round"/></svg>
                         </div>
-                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, color: '#181D1F' }}>PR #341</span>
-                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'rgba(24,29,31,0.5)' }}>Migrate auth to JWT tokens</span>
+                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, color: 'var(--kv-ink)' }}>PR #341</span>
+                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Migrate auth to JWT tokens</span>
                       </div>
                       <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: '#2D6A2D', background: '#D4EDDA', borderRadius: 9999, padding: '3px 10px' }}>Merged</span>
                     </div>
 
                     {/* Comment 1 */}
-                    <div style={{ background: '#fff', borderRadius: 16, padding: '12px 14px', boxShadow: '0 1px 4px rgba(24,29,31,0.07)' }}>
+                    <div style={{ background: 'var(--kv-surface)', borderRadius: 16, padding: '12px 14px', boxShadow: '0 1px 4px rgb(var(--kv-ink-rgb) / 0.07)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#FDDBCE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 700, color: '#C2522B', flexShrink: 0 }}>S</div>
-                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>sarah_k</span>
-                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.4)', marginLeft: 'auto' }}>14 Mar</span>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--kv-peach)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 700, color: '#C2522B', flexShrink: 0 }}>S</div>
+                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>sarah_k</span>
+                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.4)', marginLeft: 'auto' }}>14 Mar</span>
                       </div>
-                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#424647', lineHeight: 1.55 }}>
+                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-ink-2)', lineHeight: 1.55 }}>
                         Why are we moving away from session cookies? Concerned about token storage on mobile clients.
                       </p>
                     </div>
 
                     {/* Comment 2 — decision */}
-                    <div style={{ background: '#fff', borderRadius: 16, padding: '12px 14px', boxShadow: '0 1px 4px rgba(24,29,31,0.07)', borderLeft: '3px solid #6E5BC2' }}>
+                    <div style={{ background: 'var(--kv-surface)', borderRadius: 16, padding: '12px 14px', boxShadow: '0 1px 4px rgb(var(--kv-ink-rgb) / 0.07)', borderLeft: '3px solid #6E5BC2' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#D7CEF0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 700, color: '#6E5BC2', flexShrink: 0 }}>R</div>
-                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>ravi_m</span>
-                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.4)', marginLeft: 'auto' }}>14 Mar</span>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--kv-lilac)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 700, color: '#6E5BC2', flexShrink: 0 }}>R</div>
+                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>ravi_m</span>
+                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.4)', marginLeft: 'auto' }}>14 Mar</span>
                       </div>
-                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#424647', lineHeight: 1.55 }}>
-                        Good catch. We decided on <strong style={{ color: '#181D1F' }}>httpOnly cookies for JWT</strong> — no JS access. The mobile SDK handles refresh automatically. Tradeoff documented in the ADR linked below.
+                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-ink-2)', lineHeight: 1.55 }}>
+                        Good catch. We decided on <strong style={{ color: 'var(--kv-ink)' }}>httpOnly cookies for JWT</strong> — no JS access. The mobile SDK handles refresh automatically. Tradeoff documented in the ADR linked below.
                       </p>
                     </div>
 
                     {/* Comment 3 — resolution */}
-                    <div style={{ background: '#fff', borderRadius: 16, padding: '12px 14px', boxShadow: '0 1px 4px rgba(24,29,31,0.07)' }}>
+                    <div style={{ background: 'var(--kv-surface)', borderRadius: 16, padding: '12px 14px', boxShadow: '0 1px 4px rgb(var(--kv-ink-rgb) / 0.07)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E4EED2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 700, color: '#2D6A2D', flexShrink: 0 }}>T</div>
-                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>tom_p</span>
-                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.4)', marginLeft: 'auto' }}>15 Mar</span>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--kv-sage)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 700, color: '#2D6A2D', flexShrink: 0 }}>T</div>
+                        <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>tom_p</span>
+                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.4)', marginLeft: 'auto' }}>15 Mar</span>
                       </div>
-                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#424647', lineHeight: 1.55 }}>
+                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-ink-2)', lineHeight: 1.55 }}>
                         Approved. This is exactly the reasoning we needed documented. ✓
                       </p>
                     </div>
 
                     {/* Kavi indexed badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', background: 'rgba(24,29,31,0.08)', borderRadius: 9999, padding: '5px 12px' }}>
-                      <div style={{ width: 14, height: 14, background: '#181D1F', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 5.5L4 7.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', background: 'rgb(var(--kv-ink-rgb) / 0.08)', borderRadius: 9999, padding: '5px 12px' }}>
+                      <div style={{ width: 14, height: 14, background: 'var(--kv-solid)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 5.5L4 7.5L8 3" stroke="var(--kv-on-solid)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </div>
-                      <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: 'rgba(24,29,31,0.6)', letterSpacing: '0.06em' }}>INDEXED BY KAVI</span>
+                      <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: 'rgb(var(--kv-ink-rgb) / 0.6)', letterSpacing: '0.06em' }}>INDEXED BY KAVI</span>
                     </div>
 
                   </div>
                 </div>
 
-                <div className="k-feat-card" style={{ background: '#D7CEF0' }}>
+                <div className="k-feat-card" style={{ background: 'var(--kv-lilac)' }}>
                   <div className="k-feat-text">
                     <h2 className="k-feat-h2 font-archivo">
                       {['Ask','in','plain','language'].map((w, i) => (
@@ -792,12 +792,12 @@ export function LandingPage() {
                     {/* User message */}
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <div style={{
-                        background: '#181D1F', color: '#fff',
+                        background: 'var(--kv-solid)', color: 'var(--kv-on-solid)',
                         borderRadius: '18px 18px 4px 18px',
                         padding: '10px 16px',
                         fontFamily: "'Archivo', sans-serif", fontSize: 14, lineHeight: 1.5,
                         maxWidth: '80%',
-                        boxShadow: '0 4px 14px rgba(24,29,31,0.18)',
+                        boxShadow: '0 4px 14px rgb(var(--kv-ink-rgb) / 0.18)',
                       }}>
                         Why did we switch from REST to GraphQL in the API layer?
                       </div>
@@ -806,15 +806,15 @@ export function LandingPage() {
                     {/* Assistant message */}
                     <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                       <div style={{
-                        background: '#fff',
+                        background: 'var(--kv-surface)',
                         borderRadius: '18px 18px 18px 4px',
                         padding: '14px 16px',
                         fontFamily: "'Archivo', sans-serif", fontSize: 14, lineHeight: 1.6,
                         maxWidth: '88%',
-                        boxShadow: '0 2px 8px rgba(24,29,31,0.08)',
+                        boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.08)',
                         display: 'flex', flexDirection: 'column', gap: 10,
                       }}>
-                        <p style={{ color: '#181D1F' }}>
+                        <p style={{ color: 'var(--kv-ink)' }}>
                           The switch was driven by frontend over-fetching issues. PR #214 by <strong>@ravi</strong> documents that mobile clients were downloading 4× more data than needed with the REST endpoints.
                         </p>
                         {/* Citation pill */}
@@ -833,12 +833,12 @@ export function LandingPage() {
                     {/* Second user message */}
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <div style={{
-                        background: '#181D1F', color: '#fff',
+                        background: 'var(--kv-solid)', color: 'var(--kv-on-solid)',
                         borderRadius: '18px 18px 4px 18px',
                         padding: '10px 16px',
                         fontFamily: "'Archivo', sans-serif", fontSize: 14, lineHeight: 1.5,
                         maxWidth: '72%',
-                        boxShadow: '0 4px 14px rgba(24,29,31,0.18)',
+                        boxShadow: '0 4px 14px rgb(var(--kv-ink-rgb) / 0.18)',
                       }}>
                         Which files were most affected?
                       </div>
@@ -847,15 +847,15 @@ export function LandingPage() {
                     {/* Typing indicator */}
                     <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                       <div style={{
-                        background: '#fff', borderRadius: '18px 18px 18px 4px',
+                        background: 'var(--kv-surface)', borderRadius: '18px 18px 18px 4px',
                         padding: '12px 16px',
                         display: 'flex', alignItems: 'center', gap: 5,
-                        boxShadow: '0 2px 8px rgba(24,29,31,0.08)',
+                        boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.08)',
                       }}>
                         {[0, 0.18, 0.36].map((delay, i) => (
                           <span key={i} style={{
                             width: 7, height: 7, borderRadius: '50%',
-                            background: 'rgba(24,29,31,0.3)',
+                            background: 'rgb(var(--kv-ink-rgb) / 0.3)',
                             display: 'inline-block',
                             animation: `kavi-dot-bounce 1.1s ${delay}s ease-in-out infinite`,
                           }} />
@@ -866,18 +866,18 @@ export function LandingPage() {
                     {/* Fake input bar */}
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 10,
-                      background: '#fff', borderRadius: 14,
+                      background: 'var(--kv-surface)', borderRadius: 14,
                       padding: '10px 12px 10px 16px',
-                      boxShadow: '0 2px 8px rgba(24,29,31,0.08)',
+                      boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.08)',
                       marginTop: 4,
                     }}>
-                      <span style={{ flex: 1, fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.35)' }}>
+                      <span style={{ flex: 1, fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.35)' }}>
                         Ask about architecture, PR history…
                       </span>
-                      <div style={{ width: 30, height: 30, background: '#181D1F', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ width: 30, height: 30, background: 'var(--kv-solid)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                          <path d="M22 2L11 13" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M22 2L11 13" stroke="var(--kv-on-solid)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="var(--kv-on-solid)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </div>
                     </div>
@@ -919,7 +919,7 @@ export function LandingPage() {
                     {FLOW_STEPS.map((step, i) => (
                       <div key={i} className="k-step">
                         <span className="k-step-num">0{i + 1}</span>
-                        <span style={{ color: '#181D1F', marginTop: 1 }}>{step.icon}</span>
+                        <span style={{ color: 'var(--kv-ink)', marginTop: 1 }}>{step.icon}</span>
                         <div>
                           <p className="k-step-title font-archivo">{step.title}</p>
                           <p className="k-step-body font-archivo">{step.body}</p>
@@ -931,66 +931,66 @@ export function LandingPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
 
                   {/* Step 1 — Repos connected */}
-                  <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', boxShadow: '0 2px 8px rgba(24,29,31,0.07)' }}>
+                  <div style={{ background: 'var(--kv-surface)', borderRadius: 18, padding: '14px 16px', boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.07)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 28, height: 28, background: '#181D1F', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="3" r="1.5" stroke="#fff" strokeWidth="1.3"/><circle cx="4" cy="13" r="1.5" stroke="#fff" strokeWidth="1.3"/><circle cx="12" cy="13" r="1.5" stroke="#fff" strokeWidth="1.3"/><path d="M4 4.5v7M4 11.5c2 0 5.5-.8 5.5-4" stroke="#fff" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                        <div style={{ width: 28, height: 28, background: 'var(--kv-solid)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="3" r="1.5" stroke="var(--kv-on-solid)" strokeWidth="1.3"/><circle cx="4" cy="13" r="1.5" stroke="var(--kv-on-solid)" strokeWidth="1.3"/><circle cx="12" cy="13" r="1.5" stroke="var(--kv-on-solid)" strokeWidth="1.3"/><path d="M4 4.5v7M4 11.5c2 0 5.5-.8 5.5-4" stroke="var(--kv-on-solid)" strokeWidth="1.3" strokeLinecap="round"/></svg>
                         </div>
-                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>Repositories connected</span>
+                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>Repositories connected</span>
                       </div>
                       <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: '#2D6A2D', background: '#D4EDDA', borderRadius: 9999, padding: '3px 10px' }}>✓ Live</span>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {['api-service', 'frontend', 'auth-core'].map((repo) => (
-                        <span key={repo} style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 500, color: 'rgba(24,29,31,0.6)', background: '#F4F4F5', borderRadius: 9999, padding: '3px 10px', border: '1px solid #E7E7E9' }}>{repo}</span>
+                        <span key={repo} style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 500, color: 'rgb(var(--kv-ink-rgb) / 0.6)', background: 'var(--kv-mist)', borderRadius: 9999, padding: '3px 10px', border: '1px solid var(--kv-line)' }}>{repo}</span>
                       ))}
                     </div>
                   </div>
 
                   {/* Step 2 — Indexing progress */}
-                  <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', boxShadow: '0 2px 8px rgba(24,29,31,0.07)' }}>
+                  <div style={{ background: 'var(--kv-surface)', borderRadius: 18, padding: '14px 16px', boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.07)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 28, height: 28, background: '#181D1F', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="#fff" strokeWidth="1.3"/><path d="M5 8h6M5 5.5h3M5 10.5h4" stroke="#fff" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                        <div style={{ width: 28, height: 28, background: 'var(--kv-solid)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="var(--kv-on-solid)" strokeWidth="1.3"/><path d="M5 8h6M5 5.5h3M5 10.5h4" stroke="var(--kv-on-solid)" strokeWidth="1.3" strokeLinecap="round"/></svg>
                         </div>
-                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>Decision memory indexed</span>
+                        <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>Decision memory indexed</span>
                       </div>
-                      <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: '#181D1F' }}>1,842 PRs</span>
+                      <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: 'var(--kv-ink)' }}>1,842 PRs</span>
                     </div>
                     {/* Progress bars */}
                     {[['Intent & summaries', '94%'], ['File-level impact', '88%'], ['Architecture context', '76%']].map(([label, pct]) => (
                       <div key={label as string} style={{ marginBottom: 7 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.5)' }}>{label}</span>
-                          <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: 'rgba(24,29,31,0.5)' }}>{pct}</span>
+                          <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>{label}</span>
+                          <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>{pct}</span>
                         </div>
-                        <div style={{ height: 5, borderRadius: 9999, background: '#F4F4F5' }}>
-                          <div style={{ height: 5, borderRadius: 9999, background: '#181D1F', width: pct as string, opacity: 0.75 }} />
+                        <div style={{ height: 5, borderRadius: 9999, background: 'var(--kv-mist)' }}>
+                          <div style={{ height: 5, borderRadius: 9999, background: 'var(--kv-solid)', width: pct as string, opacity: 0.75 }} />
                         </div>
                       </div>
                     ))}
                   </div>
 
                   {/* Step 3 — Query result */}
-                  <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', boxShadow: '0 2px 8px rgba(24,29,31,0.07)' }}>
+                  <div style={{ background: 'var(--kv-surface)', borderRadius: 18, padding: '14px 16px', boxShadow: '0 2px 8px rgb(var(--kv-ink-rgb) / 0.07)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <div style={{ width: 28, height: 28, background: '#181D1F', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="#fff" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                      <div style={{ width: 28, height: 28, background: 'var(--kv-solid)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h5" stroke="var(--kv-on-solid)" strokeWidth="1.3" strokeLinecap="round"/></svg>
                       </div>
-                      <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>Grounded answer</span>
+                      <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>Grounded answer</span>
                     </div>
-                    <div style={{ background: '#F4F4F5', borderRadius: 10, padding: '8px 12px', marginBottom: 8 }}>
-                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'rgba(24,29,31,0.5)', marginBottom: 2 }}>Query</p>
-                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: '#181D1F', fontWeight: 500 }}>Why was the rate limiter added to /checkout?</p>
+                    <div style={{ background: 'var(--kv-mist)', borderRadius: 10, padding: '8px 12px', marginBottom: 8 }}>
+                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.5)', marginBottom: 2 }}>Query</p>
+                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'var(--kv-ink)', fontWeight: 500 }}>Why was the rate limiter added to /checkout?</p>
                     </div>
-                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: '#424647', lineHeight: 1.55, marginBottom: 8 }}>
-                      Added in PR #189 after a payment spike caused 3rd-party timeouts. Decision by <strong style={{ color: '#181D1F' }}>@priya</strong>.
+                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'var(--kv-ink-2)', lineHeight: 1.55, marginBottom: 8 }}>
+                      Added in PR #189 after a payment spike caused 3rd-party timeouts. Decision by <strong style={{ color: 'var(--kv-ink)' }}>@priya</strong>.
                     </p>
                     <div style={{ display: 'flex', gap: 5 }}>
                       {['PR #189', '@priya', 'Nov 2023'].map((tag) => (
-                        <span key={tag} style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, background: '#EAE4DC', color: '#6B5A3E', borderRadius: 9999, padding: '3px 9px' }}>{tag}</span>
+                        <span key={tag} style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, background: 'var(--kv-sand)', color: '#6B5A3E', borderRadius: 9999, padding: '3px 9px' }}>{tag}</span>
                       ))}
                     </div>
                   </div>
@@ -1098,14 +1098,14 @@ export function LandingPage() {
             <div className="k-footer-card">
               <div className="k-footer-top">
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ width:32, height:32, background:'rgba(255,255,255,0.12)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <Zap size={15} color="#fff" strokeWidth={2}/>
+                  <div style={{ width:32, height:32, background:'rgb(var(--kv-veil-rgb) / 0.12)', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <Zap size={15} color="var(--kv-on-solid)" strokeWidth={2}/>
                   </div>
-                  <span style={{ fontFamily:"'Gabarito', sans-serif", fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:'#fff' }}>KAVI</span>
+                  <span style={{ fontFamily:"'Gabarito', sans-serif", fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:'var(--kv-on-solid)' }}>KAVI</span>
                 </div>
                 <div className="k-footer-links">
                   <div className="k-footer-col">
-                    <span style={{ fontFamily:"'Audiowide', sans-serif", fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:'#fff' }}>KAVI</span>
+                    <span style={{ fontFamily:"'Audiowide', sans-serif", fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:'var(--kv-on-solid)' }}>KAVI</span>
                     <button type="button" className="k-footer-a font-archivo" onClick={() => scrollTo('about')}>About</button>
                     <button type="button" className="k-footer-a font-archivo" onClick={() => scrollTo('faq')}>FAQ</button>
                   </div>

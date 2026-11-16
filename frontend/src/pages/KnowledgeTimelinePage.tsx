@@ -8,15 +8,15 @@ import { getProjectEvolution } from '../services/knowledgeService'
 import cloudImg from '../assets/cloud.webp'
 
 // ─── Shared style tokens ──────────────────────────────────────────────────────
-const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid #E7E7E9', background: '#F4F4F5', padding: '24px 28px' }
-const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid #E7E7E9', background: '#fff', padding: '12px 14px' }
-const EYEBROW: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: 'rgba(24,29,31,0.45)', marginBottom: 8 }
-const H1: React.CSSProperties = { fontFamily: "'Archivo', sans-serif", fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 600, letterSpacing: '-0.025em', color: '#181D1F', lineHeight: 1.1 }
-const BODY: React.CSSProperties = { fontFamily: "'Archivo', sans-serif", fontSize: 14, color: '#424647', lineHeight: 1.6 }
-const PILL: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 500, color: 'rgba(24,29,31,0.55)', border: '1px solid #E7E7E9', borderRadius: 9999, padding: '4px 10px', background: '#fff' }
+const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', padding: '24px 28px' }
+const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '12px 14px' }
+const EYEBROW: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 8 }
+const H1: React.CSSProperties = { fontFamily: "'Archivo', sans-serif", fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--kv-ink)', lineHeight: 1.1 }
+const BODY: React.CSSProperties = { fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink-2)', lineHeight: 1.6 }
+const PILL: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 500, color: 'rgb(var(--kv-ink-rgb) / 0.55)', border: '1px solid var(--kv-line)', borderRadius: 9999, padding: '4px 10px', background: 'var(--kv-surface)' }
 
 // ─── Palette for monthly bar chart ───────────────────────────────────────────
-const BAR_COLORS = ['#EAE4DC', '#D7CEF0', '#FDDBCE', '#DBE5F0', '#E4EED2', '#DCEEEF']
+const BAR_COLORS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'var(--kv-ice)', 'var(--kv-sage)', 'var(--kv-mint)']
 
 export function KnowledgeTimelinePage() {
   const api = useApiClient()
@@ -31,9 +31,9 @@ export function KnowledgeTimelinePage() {
   if (!repoId) {
     return (
       <div style={{ ...CARD, textAlign: 'center', padding: '64px 48px' }}>
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 22, fontWeight: 600, color: '#181D1F', marginBottom: 8 }}>No repository selected</p>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 22, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 8 }}>No repository selected</p>
         <p style={{ ...BODY, marginBottom: 28 }}>Open a repository first to view its evolution timeline.</p>
-        <Link to="/repositories" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#181D1F', color: '#fff', borderRadius: 9999, fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
+        <Link to="/repositories" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: 'var(--kv-solid)', color: 'var(--kv-on-solid)', borderRadius: 9999, fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
           Back to repositories
         </Link>
       </div>
@@ -70,7 +70,7 @@ export function KnowledgeTimelinePage() {
         {/* ── Hero card ── */}
         <motion.section
           className="tl-hero-card"
-          style={{ ...CARD, background: 'linear-gradient(170deg,#15aeea 0%,#73cef2 100%)', border: 'none', padding: '48px 48px 56px', position: 'relative', overflow: 'hidden', minHeight: 200 }}
+          style={{ ...CARD, background: 'linear-gradient(170deg,var(--kv-sky-1) 0%,var(--kv-sky-2) 100%)', border: 'none', padding: '48px 48px 56px', position: 'relative', overflow: 'hidden', minHeight: 200 }}
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -81,38 +81,38 @@ export function KnowledgeTimelinePage() {
             style={{ position: 'absolute', width: '110%', left: '-5%', bottom: '-20%', opacity: 0.5, mixBlendMode: 'screen', pointerEvents: 'none', zIndex: 1 }}
           />
           <div style={{ position: 'relative', zIndex: 2 }}>
-            <p style={{ ...EYEBROW, color: '#037BB5' }}>Project Evolution</p>
+            <p style={{ ...EYEBROW, color: 'var(--kv-sky-ink)' }}>Project Evolution</p>
             <h1 style={{ ...H1, background: 'linear-gradient(169deg,rgba(3,123,181,0.9) 20%,rgba(3,120,176,0.95) 74%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
               Repository decisions<br />over time.
             </h1>
-            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 14, color: '#037BB5', marginTop: 12 }}>{data?.repository?.full_name ?? repoId}</p>
+            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 14, color: 'var(--kv-sky-ink)', marginTop: 12 }}>{data?.repository?.full_name ?? repoId}</p>
           </div>
         </motion.section>
 
         {/* ── Loading / error ── */}
-        {loading && <div style={{ ...CARD, textAlign: 'center', padding: '32px', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgba(24,29,31,0.5)' }}>Loading project evolution…</div>}
-        {error && <div style={{ ...CARD, background: '#FDE8E3', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: '#9B3A26' }}>Failed to load timeline: {error.message}</div>}
+        {loading && <div style={{ ...CARD, textAlign: 'center', padding: '32px', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Loading project evolution…</div>}
+        {error && <div style={{ ...CARD, background: 'var(--kv-danger-bg)', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-danger-ink)' }}>Failed to load timeline: {error.message}</div>}
 
         {!loading && !error && (
           <>
             {/* ── Stat tiles ── */}
             <div className="tl-grid tl-stats">
               {[
-                { label: 'Total PRs', value: stats.total_prs ?? 0, bg: '#EAE4DC' },
-                { label: 'Merged', value: stats.merged_prs ?? 0, bg: '#D7CEF0' },
-                { label: 'Contributors', value: stats.contributors ?? 0, bg: '#FDDBCE' },
-                { label: 'Latest Activity', value: stats.last_pr_at ? new Date(stats.last_pr_at).toLocaleDateString() : 'N/A', bg: '#DBE5F0' },
+                { label: 'Total PRs', value: stats.total_prs ?? 0, bg: 'var(--kv-sand)' },
+                { label: 'Merged', value: stats.merged_prs ?? 0, bg: 'var(--kv-lilac)' },
+                { label: 'Contributors', value: stats.contributors ?? 0, bg: 'var(--kv-peach)' },
+                { label: 'Latest Activity', value: stats.last_pr_at ? new Date(stats.last_pr_at).toLocaleDateString() : 'N/A', bg: 'var(--kv-ice)' },
               ].map(({ label, value, bg }, i) => (
                 <motion.article
                   key={label}
                   className="tl-stat-card"
-                  style={{ borderRadius: 24, background: bg, padding: '20px 24px', border: '1px solid rgba(24,29,31,0.06)' }}
+                  style={{ borderRadius: 24, background: bg, padding: '20px 24px', border: '1px solid rgb(var(--kv-ink-rgb) / 0.06)' }}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 26, delay: i * 0.06 }}
                 >
                   <p style={{ ...EYEBROW, marginBottom: 12 }}>{label}</p>
-                  <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 28, fontWeight: 600, color: '#181D1F', letterSpacing: '-0.02em' }}>{value}</p>
+                  <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 28, fontWeight: 600, color: 'var(--kv-ink)', letterSpacing: '-0.02em' }}>{value}</p>
                 </motion.article>
               ))}
             </div>
@@ -120,8 +120,8 @@ export function KnowledgeTimelinePage() {
             {/* ── Monthly activity ── */}
             <section className="tl-main-card" style={{ ...CARD }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                <Activity size={16} color="#181D1F" strokeWidth={1.5} />
-                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 16, fontWeight: 600, color: '#181D1F' }}>Monthly Evolution</p>
+                <Activity size={16} color="var(--kv-ink)" strokeWidth={1.5} />
+                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 16, fontWeight: 600, color: 'var(--kv-ink)' }}>Monthly Evolution</p>
               </div>
               {monthlyActivity.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -131,12 +131,12 @@ export function KnowledgeTimelinePage() {
                     return (
                       <article key={item.month} style={{ ...INNER_CARD }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>{item.month}</span>
-                          <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgba(24,29,31,0.5)' }}>{item.pr_count} PRs · {item.merged_count} merged</span>
+                          <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>{item.month}</span>
+                          <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>{item.pr_count} PRs · {item.merged_count} merged</span>
                         </div>
-                        <div style={{ height: 8, borderRadius: 9999, background: '#F4F4F5', overflow: 'hidden' }}>
+                        <div style={{ height: 8, borderRadius: 9999, background: 'var(--kv-mist)', overflow: 'hidden' }}>
                           <motion.div
-                            style={{ height: 8, borderRadius: 9999, background: bg === '#EAE4DC' ? '#181D1F' : '#181D1F', opacity: 0.15 + (ratio / 100) * 0.85 }}
+                            style={{ height: 8, borderRadius: 9999, background: bg === 'var(--kv-sand)' ? 'var(--kv-ink)' : 'var(--kv-ink)', opacity: 0.15 + (ratio / 100) * 0.85 }}
                             initial={{ width: 0 }}
                             animate={{ width: `${ratio}%` }}
                             transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.04 }}
@@ -147,7 +147,7 @@ export function KnowledgeTimelinePage() {
                   })}
                 </div>
               ) : (
-                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.45)' }}>No monthly activity data yet.</p>
+                <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.45)' }}>No monthly activity data yet.</p>
               )}
             </section>
 
@@ -172,12 +172,12 @@ export function KnowledgeTimelinePage() {
                       </span>
                       {item.author_login && <span style={PILL}><Users2 size={11} /> {item.author_login}</span>}
                     </div>
-                    <h3 style={{ fontFamily: "'Archivo', sans-serif", fontSize: 18, fontWeight: 600, color: '#181D1F', marginBottom: 8, lineHeight: 1.3 }}>{item.pr_title ?? 'Untitled pull request'}</h3>
+                    <h3 style={{ fontFamily: "'Archivo', sans-serif", fontSize: 18, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 8, lineHeight: 1.3 }}>{item.pr_title ?? 'Untitled pull request'}</h3>
                     <p style={BODY}>{item.intent ?? item.summary ?? 'No summarized intent available for this change.'}</p>
                   </motion.article>
                 )) : (
                   <div style={{ ...CARD, textAlign: 'center', padding: '48px 32px' }}>
-                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, color: 'rgba(24,29,31,0.5)' }}>No PR milestones exist for this repository yet.</p>
+                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>No PR milestones exist for this repository yet.</p>
                   </div>
                 )}
               </section>
@@ -189,12 +189,12 @@ export function KnowledgeTimelinePage() {
                   <p style={{ ...EYEBROW }}>Top Changed Files</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                     {topFiles.slice(0, 8).map((item: any, i: number) => (
-                      <article key={item.file_path} style={{ ...INNER_CARD, background: BAR_COLORS[i % BAR_COLORS.length] + '66', border: '1px solid rgba(24,29,31,0.06)' }}>
-                        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.file_path}</p>
-                        <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgba(24,29,31,0.5)', marginTop: 2 }}>{item.change_count} references</p>
+                      <article key={item.file_path} style={{ ...INNER_CARD, background: BAR_COLORS[i % BAR_COLORS.length] + '66', border: '1px solid rgb(var(--kv-ink-rgb) / 0.06)' }}>
+                        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.file_path}</p>
+                        <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.5)', marginTop: 2 }}>{item.change_count} references</p>
                       </article>
                     ))}
-                    {!topFiles.length && <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.45)' }}>No file-change data yet.</p>}
+                    {!topFiles.length && <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.45)' }}>No file-change data yet.</p>}
                   </div>
                 </section>
 
@@ -205,12 +205,12 @@ export function KnowledgeTimelinePage() {
                     {contributors.slice(0, 8).map((item: any) => (
                       <article key={item.author_login} style={{ ...INNER_CARD }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: '#181D1F' }}>{item.author_login}</p>
+                          <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>{item.author_login}</p>
                           <span style={{ ...PILL, fontSize: 11 }}>{item.pr_count} PRs</span>
                         </div>
                       </article>
                     ))}
-                    {!contributors.length && <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgba(24,29,31,0.45)' }}>No contributor data yet.</p>}
+                    {!contributors.length && <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.45)' }}>No contributor data yet.</p>}
                   </div>
                 </section>
               </aside>

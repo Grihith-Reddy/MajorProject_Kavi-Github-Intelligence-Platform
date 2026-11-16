@@ -7,13 +7,13 @@ import { useApiClient } from '../services/apiClient'
 import { getFileDetails } from '../services/knowledgeService'
 import { formatLineRange } from '../utils/format'
 
-const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid #E7E7E9', background: '#F4F4F5', padding: '24px 28px' }
-const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid #E7E7E9', background: '#fff', padding: '14px 16px' }
-const EYEBROW: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: 'rgba(24,29,31,0.45)', marginBottom: 12 }
-const BODY: React.CSSProperties = { fontFamily: "'Archivo', sans-serif", fontSize: 14, color: '#424647', lineHeight: 1.6 }
-const PILL: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 500, color: 'rgba(24,29,31,0.55)', border: '1px solid #E7E7E9', borderRadius: 9999, padding: '4px 10px', background: '#fff' }
+const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', padding: '24px 28px' }
+const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '14px 16px' }
+const EYEBROW: React.CSSProperties = { fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 12 }
+const BODY: React.CSSProperties = { fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink-2)', lineHeight: 1.6 }
+const PILL: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: "'Gabarito', sans-serif", fontSize: 12, fontWeight: 500, color: 'rgb(var(--kv-ink-rgb) / 0.55)', border: '1px solid var(--kv-line)', borderRadius: 9999, padding: '4px 10px', background: 'var(--kv-surface)' }
 
-const PASTEL_CARDS = ['#EAE4DC', '#D7CEF0', '#FDDBCE', '#DBE5F0', '#E4EED2', '#DCEEEF']
+const PASTEL_CARDS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'var(--kv-ice)', 'var(--kv-sage)', 'var(--kv-mint)']
 
 export function FileDetailPage() {
   const api = useApiClient()
@@ -29,8 +29,8 @@ export function FileDetailPage() {
   if (!repoId || !filePath) {
     return (
       <div style={{ ...CARD, textAlign: 'center', padding: '64px 48px' }}>
-        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 22, fontWeight: 600, color: '#181D1F', marginBottom: 8 }}>Missing repository or file path</p>
-        <Link to="/repositories" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#181D1F', color: '#fff', borderRadius: 9999, fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
+        <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 22, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 8 }}>Missing repository or file path</p>
+        <Link to="/repositories" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: 'var(--kv-solid)', color: 'var(--kv-on-solid)', borderRadius: 9999, fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
           Back to repositories
         </Link>
       </div>
@@ -59,21 +59,21 @@ export function FileDetailPage() {
         {/* ── Hero header ── */}
         <motion.section
           className="fd-hero-card"
-          style={{ ...CARD, background: '#EAE4DC', border: 'none', padding: '40px 48px' }}
+          style={{ ...CARD, background: 'var(--kv-sand)', border: 'none', padding: '40px 48px' }}
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <p style={{ ...EYEBROW }}>{repoId}</p>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginTop: 4 }}>
-            <div style={{ width: 44, height: 44, background: '#181D1F', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <FileCode2 size={20} color="#fff" strokeWidth={1.5} />
+            <div style={{ width: 44, height: 44, background: 'var(--kv-solid)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileCode2 size={20} color="var(--kv-on-solid)" strokeWidth={1.5} />
             </div>
             <div>
-              <h1 style={{ fontFamily: "'Archivo', sans-serif", fontSize: 'clamp(22px, 3.5vw, 40px)', fontWeight: 600, letterSpacing: '-0.025em', color: '#181D1F', lineHeight: 1.15, wordBreak: 'break-all' }}>
+              <h1 style={{ fontFamily: "'Archivo', sans-serif", fontSize: 'clamp(22px, 3.5vw, 40px)', fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--kv-ink)', lineHeight: 1.15, wordBreak: 'break-all' }}>
                 {fileName}
               </h1>
-              <p style={{ fontFamily: 'monospace', fontSize: 12, color: 'rgba(24,29,31,0.5)', marginTop: 6, wordBreak: 'break-all' }}>{filePath}</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.5)', marginTop: 6, wordBreak: 'break-all' }}>{filePath}</p>
               <Link
                 to={`/why?repoId=${encodeURIComponent(repoId ?? '')}&path=${encodeURIComponent(filePath)}`}
                 className="kv-btn kv-btn-dark kv-btn-sm"
@@ -86,8 +86,8 @@ export function FileDetailPage() {
         </motion.section>
 
         {/* ── Loading / error ── */}
-        {loading && <div style={{ ...CARD, textAlign: 'center', padding: '32px', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgba(24,29,31,0.5)' }}>Loading file insights…</div>}
-        {error && <div style={{ ...CARD, background: '#FDE8E3', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: '#9B3A26' }}>Failed to load file details: {error.message}</div>}
+        {loading && <div style={{ ...CARD, textAlign: 'center', padding: '32px', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Loading file insights…</div>}
+        {error && <div style={{ ...CARD, background: 'var(--kv-danger-bg)', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-danger-ink)' }}>Failed to load file details: {error.message}</div>}
 
         {!loading && !error && (
           <div className="fd-layout">
@@ -98,13 +98,13 @@ export function FileDetailPage() {
               {/* Primary intent */}
               <motion.article
                 className="fd-main-card"
-                style={{ ...CARD, background: '#D7CEF0', border: 'none' }}
+                style={{ ...CARD, background: 'var(--kv-lilac)', border: 'none' }}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 26 }}
               >
                 <p style={EYEBROW}>Primary Intent</p>
-                <p style={{ ...BODY, fontSize: 15, color: '#181D1F' }}>
+                <p style={{ ...BODY, fontSize: 15, color: 'var(--kv-ink)' }}>
                   {primary?.intent ?? primary?.summary ?? 'No summary available for this file yet.'}
                 </p>
               </motion.article>
@@ -122,7 +122,7 @@ export function FileDetailPage() {
                   {entries.length ? entries.map((entry, index) => (
                     <motion.article
                       key={entry.knowledge_entry_id ?? index}
-                      style={{ ...INNER_CARD, background: PASTEL_CARDS[index % PASTEL_CARDS.length] + '99', border: '1px solid rgba(24,29,31,0.06)' }}
+                      style={{ ...INNER_CARD, background: PASTEL_CARDS[index % PASTEL_CARDS.length] + '99', border: '1px solid rgb(var(--kv-ink-rgb) / 0.06)' }}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.08 + index * 0.04 }}
@@ -131,11 +131,11 @@ export function FileDetailPage() {
                         <span style={PILL}><GitPullRequest size={11} /> PR #{entry.github_pr_number ?? '?'}</span>
                         <span style={PILL}>{formatLineRange(entry.start_line, entry.end_line)}</span>
                       </div>
-                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: '#181D1F', marginBottom: 6 }}>{entry.pr_title ?? 'Untitled PR'}</p>
+                      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--kv-ink)', marginBottom: 6 }}>{entry.pr_title ?? 'Untitled PR'}</p>
                       <p style={BODY}>{entry.intent ?? entry.summary ?? 'No intent available'}</p>
                     </motion.article>
                   )) : (
-                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgba(24,29,31,0.5)' }}>No PR references found for this file.</p>
+                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>No PR references found for this file.</p>
                   )}
                 </div>
               </motion.article>
@@ -153,12 +153,12 @@ export function FileDetailPage() {
                 <p style={EYEBROW}>Summary</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ ...INNER_CARD }}>
-                    <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.45)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>PR references</p>
-                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 28, fontWeight: 600, color: '#181D1F', letterSpacing: '-0.02em' }}>{entries.length}</p>
+                    <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>PR references</p>
+                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 28, fontWeight: 600, color: 'var(--kv-ink)', letterSpacing: '-0.02em' }}>{entries.length}</p>
                   </div>
                   <div style={{ ...INNER_CARD }}>
-                    <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgba(24,29,31,0.45)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Most recent PR</p>
-                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: '#181D1F', lineHeight: 1.4 }}>{primary?.pr_title ?? 'N/A'}</p>
+                    <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Most recent PR</p>
+                    <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--kv-ink)', lineHeight: 1.4 }}>{primary?.pr_title ?? 'N/A'}</p>
                   </div>
                 </div>
               </motion.section>

@@ -11,7 +11,7 @@ const base =
   'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition kavi-spring focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/35'
 const variants = {
   primary:
-    'bg-white text-black hover:bg-slate-100 border border-white shadow-[0_16px_34px_rgba(255,255,255,0.18)]',
+    'bg-white text-black hover:bg-slate-100 border border-white shadow-[0_16px_34px_rgb(var(--kv-veil-rgb) / 0.18)]',
   secondary:
     'bg-white/10 text-white border border-white/25 hover:border-white/40 hover:bg-white/14 shadow-[0_8px_24px_rgba(0,0,0,0.18)]',
   ghost: 'bg-transparent text-white/80 hover:text-white hover:bg-white/10 border border-transparent',

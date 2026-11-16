@@ -17,7 +17,7 @@ import { getApiErrorMessage } from '../utils/errors'
 import cloudImg from '../assets/cloud.webp'
 
 // ─── Card colour palette (matches landing page pastel cards) ─────────────────
-const CARD_COLORS = ['#EAE4DC', '#D7CEF0', '#FDDBCE', '#DBE5F0', '#E4EED2', '#DCEEEF']
+const CARD_COLORS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'var(--kv-ice)', 'var(--kv-sage)', 'var(--kv-mint)']
 
 const SYNC_PHASE_LABELS: Record<string, string> = {
   queued: 'Waiting for a worker',
@@ -141,7 +141,7 @@ export function RepositorySelectionPage() {
               : `${repo.full_name} is already up to date. Nothing changed since the last sync.`
           )
         } else {
-          setTimeout(() => navigate(`/dashboard?repoId=${syncedRepoId}`), 450)
+          setTimeout(() => navigate(`/chat?repoId=${syncedRepoId}`), 450)
         }
       } else if (totalPrs === 0) {
         setSyncNotice(
@@ -185,7 +185,7 @@ export function RepositorySelectionPage() {
           width: 100%;
           max-width: 1440px;
           margin: 0 auto;
-          background: linear-gradient(170deg, #15aeea 0%, #73cef2 100%);
+          background: linear-gradient(170deg, var(--kv-sky-1) 0%, var(--kv-sky-2) 100%);
           border-radius: 32px;
           overflow: hidden;
           position: relative;
@@ -221,7 +221,7 @@ export function RepositorySelectionPage() {
           font-weight: 600;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: #037BB5;
+          color: var(--kv-sky-ink);
           margin-bottom: 16px;
         }
         .repo-hero-h1 {
@@ -230,7 +230,7 @@ export function RepositorySelectionPage() {
           font-size: clamp(30px, 8vw, 72px);
           line-height: 1.05;
           letter-spacing: -0.025em;
-          background: linear-gradient(169deg, rgba(3,123,181,0.9) 20%, rgba(3,120,176,0.95) 74%);
+          background: linear-gradient(169deg, var(--kv-hero-text-from) 20%, var(--kv-hero-text-to) 74%);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -247,7 +247,7 @@ export function RepositorySelectionPage() {
           display: flex;
           align-items: center;
           gap: 10px;
-          background: rgba(255,255,255,0.9);
+          background: rgb(var(--kv-veil-rgb) / 0.9);
           backdrop-filter: blur(12px);
           border-radius: 9999px;
           padding: 12px 20px;
@@ -267,10 +267,10 @@ export function RepositorySelectionPage() {
           outline: none;
           font-family: 'Archivo', sans-serif;
           font-size: 15px;
-          color: #181D1F;
+          color: var(--kv-ink);
           width: 100%;
         }
-        .repo-search input::placeholder { color: rgba(24,29,31,0.4); }
+        .repo-search input::placeholder { color: rgb(var(--kv-ink-rgb) / 0.4); }
 
         /* ── Notices ── */
         .repo-notice {
@@ -283,8 +283,8 @@ export function RepositorySelectionPage() {
           font-size: 15px;
           line-height: 1.5;
         }
-        .repo-notice.error { background: #FDE8E3; color: #9B3A26; border: 1px solid rgba(155,58,38,0.12); }
-        .repo-notice.info { background: #E4EED2; color: #2D4A1A; border: 1px solid rgba(45,74,26,0.12); }
+        .repo-notice.error { background: var(--kv-danger-bg); color: var(--kv-danger-ink); border: 1px solid rgba(155,58,38,0.12); }
+        .repo-notice.info { background: var(--kv-sage); color: var(--kv-ok-ink); border: 1px solid rgba(45,74,26,0.12); }
 
         /* ── Grid ── */
         .repo-grid {
@@ -315,14 +315,14 @@ export function RepositorySelectionPage() {
         }
         .repo-card:hover {
           transform: translateY(-4px);
-          box-shadow: 0 16px 40px rgba(24,29,31,0.1);
+          box-shadow: 0 16px 40px rgb(var(--kv-ink-rgb) / 0.1);
         }
 
         .repo-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
 
         .repo-icon-wrap {
           width: 44px; height: 44px;
-          background: rgba(24,29,31,0.1);
+          background: rgb(var(--kv-ink-rgb) / 0.1);
           border-radius: 14px;
           display: flex; align-items: center; justify-content: center;
         }
@@ -333,13 +333,13 @@ export function RepositorySelectionPage() {
           font-weight: 600;
           letter-spacing: 0.06em;
           text-transform: uppercase;
-          color: rgba(24,29,31,0.5);
-          border: 1px solid rgba(24,29,31,0.18);
+          color: rgb(var(--kv-ink-rgb) / 0.5);
+          border: 1px solid rgb(var(--kv-ink-rgb) / 0.18);
           border-radius: 9999px;
           padding: 4px 12px;
         }
         .repo-badge.synced {
-          color: #2D4A1A;
+          color: var(--kv-ok-ink);
           border-color: rgba(45,74,26,0.25);
           background: rgba(45,74,26,0.08);
         }
@@ -348,7 +348,7 @@ export function RepositorySelectionPage() {
           font-family: 'Archivo', sans-serif;
           font-size: 20px;
           font-weight: 600;
-          color: #181D1F;
+          color: var(--kv-ink);
           letter-spacing: -0.01em;
           line-height: 1.2;
           margin-bottom: 6px;
@@ -357,7 +357,7 @@ export function RepositorySelectionPage() {
         .repo-meta {
           font-family: 'Archivo', sans-serif;
           font-size: 14px;
-          color: rgba(24,29,31,0.5);
+          color: rgb(var(--kv-ink-rgb) / 0.5);
           margin-bottom: 16px;
         }
 
@@ -366,13 +366,13 @@ export function RepositorySelectionPage() {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          border: 1px solid rgba(24,29,31,0.14);
+          border: 1px solid rgb(var(--kv-ink-rgb) / 0.14);
           border-radius: 9999px;
           padding: 5px 12px;
           font-family: 'Archivo', sans-serif;
           font-size: 13px;
-          color: rgba(24,29,31,0.6);
-          background: rgba(255,255,255,0.5);
+          color: rgb(var(--kv-ink-rgb) / 0.6);
+          background: rgb(var(--kv-veil-rgb) / 0.5);
         }
 
         /* ── Buttons ── */
@@ -394,20 +394,20 @@ export function RepositorySelectionPage() {
         }
         .repo-btn:hover:not(:disabled) { transform: scale(1.02); }
         .repo-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-        .repo-btn-dark { background: #181D1F; color: #fff; }
-        .repo-btn-dark:hover:not(:disabled) { background: #2d3748; }
+        .repo-btn-dark { background: var(--kv-solid); color: var(--kv-on-solid); }
+        .repo-btn-dark:hover:not(:disabled) { background: var(--kv-solid-hover); }
         .repo-btn-outline {
-          background: rgba(255,255,255,0.7);
-          color: #181D1F;
-          border: 1.5px solid rgba(24,29,31,0.2);
+          background: rgb(var(--kv-veil-rgb) / 0.7);
+          color: var(--kv-ink);
+          border: 1.5px solid rgb(var(--kv-ink-rgb) / 0.2);
         }
-        .repo-btn-outline:hover:not(:disabled) { background: rgba(255,255,255,0.95); }
+        .repo-btn-outline:hover:not(:disabled) { background: rgb(var(--kv-veil-rgb) / 0.95); }
 
         /* ── Sync progress capsule ── */
         .repo-progress {
           border-radius: 20px;
-          background: rgba(255,255,255,0.6);
-          border: 1px solid rgba(24,29,31,0.1);
+          background: rgb(var(--kv-veil-rgb) / 0.6);
+          border: 1px solid rgb(var(--kv-ink-rgb) / 0.1);
           padding: 14px 16px 12px;
         }
         .repo-progress-head {
@@ -423,26 +423,26 @@ export function RepositorySelectionPage() {
           font-weight: 600;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: rgba(24,29,31,0.6);
+          color: rgb(var(--kv-ink-rgb) / 0.6);
         }
         .repo-progress-count {
           font-size: 13px;
           font-weight: 600;
-          color: #181D1F;
+          color: var(--kv-ink);
           font-variant-numeric: tabular-nums;
         }
         .repo-progress-track {
           position: relative;
           height: 6px;
           border-radius: 9999px;
-          background: rgba(24,29,31,0.1);
+          background: rgb(var(--kv-ink-rgb) / 0.1);
           overflow: hidden;
         }
         .repo-progress-fill {
           position: absolute;
           inset: 0 auto 0 0;
           border-radius: 9999px;
-          background: #181D1F;
+          background: var(--kv-solid);
         }
         .repo-progress-fill.is-indeterminate {
           width: 36%;
@@ -455,7 +455,7 @@ export function RepositorySelectionPage() {
         .repo-progress-detail {
           margin-top: 9px;
           font-size: 13px;
-          color: rgba(24,29,31,0.55);
+          color: rgb(var(--kv-ink-rgb) / 0.55);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -465,21 +465,21 @@ export function RepositorySelectionPage() {
         .repo-resync-btn {
           width: 32px; height: 32px;
           border-radius: 9999px;
-          border: 1px solid rgba(24,29,31,0.18);
-          background: rgba(255,255,255,0.5);
+          border: 1px solid rgb(var(--kv-ink-rgb) / 0.18);
+          background: rgb(var(--kv-veil-rgb) / 0.5);
           display: inline-flex; align-items: center; justify-content: center;
           cursor: pointer;
-          color: #181D1F;
+          color: var(--kv-ink);
           transition: background 0.15s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .repo-resync-btn:hover:not(:disabled) { background: rgba(255,255,255,0.9); transform: rotate(-90deg); }
+        .repo-resync-btn:hover:not(:disabled) { background: rgb(var(--kv-veil-rgb) / 0.9); transform: rotate(-90deg); }
         .repo-resync-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .repo-no-prs {
           margin-top: 10px;
           font-family: 'Archivo', sans-serif;
           font-size: 13px;
-          color: rgba(24,29,31,0.5);
+          color: rgb(var(--kv-ink-rgb) / 0.5);
           line-height: 1.4;
           text-align: center;
         }
@@ -488,7 +488,7 @@ export function RepositorySelectionPage() {
         .repo-skeleton-card {
           border-radius: 28px;
           min-height: 280px;
-          background: #F4F4F5;
+          background: var(--kv-mist);
           position: relative;
           overflow: hidden;
         }
@@ -496,7 +496,7 @@ export function RepositorySelectionPage() {
           content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%);
+          background: linear-gradient(90deg, transparent 0%, rgb(var(--kv-veil-rgb) / 0.6) 50%, transparent 100%);
           animation: shimmer 1.4s infinite;
         }
         @keyframes shimmer {
@@ -510,7 +510,7 @@ export function RepositorySelectionPage() {
           max-width: 1440px;
           margin: 0 auto;
           border-radius: 32px;
-          background: #F4F4F5;
+          background: var(--kv-mist);
           padding: 80px 48px;
           text-align: center;
         }
@@ -520,7 +520,7 @@ export function RepositorySelectionPage() {
         }
         .repo-empty-icon {
           width: 56px; height: 56px;
-          background: #E7E7E9;
+          background: var(--kv-line);
           border-radius: 18px;
           display: flex; align-items: center; justify-content: center;
           margin: 0 auto 20px;
@@ -528,7 +528,7 @@ export function RepositorySelectionPage() {
         .repo-empty p {
           font-family: 'Archivo', sans-serif;
           font-size: 18px;
-          color: rgba(24,29,31,0.5);
+          color: rgb(var(--kv-ink-rgb) / 0.5);
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -556,7 +556,7 @@ export function RepositorySelectionPage() {
 
           <div className="repo-search-wrap">
             <div className="repo-search">
-              <Search size={16} color="rgba(24,29,31,0.45)" />
+              <Search size={16} color="rgb(var(--kv-ink-rgb) / 0.45)" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -612,7 +612,7 @@ export function RepositorySelectionPage() {
         {error && (
           <div className="repo-empty">
             <div className="repo-empty-icon">
-              <FolderGit2 size={24} color="rgba(24,29,31,0.4)" />
+              <FolderGit2 size={24} color="rgb(var(--kv-ink-rgb) / 0.4)" />
             </div>
             <p className="font-archivo">Unable to load repositories. {error.message}</p>
           </div>
@@ -648,7 +648,7 @@ export function RepositorySelectionPage() {
                       <div>
                         <div className="repo-card-top">
                           <div className="repo-icon-wrap">
-                            <FolderGit2 size={20} color="#181D1F" strokeWidth={1.5} />
+                            <FolderGit2 size={20} color="var(--kv-ink)" strokeWidth={1.5} />
                           </div>
                           <div className="repo-card-actions">
                             {canOpenChat && (
@@ -693,7 +693,7 @@ export function RepositorySelectionPage() {
                         <button
                           onClick={() => {
                             if (canOpenChat) {
-                              navigate(`/dashboard?repoId=${resolvedRepoId}`)
+                              navigate(`/chat?repoId=${resolvedRepoId}`)
                               return
                             }
                             handleSync(repo)
@@ -743,7 +743,7 @@ export function RepositorySelectionPage() {
                 transition={{ duration: 0.4 }}
               >
                 <div className="repo-empty-icon">
-                  <Search size={24} color="rgba(24,29,31,0.4)" />
+                  <Search size={24} color="rgb(var(--kv-ink-rgb) / 0.4)" />
                 </div>
                 <p className="font-archivo">No repositories match your filter.</p>
               </motion.div>

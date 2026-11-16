@@ -23,9 +23,9 @@ import { listKnowledgeFiles } from '../services/knowledgeService'
 import { getApiErrorMessage } from '../utils/errors'
 
 // Pastel bands that read well on the dark code surface; same family as the card palette.
-const PR_COLORS = ['#73CEF2', '#C3B1F5', '#FFB59A', '#A9D18E', '#F7D774', '#8FD9D2', '#F2A7C3', '#B0C4F5']
+const PR_COLORS = ['var(--kv-sky-2)', '#C3B1F5', '#FFB59A', '#A9D18E', '#F7D774', '#8FD9D2', '#F2A7C3', '#B0C4F5']
 const COMMIT_COLOR = '#5B6670'
-const CARD_COLORS = ['#EAE4DC', '#D7CEF0', '#FDDBCE', '#DBE5F0', '#E4EED2', '#DCEEEF']
+const CARD_COLORS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'var(--kv-ice)', 'var(--kv-sage)', 'var(--kv-mint)']
 const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
 
 function languageFromPath(path: string): string {
@@ -80,7 +80,7 @@ function FilePicker({ repoId, onPick }: { repoId: string; onPick: (path: string)
   return (
     <div className="wl-picker">
       <div className="wl-search">
-        <Search size={16} color="rgba(24,29,31,0.45)" />
+        <Search size={16} color="rgb(var(--kv-ink-rgb) / 0.45)" />
         <input
           value={query}
           onChange={(event) => { setQuery(event.target.value); setOpen(true); setHighlight(0) }}
@@ -285,7 +285,7 @@ export function WhyLensPage() {
   const askAboutSelection = () => {
     if (!repoId || !data || !activeRange) return
     const question = `Why do lines ${activeRange.start}-${activeRange.end} of ${data.path} exist, and what would break if I changed them?`
-    navigate(`/dashboard?repoId=${encodeURIComponent(repoId)}&ask=${encodeURIComponent(question)}`)
+    navigate(`/chat?repoId=${encodeURIComponent(repoId)}&ask=${encodeURIComponent(question)}`)
   }
 
   const selectPr = (prNumber: number) => {
@@ -346,7 +346,7 @@ export function WhyLensPage() {
                   <span className="wl-hot-name">{file.file_path.split('/').pop()}</span>
                   <span className="wl-hot-dir">{file.file_path.split('/').slice(0, -1).join('/') || 'repository root'}</span>
                   <span className="wl-hot-foot">
-                    <span className="kv-pill" style={{ background: 'rgba(255,255,255,0.55)' }}><GitPullRequest size={11} /> {file.reference_count ?? 0} PRs</span>
+                    <span className="kv-pill" style={{ background: 'rgb(var(--kv-veil-rgb) / 0.55)' }}><GitPullRequest size={11} /> {file.reference_count ?? 0} PRs</span>
                     <ArrowRight size={15} />
                   </span>
                 </motion.button>
@@ -533,7 +533,7 @@ const WHY_LENS_CSS = `
   font-size: clamp(30px, 6vw, 64px);
   line-height: 1.05;
   letter-spacing: -0.025em;
-  background: linear-gradient(169deg, rgba(3,123,181,0.9) 20%, rgba(3,120,176,0.95) 74%);
+  background: linear-gradient(169deg, var(--kv-hero-text-from) 20%, var(--kv-hero-text-to) 74%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -542,10 +542,10 @@ const WHY_LENS_CSS = `
 .wl-hero-path { margin-top: 10px; font-family: var(--kv-font-mono); font-size: 13px; color: rgba(3, 90, 135, 0.8); overflow-wrap: anywhere; }
 
 .wl-picker { position: relative; z-index: 3; flex-shrink: 0; width: min(360px, 100%); }
-.wl-search { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); border-radius: 9999px; padding: 12px 20px; }
+.wl-search { display: flex; align-items: center; gap: 10px; background: rgb(var(--kv-veil-rgb) / 0.92); backdrop-filter: blur(12px); border-radius: 9999px; padding: 12px 20px; }
 .wl-search input { border: none; outline: none; background: transparent; width: 100%; font-family: var(--kv-font-read); font-size: 15px; color: var(--kv-ink); box-shadow: none; padding: 0; }
-.wl-search input::placeholder { color: rgba(24,29,31,0.4); }
-.wl-results { position: absolute; top: calc(100% + 8px); left: 0; right: 0; list-style: none; margin: 0; padding: 6px; background: #fff; border: 1px solid var(--kv-line); border-radius: 20px; box-shadow: 0 24px 48px rgba(24,29,31,0.14); transform-origin: top; }
+.wl-search input::placeholder { color: rgb(var(--kv-ink-rgb) / 0.4); }
+.wl-results { position: absolute; top: calc(100% + 8px); left: 0; right: 0; list-style: none; margin: 0; padding: 6px; background: var(--kv-surface); border: 1px solid var(--kv-line); border-radius: 20px; box-shadow: 0 24px 48px rgb(var(--kv-ink-rgb) / 0.14); transform-origin: top; }
 .wl-results button { width: 100%; display: grid; grid-template-columns: 16px auto minmax(0, 1fr); align-items: center; gap: 8px; text-align: left; padding: 9px 12px; border-radius: 14px; border: none; background: transparent; cursor: pointer; color: var(--kv-ink); }
 .wl-results button.is-active { background: var(--kv-mist); }
 .wl-result-name { font-family: var(--kv-font-read); font-size: 14px; font-weight: 600; white-space: nowrap; }
@@ -553,15 +553,15 @@ const WHY_LENS_CSS = `
 
 .wl-hot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .wl-hot-card { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 4px; min-height: 190px; border: none; border-radius: 28px; padding: 26px; cursor: pointer; transition: transform 0.22s var(--kv-spring), box-shadow 0.22s ease; }
-.wl-hot-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(24,29,31,0.1); }
-.wl-hot-icon { width: 40px; height: 40px; border-radius: 14px; background: rgba(24,29,31,0.08); display: inline-flex; align-items: center; justify-content: center; color: var(--kv-ink); margin-bottom: 14px; }
+.wl-hot-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgb(var(--kv-ink-rgb) / 0.1); }
+.wl-hot-icon { width: 40px; height: 40px; border-radius: 14px; background: rgb(var(--kv-ink-rgb) / 0.08); display: inline-flex; align-items: center; justify-content: center; color: var(--kv-ink); margin-bottom: 14px; }
 .wl-hot-name { font-family: var(--kv-font-read); font-size: 18px; font-weight: 600; color: var(--kv-ink); letter-spacing: -0.01em; overflow-wrap: anywhere; }
-.wl-hot-dir { font-family: var(--kv-font-label); font-size: 13px; color: rgba(24,29,31,0.5); overflow-wrap: anywhere; }
+.wl-hot-dir { font-family: var(--kv-font-label); font-size: 13px; color: rgb(var(--kv-ink-rgb) / 0.5); overflow-wrap: anywhere; }
 .wl-hot-foot { margin-top: auto; padding-top: 16px; width: 100%; display: flex; align-items: center; justify-content: space-between; color: var(--kv-ink); }
 
 .wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
 .wl-skeleton { border-radius: 24px; background: var(--kv-mist); position: relative; overflow: hidden; }
-.wl-skeleton::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: wl-shimmer 1.4s infinite; }
+.wl-skeleton::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(var(--kv-veil-rgb) / 0.6), transparent); animation: wl-shimmer 1.4s infinite; }
 @keyframes wl-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 
 .wl-code { border-radius: 24px; overflow: hidden; background: #0B0F13; border: 1px solid #1F262B; }
@@ -588,12 +588,12 @@ const WHY_LENS_CSS = `
 .wl-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .wl-legend button, .wl-legend-static { width: 100%; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 12px; border: none; background: transparent; cursor: pointer; text-align: left; }
 .wl-legend-static { cursor: default; }
-.wl-legend button:hover, .wl-legend button.is-active { background: #fff; }
+.wl-legend button:hover, .wl-legend button.is-active { background: var(--kv-surface); }
 .wl-dot { width: 10px; height: 10px; border-radius: 9999px; }
 .wl-legend-title { font-family: var(--kv-font-read); font-size: 13px; color: var(--kv-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wl-legend-share { font-family: var(--kv-font-label); font-size: 12px; color: var(--kv-ink-3); font-variant-numeric: tabular-nums; }
 
-.wl-intent { background: #fff; box-shadow: 0 16px 40px rgba(24,29,31,0.06); }
+.wl-intent { background: var(--kv-surface); box-shadow: 0 16px 40px rgb(var(--kv-ink-rgb) / 0.06); }
 .wl-intent-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .wl-intent-band { width: 18px; height: 18px; border-radius: 6px; }
 .wl-intent-title { font-family: var(--kv-font-read); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; color: var(--kv-ink); line-height: 1.3; }
