@@ -85,8 +85,8 @@ class AccessControlTests(unittest.TestCase):
     def test_repo_status_returns_only_accessible_repository(self):
         db = FakeSession(
             allowed_repos={
-                "repo-a": {
-                    "id": "repo-a",
+                "00000000-0000-4000-8000-00000000000a": {
+                    "id": "00000000-0000-4000-8000-00000000000a",
                     "github_repo_id": 123,
                     "full_name": "owner/repo-a",
                     "owner": "owner",
@@ -100,9 +100,9 @@ class AccessControlTests(unittest.TestCase):
             }
         )
 
-        response = repo_status("repo-a", current_user=self.user, db=db)
+        response = repo_status("00000000-0000-4000-8000-00000000000a", current_user=self.user, db=db)
 
-        self.assertEqual(response["repository"]["id"], "repo-a")
+        self.assertEqual(response["repository"]["id"], "00000000-0000-4000-8000-00000000000a")
         self.assertIsNone(response["sync_job"])
 
 

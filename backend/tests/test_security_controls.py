@@ -179,3 +179,40 @@ class AuthenticationAndOutboundSecretTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HardeningTests(unittest.TestCase):
+    def setUp(self):
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        RateLimitMiddleware._requests.clear()
+        self.client = TestClient(app)
+
+    def test_api_responses_carry_security_headers(self):
+        response = self.client.get("/health/live")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
+
+    def test_ai_endpoints_have_a_tighter_rate_limit(self):
+        from app.core.middleware import is_expensive
+
+        self.assertTrue(is_expensive("/api/chat/stream", "POST"))
+        self.assertTrue(is_expensive("/api/insights/repositories/x/quality/run", "POST"))
+        self.assertFalse(is_expensive("/api/chat/conversations", "GET"))
+        with patch.object(settings, "RATE_LIMIT_EXPENSIVE_PER_MINUTE", 2):
+            statuses = [self.client.post("/api/chat/stream", json={}).status_code for _ in range(3)]
+        self.assertNotEqual(statuses[1], 429)
+        self.assertEqual(statuses[2], 429)
+        # The cheap budget is separate, so ordinary reads keep working.
+        self.assertNotEqual(self.client.get("/api/auth/me").status_code, 429)
+
+    def test_malformed_ids_are_not_found_without_touching_the_database(self):
+        from app.core.access import assert_entry_access, assert_repo_access
+
+        for check in (assert_repo_access, assert_entry_access):
+            with self.assertRaises(HTTPException) as ctx:
+                check(None, "1 OR 1=1", "auth0|x")  # db is never used
+            self.assertEqual(ctx.exception.status_code, 404)

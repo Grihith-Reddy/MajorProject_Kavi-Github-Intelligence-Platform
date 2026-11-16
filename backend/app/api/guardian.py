@@ -13,12 +13,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.access import assert_repo_access
+from app.core.access import assert_repo_access, require_github_account
 from app.core.audit import audit_log
 from app.core.database import get_db
 from app.core.security import UserContext, get_current_user
 from app.core.tokens import TokenPrincipal, require_token
-from app.core.access import require_github_account
 from app.core.settings import settings
 from app.services.guardian_service import review_pull_request
 from app.services.sync_jobs import enqueue_sync_job
@@ -96,37 +95,22 @@ def guardian_reviews(
 ):
     assert_repo_access(db, repo_id, current_user.sub)
     params = {"repo_id": repo_id, "limit": limit}
-    try:
-        rows = db.execute(
-            text(
-                """
-                SELECT id, pr_number, head_sha, verdict, findings, comment_markdown, impact, reviewers, created_at
-                FROM guardian_reviews
-                WHERE repo_id = :repo_id
-                ORDER BY created_at DESC
-                LIMIT :limit
-                """
-            ),
-            params,
-        ).mappings().all()
-    except Exception:
-        db.rollback()  # databases without migration 006
-        rows = db.execute(
-            text(
-                """
-                SELECT id, pr_number, head_sha, verdict, findings, comment_markdown, created_at
-                FROM guardian_reviews
-                WHERE repo_id = :repo_id
-                ORDER BY created_at DESC
-                LIMIT :limit
-                """
-            ),
-            params,
-        ).mappings().all()
+    rows = db.execute(
+        text(
+            """
+            SELECT id, pr_number, head_sha, verdict, findings, comment_markdown, impact, reviewers, created_at
+            FROM guardian_reviews
+            WHERE repo_id = :repo_id
+            ORDER BY created_at DESC
+            LIMIT :limit
+            """
+        ),
+        params,
+    ).mappings().all()
     return {"reviews": [dict(row) for row in rows]}
 
 
-WORKFLOW_TEMPLATE = """name: KAVI Guardian
+WORKFLOW_TEMPLATE = r"""name: KAVI Guardian
 
 on:
   pull_request:

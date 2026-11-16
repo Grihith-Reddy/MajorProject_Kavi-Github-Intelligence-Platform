@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { FileChip, PrChip, type FileInfo, type PrInfo } from './CitationChips'
 import { CodeSnippetCard } from './CodeSnippetCard'
+import { isInternalPath, safeExternalUrl } from '../../utils/safeUrl'
 
 /**
  * A small, dependency-free Markdown renderer tuned to KAVI's design language.
@@ -135,14 +136,17 @@ function renderInline(text: string, ctx: InlineContext): ReactNode[] {
     } else if (match[3]) {
       const number = Number(token.match(/#(\d+)/)?.[1])
       const explicit = token.match(/\]\(([^)]*)\)/)?.[1]
-      nodes.push(<PrChip key={key++} number={number} info={{ ...ctx.prInfo[number], url: explicit || ctx.prInfo[number]?.url }} />)
+      nodes.push(<PrChip key={key++} number={number} info={{ ...ctx.prInfo[number], url: safeExternalUrl(explicit) ?? safeExternalUrl(ctx.prInfo[number]?.url) }} />)
     } else if (match[4]) {
       const label = token.slice(1, token.indexOf(']('))
       const href = token.slice(token.indexOf('](') + 2, -1)
+      const external = safeExternalUrl(href)
       nodes.push(
-        href.startsWith('/')
+        isInternalPath(href)
           ? <Link key={key++} className="kv-link" to={href}>{label}</Link>
-          : <a key={key++} className="kv-link" href={href} target="_blank" rel="noreferrer">{label}</a>
+          : external
+            ? <a key={key++} className="kv-link" href={external} target="_blank" rel="noreferrer">{label}</a>
+            : label
       )
     } else if (match[5]) {
       nodes.push(<em key={key++}>{token.slice(1, -1)}</em>)

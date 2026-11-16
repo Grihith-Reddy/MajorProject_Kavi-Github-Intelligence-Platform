@@ -14,6 +14,32 @@ from app.core.audit import audit_log
 from app.core.settings import settings
 
 
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-site",
+    # The API only returns JSON, plain text and SSE: nothing may be framed, scripted or embedded.
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+}
+
+# Endpoints that spend free AI quota or start background work get a tighter budget.
+EXPENSIVE_PATH_PREFIXES = (
+    "/api/chat/query",
+    "/api/chat/stream",
+    "/api/mcp/ask",
+    "/api/repositories/sync",
+    "/api/guardian/review",
+    "/api/guardian/sync",
+)
+EXPENSIVE_PATH_SUFFIXES = ("/quality/run",)
+
+
+def is_expensive(path: str, method: str) -> bool:
+    return method == "POST" and (path.startswith(EXPENSIVE_PATH_PREFIXES) or path.endswith(EXPENSIVE_PATH_SUFFIXES))
+
+
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         supplied_request_id = request.headers.get("X-Request-ID", "")
@@ -25,6 +51,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
+        for name, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(name, value)
+        if settings.is_production:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return response
 
 
@@ -114,6 +144,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         window = int(time.time() // 60)
         key = self._request_key(request)
+        limit = settings.RATE_LIMIT_REQUESTS_PER_MINUTE
+        if is_expensive(request.url.path, request.method):
+            key = f"{key}:expensive"
+            limit = settings.RATE_LIMIT_EXPENSIVE_PER_MINUTE
         allowed = False
         current_count = 0
 
@@ -136,7 +170,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             else:
                 bucket = self._requests[key]
                 current_count = bucket.get(window, 0)
-                if current_count < settings.RATE_LIMIT_REQUESTS_PER_MINUTE:
+                if current_count < limit:
                     bucket[window] = current_count + 1
                     allowed = True
                     current_count = bucket[window]
@@ -156,10 +190,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
 
         response = await call_next(request)
-        response.headers["X-RateLimit-Limit"] = str(settings.RATE_LIMIT_REQUESTS_PER_MINUTE)
-        response.headers["X-RateLimit-Remaining"] = str(
-            max(settings.RATE_LIMIT_REQUESTS_PER_MINUTE - current_count, 0)
-        )
+        response.headers["X-RateLimit-Limit"] = str(limit)
+        response.headers["X-RateLimit-Remaining"] = str(max(limit - current_count, 0))
         return response
 
     def _request_key(self, request: Request) -> str:

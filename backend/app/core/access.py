@@ -1,6 +1,16 @@
+import re
+
 from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+
+_UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+
+def is_uuid(value: str | None) -> bool:
+    """IDs reach SQL as uuid casts; reject anything else up front so it is a 404, not a 500."""
+    return bool(value) and bool(_UUID_RE.fullmatch(value))
 
 
 def require_user_id(db: Session, auth0_sub: str) -> str:
@@ -35,6 +45,8 @@ def require_github_account(db: Session, user_id: str) -> dict:
 
 
 def assert_repo_access(db: Session, repo_id: str, auth0_sub: str) -> dict:
+    if not is_uuid(repo_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Repository not found")
     repo = db.execute(
         text(
             """
@@ -65,6 +77,8 @@ def assert_repo_access(db: Session, repo_id: str, auth0_sub: str) -> dict:
 
 
 def assert_entry_access(db: Session, entry_id: str, auth0_sub: str) -> dict:
+    if not is_uuid(entry_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge entry not found")
     entry = db.execute(
         text(
             """

@@ -26,3 +26,6 @@ backend/secrets/*
 # OS
 .DS_Store
 Thumbs.db
+
+# Local tooling
+.playwright-mcp/

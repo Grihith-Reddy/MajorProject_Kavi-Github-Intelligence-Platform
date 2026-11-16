@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.access import assert_repo_access, require_github_account, require_user_id
+from app.core.access import assert_repo_access, is_uuid, require_github_account, require_user_id
 from app.core.audit import audit_log
 from app.core.database import get_db
 from app.core.security import UserContext, decrypt_token, get_current_user
@@ -839,7 +839,7 @@ def _fetch_lexical_entries(
                 LIMIT :limit
                 """
             ),
-            {"repo_id": payload.repo_id, "as_of": as_of_bound(payload.as_of), "as_of": as_of_bound(payload.as_of), "ilike_query": ilike_query, "limit": limit, **term_params},
+            {"repo_id": payload.repo_id, "as_of": as_of_bound(payload.as_of), "ilike_query": ilike_query, "limit": limit, **term_params},
         ).mappings().all()
     except Exception:
         db.rollback()
@@ -874,7 +874,7 @@ def _fetch_recency_entries(db: Session, payload: ChatQuery, limit: int) -> list[
                 LIMIT :limit
                 """
             ),
-            {"repo_id": payload.repo_id, "as_of": as_of_bound(payload.as_of), "as_of": as_of_bound(payload.as_of), "limit": limit},
+            {"repo_id": payload.repo_id, "as_of": as_of_bound(payload.as_of), "limit": limit},
         ).mappings().all()
         return [dict(row) for row in rows]
     except Exception:
@@ -917,9 +917,6 @@ def _fetch_entries_by_ids(db: Session, repo_id: str, entry_ids: list[str], as_of
 def as_of_bound(as_of: str | None) -> str | None:
     """End of the given day in UTC, as an ISO timestamp (None when not time-travelling)."""
     return f"{as_of}T23:59:59+00:00" if as_of else None
-
-
-RETRIEVAL_STRATEGIES = ("fulltext", "lexical", "semantic", "hybrid")
 
 
 def _fetch_candidate_entries(db: Session, payload: ChatQuery, strategy: str = "hybrid") -> list[dict]:
@@ -2149,7 +2146,7 @@ def chat_message_feedback(
     db: Session = Depends(get_db),
 ):
     """Rate an assistant answer (1 helpful, -1 not helpful, 0 clears the rating)."""
-    if not re.fullmatch(r"[0-9a-fA-F-]{36}", message_id or ""):
+    if not is_uuid(message_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
     user_id = _ensure_user_id(db, current_user)
     message = db.execute(
