@@ -11,6 +11,7 @@ import { MemoryWindow } from '../features/landing/MemoryWindow'
 import { ParallaxHero } from '../features/landing/ParallaxHero'
 import '../features/landing/landing2.css'
 import { KaviMark } from '../components/KaviMark'
+import { ThemeToggle } from '../features/theme/ThemeToggle'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -344,7 +345,19 @@ export function LandingPage() {
           backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           box-shadow: 0 4px 22px rgba(116,130,151,0.15);
         }
-        .k-logo { display: flex; align-items: center; height: 40px; padding: 0 6px; color: var(--kv-ink); text-decoration: none; z-index: 10; }
+        .k-logo { display: flex; align-items: center; height: 40px; padding: 0 6px; color: #fff; text-decoration: none; z-index: 10; transition: color 0.25s ease; }
+        .k-header-inner.on .k-logo { color: var(--kv-ink); }
+        .k-header-right { display: flex; align-items: center; gap: 10px; }
+        .k-theme-btn {
+          width: 42px; height: 42px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
+          background: rgb(255 255 255 / 0.16); color: #fff; border: 1.5px solid rgb(255 255 255 / 0.4); cursor: pointer;
+          backdrop-filter: blur(8px); transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+        }
+        .k-theme-btn:hover { background: rgb(255 255 255 / 0.26); }
+        .k-theme-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+        .k-header-inner.on .k-theme-btn { background: transparent; color: var(--kv-ink); border-color: var(--kv-line); }
+        .k-header-inner.on .k-theme-btn:hover { background: rgb(var(--kv-ink-rgb) / 0.06); }
+        @media (max-width: 768px) { .k-theme-btn { width: 36px; height: 36px; } }
         .k-nav { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; pointer-events: none; }
         @media (max-width: 768px) { .k-nav { display: none; } }
         .k-nav-link { pointer-events: auto; padding: 8px 20px; border-radius: 9999px; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; color: #fff; background: transparent; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.25s ease; }
@@ -598,6 +611,7 @@ export function LandingPage() {
             ))}
           </nav>
           <div className="k-header-right">
+            <ThemeToggle className="k-theme-btn" />
             <button onClick={handleStart} disabled={statusLoading} className="k-btn-dark font-archivo">
               Get started <ArrowRight size={14} />
             </button>
