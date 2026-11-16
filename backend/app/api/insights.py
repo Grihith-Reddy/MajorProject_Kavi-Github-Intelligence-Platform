@@ -1,6 +1,5 @@
 """KAVI 2.0 insight endpoints: Why-Lens, repository tree, and (later) promises, graph and quality."""
 
-import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -9,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.access import assert_repo_access, require_github_account, require_user_id
+from app.core.access import assert_repo_access, is_uuid, require_github_account, require_user_id
 from app.core.audit import audit_log
 from app.core.database import SessionLocal, get_db
 from app.core.security import UserContext, decrypt_token, get_current_user
@@ -187,7 +186,7 @@ def update_promise_status(
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not re.fullmatch(r"[0-9a-fA-F-]{36}", promise_id):
+    if not is_uuid(promise_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Promise not found")
     row = db.execute(
         text("SELECT repo_id FROM pr_promises WHERE id = CAST(:id AS uuid)"), {"id": promise_id}
@@ -284,38 +283,34 @@ def quality_runs(
     runs = [dict(row) for row in rows]
     for run in runs[1:]:
         run["cases"] = None  # only the latest run needs per-question detail
-    feedback = None
-    try:
-        stats = db.execute(
-            text(
-                """
-                SELECT COUNT(*) FILTER (WHERE rating = 1) AS helpful,
-                       COUNT(*) FILTER (WHERE rating = -1) AS not_helpful
-                FROM chat_feedback WHERE repo_id = :repo_id
-                """
-            ),
-            {"repo_id": repo_id},
-        ).mappings().one()
-        recent = db.execute(
-            text(
-                """
-                SELECT f.reason, f.created_at, LEFT(m.content, 240) AS answer
-                FROM chat_feedback f JOIN chat_messages m ON m.id = f.message_id
-                WHERE f.repo_id = :repo_id AND f.rating = -1
-                ORDER BY f.created_at DESC LIMIT 5
-                """
-            ),
-            {"repo_id": repo_id},
-        ).mappings().all()
-        rated = int(stats["helpful"]) + int(stats["not_helpful"])
-        feedback = {
-            "helpful": int(stats["helpful"]),
-            "not_helpful": int(stats["not_helpful"]),
-            "helpful_rate": round(int(stats["helpful"]) / rated, 3) if rated else None,
-            "recent_not_helpful": [dict(row) for row in recent],
-        }
-    except Exception:
-        db.rollback()  # migration 006 not applied yet
+    stats = db.execute(
+        text(
+            """
+            SELECT COUNT(*) FILTER (WHERE rating = 1) AS helpful,
+                   COUNT(*) FILTER (WHERE rating = -1) AS not_helpful
+            FROM chat_feedback WHERE repo_id = :repo_id
+            """
+        ),
+        {"repo_id": repo_id},
+    ).mappings().one()
+    recent = db.execute(
+        text(
+            """
+            SELECT f.reason, f.created_at, LEFT(m.content, 240) AS answer
+            FROM chat_feedback f JOIN chat_messages m ON m.id = f.message_id
+            WHERE f.repo_id = :repo_id AND f.rating = -1
+            ORDER BY f.created_at DESC LIMIT 5
+            """
+        ),
+        {"repo_id": repo_id},
+    ).mappings().all()
+    rated = int(stats["helpful"]) + int(stats["not_helpful"])
+    feedback = {
+        "helpful": int(stats["helpful"]),
+        "not_helpful": int(stats["not_helpful"]),
+        "helpful_rate": round(int(stats["helpful"]) / rated, 3) if rated else None,
+        "recent_not_helpful": [dict(row) for row in recent],
+    }
     return {"runs": runs, "feedback": feedback}
 
 
@@ -355,24 +350,21 @@ def repositories_health(
             "at_risk_modules": 0,
             "single_expert_modules": 0,
         }
-        try:
-            promise_counts = db.execute(
-                text(
-                    """
-                    SELECT COUNT(*) FILTER (WHERE status = 'open') AS open,
-                           COUNT(*) FILTER (WHERE status = 'kept') AS kept
-                    FROM pr_promises WHERE repo_id = :repo_id
-                    """
-                ),
-                {"repo_id": repo_id},
-            ).mappings().one()
-            entry["open_promises"] = int(promise_counts["open"] or 0)
-            entry["kept_promises"] = int(promise_counts["kept"] or 0)
-            if entry["indexed_count"]:
-                summary = build_knowledge_map(db, repo_id)["summary"]
-                entry["at_risk_modules"] = int(summary.get("at_risk") or 0)
-                entry["single_expert_modules"] = int(summary.get("single_expert") or 0)
-        except Exception:
-            db.rollback()  # migration 005 missing: basic counts only
+        promise_counts = db.execute(
+            text(
+                """
+                SELECT COUNT(*) FILTER (WHERE status = 'open') AS open,
+                       COUNT(*) FILTER (WHERE status = 'kept') AS kept
+                FROM pr_promises WHERE repo_id = :repo_id
+                """
+            ),
+            {"repo_id": repo_id},
+        ).mappings().one()
+        entry["open_promises"] = int(promise_counts["open"] or 0)
+        entry["kept_promises"] = int(promise_counts["kept"] or 0)
+        if entry["indexed_count"]:
+            summary = build_knowledge_map(db, repo_id)["summary"]
+            entry["at_risk_modules"] = int(summary.get("at_risk") or 0)
+            entry["single_expert_modules"] = int(summary.get("single_expert") or 0)
         health[repo_id] = entry
     return {"repositories": health}

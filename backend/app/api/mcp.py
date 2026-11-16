@@ -83,7 +83,7 @@ def mcp_ask(payload: AskRequest, principal: TokenPrincipal = Depends(require_tok
     try:
         result = run_agent(payload.question, tools=tools, history=[], memory_note=None, emit=_emit)
     except AgentUnavailable as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"AI provider unavailable: {exc}") from exc
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="The AI provider is unavailable right now. Try again shortly.") from exc
     audit_log("mcp.ask.completed", user_id=principal.user_id, repo=payload.repo, steps=len(steps))
     sources = [
         {"pr_number": s.get("pr_number"), "title": s.get("pr_title"), "url": s.get("pr_url")}

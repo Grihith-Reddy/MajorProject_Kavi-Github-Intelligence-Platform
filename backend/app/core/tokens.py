@@ -7,7 +7,6 @@ also bound to one repository) and revocable.
 from __future__ import annotations
 
 import hashlib
-import re
 import secrets
 from dataclasses import dataclass
 from typing import Any
@@ -17,6 +16,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.access import is_uuid
 from app.core.database import get_db
 
 TOKEN_PREFIXES = {"guardian": "kavi_gd_", "mcp": "kavi_mcp_"}
@@ -79,7 +79,7 @@ def list_tokens(db: Session, *, user_id: str) -> list[dict[str, Any]]:
 
 
 def revoke_token(db: Session, *, user_id: str, token_id: str) -> bool:
-    if not re.fullmatch(r"[0-9a-fA-F-]{36}", token_id or ""):
+    if not is_uuid(token_id):
         return False
     result = db.execute(
         text(

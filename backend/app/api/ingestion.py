@@ -1,11 +1,10 @@
-import re
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
-from app.core.access import assert_repo_access, require_github_account, require_user_id
+from app.core.access import assert_repo_access, is_uuid, require_github_account, require_user_id
 from app.core.audit import audit_log
 from app.core.database import get_db
 from app.core.security import UserContext, decrypt_token, get_current_user
@@ -14,7 +13,6 @@ from app.core.settings import settings
 from app.services.sync_jobs import enqueue_sync_job, get_latest_sync_job_for_repo, get_sync_job_for_user
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
-_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 class SyncRequest(BaseModel):
@@ -117,7 +115,7 @@ def sync_job_status(
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not _UUID_RE.fullmatch(job_id):
+    if not is_uuid(job_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sync job not found")
     user_id = require_user_id(db, current_user.sub)
     job = get_sync_job_for_user(db, job_id=job_id, user_id=user_id)
