@@ -76,11 +76,11 @@ export function MobileHeaderMenu({ resolve, onLogout }: Props) {
   return (
     <div className="kv-mhead">
       {onChatPage && (
-        <button type="button" className="kv-mhead-new" onClick={chat.onNewChat}>
-          <MessageSquarePlus size={16} /> New chat
+        <button type="button" className="kv-mhead-btn is-solid" onClick={chat.onNewChat} aria-label="Start new chat" data-tip="Start new chat" data-tip-pos="below">
+          <MessageSquarePlus size={18} />
         </button>
       )}
-      <button type="button" className="kv-mhead-more" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} aria-label="More">
+      <button type="button" className="kv-mhead-btn" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open} aria-label="More">
         <MoreHorizontal size={18} />
       </button>
 
