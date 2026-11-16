@@ -11,8 +11,9 @@ import {
 } from 'firebase/auth'
 import { firebaseAuth, googleProvider } from '../features/auth/firebase'
 import { useAuth } from '../features/auth/useAuth'
-import cloudImg from '../assets/cloud.webp'
 import { KaviMark } from '../components/KaviMark'
+import { SkyCanvas } from '../features/landing/SkyCanvas'
+import { ThemeToggle } from '../features/theme/ThemeToggle'
 
 function GoogleIcon() {
   return (
@@ -127,6 +128,7 @@ export function LoginPage() {
           width: 100%;
           max-width: 1440px;
           margin: 0 auto;
+          /* fallback behind the animated sky (no WebGL) */
           background: linear-gradient(170deg, var(--kv-sky-1) 0%, var(--kv-sky-2) 100%);
           border-radius: 32px;
           overflow: hidden;
@@ -136,15 +138,19 @@ export function LoginPage() {
           padding: 48px 24px;
         }
 
-        .login-cloud {
-          position: absolute;
-          width: 120%;
-          left: -10%;
-          bottom: -15%;
-          opacity: 0.55;
-          mix-blend-mode: screen;
-          pointer-events: none;
-          z-index: 1;
+        .login-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; pointer-events: none; }
+        .login-theme-btn {
+          position: absolute; top: 20px; right: 20px; z-index: 11; width: 42px; height: 42px; border-radius: 9999px;
+          display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+          background: rgb(255 255 255 / 0.18); color: #fff; border: 1.5px solid rgb(255 255 255 / 0.42);
+          backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: background 0.2s ease;
+        }
+        .login-theme-btn:hover { background: rgb(255 255 255 / 0.28); }
+        .login-theme-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+        /* Phones: room above the card so the toggle never sits on its edge. */
+        @media (max-width: 640px) {
+          .login-card { padding-top: 72px !important; }
+          .login-theme-btn { top: 16px; right: 16px; width: 40px; height: 40px; }
         }
 
         /* ── Two-column inner card ── */
@@ -324,6 +330,19 @@ export function LoginPage() {
           padding: 13px 0;
         }
         .login-input::placeholder { color: rgb(var(--kv-ink-rgb) / 0.35); }
+        /* The Tailwind forms plugin adds a blue ring to focused inputs; the wrapper already shows focus. */
+        .login-input:focus { box-shadow: none; outline: none; }
+        /* Browser autofill: keep the field's own colours instead of the yellow fill. The long
+           transition delays the browser's background so the wrapper shows through. */
+        .login-input:-webkit-autofill,
+        .login-input:-webkit-autofill:hover,
+        .login-input:-webkit-autofill:focus {
+          -webkit-text-fill-color: var(--kv-ink);
+          caret-color: var(--kv-ink);
+          box-shadow: none;
+          transition: background-color 600000s 0s, color 600000s 0s;
+        }
+        .login-input:autofill { background: transparent; }
         .login-eye {
           background: none;
           border: none;
@@ -417,7 +436,8 @@ export function LoginPage() {
 
       <div className="login-page">
         <div className="login-card">
-          <img src={cloudImg} alt="" className="login-cloud" />
+          <SkyCanvas className="login-sky" />
+          <ThemeToggle className="login-theme-btn" />
 
           <motion.div
             className="login-inner"
