@@ -51,6 +51,7 @@ def why_lens(
     repo_id: str,
     path: str = Query(..., min_length=1, max_length=500),
     ref: str | None = Query(None, max_length=200),
+    as_of: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     current_user: UserContext = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
@@ -58,7 +59,13 @@ def why_lens(
     if ".." in path.split("/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file path")
     github = github_for_user(db, current_user)
+    if as_of and not ref:
+        # History slider: the file as it was at the end of that day.
+        ref = github.commit_at(str(repo["full_name"]), str(repo.get("default_branch") or "main"), f"{as_of}T23:59:59Z")
+        if not ref:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The repository had no commits by that date")
     result = get_file_why(db, repo_meta=repo, github=github, path=path, ref=ref)
+    result["as_of"] = as_of
     if not result.get("segments") and not result.get("content"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on this branch")
     audit_log("insights.why.viewed", auth0_sub=current_user.sub, repo_id=repo_id, path=path)

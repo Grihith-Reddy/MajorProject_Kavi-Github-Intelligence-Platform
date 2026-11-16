@@ -43,6 +43,7 @@ export interface WhyLensResponse {
   content?: string | null
   segments: WhySegment[]
   prs: WhyPullRequest[]
+  as_of?: string | null
 }
 
 export const getRepositoryTree = async (api: AxiosInstance, repoId: string) => {
@@ -50,8 +51,8 @@ export const getRepositoryTree = async (api: AxiosInstance, repoId: string) => {
   return data as { branch?: string; files: RepositoryTreeFile[] }
 }
 
-export const getWhyLens = async (api: AxiosInstance, repoId: string, path: string) => {
-  const { data } = await api.get(`/insights/repositories/${repoId}/why`, { params: { path } })
+export const getWhyLens = async (api: AxiosInstance, repoId: string, path: string, asOf?: string | null) => {
+  const { data } = await api.get(`/insights/repositories/${repoId}/why`, { params: { path, ...(asOf ? { as_of: asOf } : {}) } })
   return data as WhyLensResponse
 }
 
