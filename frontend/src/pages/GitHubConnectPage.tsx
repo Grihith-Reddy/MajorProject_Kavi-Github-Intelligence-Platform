@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApiClient } from '../services/apiClient'
 import { getGitHubConnectUrl } from '../services/githubService'
 import { getApiErrorMessage } from '../utils/errors'
-import cloudImg from '../assets/cloud.webp'
+import { SkyCanvas } from '../features/landing/SkyCanvas'
 import { KaviMark } from '../components/KaviMark'
 
 export function GitHubConnectPage() {
@@ -56,6 +56,7 @@ export function GitHubConnectPage() {
           width: 100%;
           max-width: 1440px;
           margin: 0 auto;
+          /* fallback behind the animated sky (no WebGL) */
           background: linear-gradient(170deg, var(--kv-sky-1) 0%, var(--kv-sky-2) 100%);
           border-radius: 32px;
           overflow: hidden;
@@ -65,20 +66,11 @@ export function GitHubConnectPage() {
           clip-path: inset(0% round 32px);
         }
 
-        .hero-cloud {
-          position: absolute;
-          width: 120%;
-          left: -10%;
-          bottom: -10%;
-          opacity: 0.6;
-          mix-blend-mode: screen;
-          pointer-events: none;
-          z-index: 1;
-        }
+        /* The same animated cloudscape as the landing hero and the login page. */
+        .connect-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; pointer-events: none; }
 
         .inner-content {
           background: rgb(var(--kv-veil-rgb) / 0.9);
-          backdrop-filter: blur(20px);
           border-radius: 24px;
           padding: 40px;
           width: 100%;
@@ -104,8 +96,8 @@ export function GitHubConnectPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-          border: 1px solid rgba(0,0,0,0.05);
+          box-shadow: 0 4px 12px rgb(var(--kv-shadow-rgb) / 0.08);
+          border: 1px solid var(--kv-line);
         }
 
         .font-archivo { font-family: 'Archivo', sans-serif !important; }
@@ -119,10 +111,10 @@ export function GitHubConnectPage() {
           display: flex;
           gap: 12px;
           padding: 16px;
-          background: rgba(0,0,0,0.03);
+          background: rgb(var(--kv-ink-rgb) / 0.04);
           border-radius: 16px;
           margin-bottom: 12px;
-          border: 1px solid rgba(0,0,0,0.05);
+          border: 1px solid var(--kv-line);
         }
 
         .btn-github {
@@ -165,11 +157,6 @@ export function GitHubConnectPage() {
             clip-path: inset(0% round 18px);
             padding: 14px 10px;
           }
-          .hero-cloud {
-            width: 150%;
-            left: -25%;
-            bottom: -8%;
-          }
           .inner-content {
             border-radius: 18px;
             padding: 20px 14px;
@@ -198,8 +185,7 @@ export function GitHubConnectPage() {
 
       <div className="connect-page-wrapper">
         <div className="connect-card">
-          {/* Background Clouds */}
-          <img src={cloudImg} alt="" className="hero-cloud" />
+          <SkyCanvas className="connect-sky" />
 
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}

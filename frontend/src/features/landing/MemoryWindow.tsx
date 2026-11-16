@@ -1,24 +1,24 @@
 import { useRef } from 'react'
-import { motion, useMotionTemplate, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { motion, useReducedMotion, useTransform } from 'framer-motion'
 import { Check, FileCode2, GitPullRequest, Search, ScanLine } from 'lucide-react'
 
 import cloudImg from '../../assets/cloud.webp'
+import { useScrollProgress } from './useScrollProgress'
 
 /**
  * Scroll-driven reveal adapted from 21st.dev "Smooth Scroll Hero" (ishamsu):
  * a window cut into the sky widens as you scroll, revealing KAVI at work.
- * The clip-path and background zoom follow the original; the content is KAVI's own.
+ * The original animates clip-path, which repaints the whole window every frame. Here a rounded frame
+ * in the page colour sits over the window and only scales, which the compositor does without
+ * repainting, so the reveal holds 60 fps. The content is KAVI's own.
  */
 export function MemoryWindow() {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] })
+  const scrollYProgress = useScrollProgress(ref, ['start start', 'end end'])
 
-  const clipStart = useTransform(scrollYProgress, [0, 0.75], [22, 0])
-  const clipEnd = useTransform(scrollYProgress, [0, 0.75], [78, 100])
-  const radius = useTransform(scrollYProgress, [0, 0.75], [40, 0])
-  const clipFar = useTransform(clipEnd, (value) => 100 - value)
-  const clipPath = useMotionTemplate`inset(${clipStart}% ${clipFar}% ${clipFar}% ${clipStart}% round ${radius}px)`
+  // The opening starts at 56% of the window (22% in from each side) and widens to the full window.
+  const holeScale = useTransform(scrollYProgress, [0, 0.75], [0.56, 1])
   const cloudScale = useTransform(scrollYProgress, [0, 1], [1.7, 1])
   const productScale = useTransform(scrollYProgress, [0.1, 0.8], [0.82, 1])
   const productY = useTransform(scrollYProgress, [0.1, 0.8], [60, 0])
@@ -38,7 +38,7 @@ export function MemoryWindow() {
     <section ref={ref} className="mw" aria-label="KAVI at work">
       <div className="mw-sticky">
         <motion.p className="mw-caption" style={{ opacity: captionOpacity }}>Scroll to look inside</motion.p>
-        <motion.div className="mw-window" style={{ clipPath, willChange: 'clip-path' }}>
+        <div className="mw-window">
           <div className="mw-sky">
             <motion.img src={cloudImg} alt="" className="mw-cloud" style={{ scale: cloudScale }} />
           </div>
@@ -48,7 +48,11 @@ export function MemoryWindow() {
           <motion.p className="mw-callout" style={{ opacity: calloutOpacity }}>
             Every answer cites the pull request it came from.
           </motion.p>
-        </motion.div>
+        </div>
+        {/* Everything outside the rounded opening is covered in the page colour. */}
+        <div className="mw-mask" aria-hidden>
+          <motion.div className="mw-hole" style={{ scale: holeScale }} />
+        </div>
       </div>
     </section>
   )

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useTransform } from 'framer-motion'
 import { AlertTriangle, Check, GitPullRequest, History, MessageSquareText, ScanLine, ShieldCheck } from 'lucide-react'
+import { useScrollProgress } from './useScrollProgress'
 
 interface Entry {
   kicker: string
@@ -106,7 +107,7 @@ export function MemoryTimeline() {
     return () => observer.disconnect()
   }, [])
 
-  const { scrollYProgress } = useScroll({ target: containerRef, offset: ['start 10%', 'end 50%'] })
+  const scrollYProgress = useScrollProgress(containerRef, ['start 10%', 'end 50%'])
   // Grow the beam with scaleY (compositor only) rather than height, which would re-lay out every frame.
   const beamScale = useTransform(scrollYProgress, [0, 1], [0, 1])
   const beamOpacity = useTransform(scrollYProgress, [0, 0.1], [0, 1])

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { cancelFrame, frame } from 'framer-motion'
 import { ArrowRight, GitPullRequest, DatabaseZap, MessageSquareText, ShieldCheck, LockKeyhole } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { firebaseAuth } from '../features/auth/firebase'
@@ -131,26 +132,20 @@ const FAQ_ITEMS = [
 
 // ─── Word reveal hook ─────────────────────────────────────────────────────────
 
+/**
+ * Reveals the words in a block once it scrolls into view. Each word carries its index (--wi) and
+ * CSS staggers the transition, so revealing is one class change: one style pass, not one per word.
+ */
 function useWordReveal(ref: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    const words = el.querySelectorAll<HTMLElement>('.word')
-    if (!words.length) return
-
+    if (!el || !el.querySelector('.word')) return
+    el.querySelectorAll<HTMLElement>('.word').forEach((word, i) => word.style.setProperty('--wi', String(i)))
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            words.forEach((word, i) => {
-              setTimeout(() => {
-                word.style.opacity = '1'
-                word.style.transform = 'translateY(0px)'
-              }, i * 22)
-            })
-            observer.disconnect()
-          }
-        })
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        el.classList.add('is-revealed')
+        observer.disconnect()
       },
       { threshold: 0.15 }
     )
@@ -166,12 +161,6 @@ function Words({ text }: { text: string }) {
         <span
           key={i}
           className="word inline-block whitespace-nowrap"
-          style={{
-            opacity: 0,
-            transform: 'translateY(12px)',
-            transition: 'opacity 0.42s ease, transform 0.42s ease',
-            marginRight: '0.28em',
-          }}
         >
           {word}
         </span>
@@ -215,13 +204,13 @@ export function LandingPage() {
   const navigate = useNavigate()
   const api = useApiClient()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const [scrolled, setScrolled] = useState(false)
   const [isReady, setIsReady] = useState(false)
-  const [footerReached, setFooterReached] = useState(false)
   const footerRef = useRef<HTMLDivElement>(null)
+  // The header's scrolled/away looks are class toggles on these nodes, not React state: a state
+  // change here would re-render the whole landing page in the middle of a scroll.
+  const headerRef = useRef<HTMLElement>(null)
+  const headerInnerRef = useRef<HTMLDivElement>(null)
   const scrolledRef = useRef(false)
-  const latestScrollYRef = useRef(0)
-  const scrollRafRef = useRef<number | null>(null)
 
   const { data: githubStatus, loading: statusLoading } = useAsync(
     () => (isAuthenticated ? getGitHubStatus(api) : Promise.resolve(null)),
@@ -236,18 +225,11 @@ export function LandingPage() {
   useWordReveal(featRef)
   useWordReveal(outRef)
 
-  const scheduleScrollVisualUpdate = (scrollY: number) => {
-    latestScrollYRef.current = scrollY
-    if (scrollRafRef.current !== null) return
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = null
-      const y = latestScrollYRef.current
-      const nextScrolled = y > 48
-      if (nextScrolled !== scrolledRef.current) {
-        scrolledRef.current = nextScrolled
-        setScrolled(nextScrolled)
-      }
-    })
+  const updateHeader = (scrollY: number) => {
+    const nextScrolled = scrollY > 48
+    if (nextScrolled === scrolledRef.current) return
+    scrolledRef.current = nextScrolled
+    headerInnerRef.current?.classList.toggle('on', nextScrolled)
   }
 
   // Watch only the top strip of the screen (where the header floats): once the footer covers it,
@@ -258,7 +240,7 @@ export function LandingPage() {
     let observer: IntersectionObserver | null = null
     const watch = () => {
       observer?.disconnect()
-      observer = new IntersectionObserver(([entry]) => setFooterReached(entry.isIntersecting), {
+      observer = new IntersectionObserver(([entry]) => headerRef.current?.classList.toggle('away', entry.isIntersecting), {
         rootMargin: `0px 0px -${Math.max(0, window.innerHeight - 96)}px 0px`,
       })
       observer.observe(el)
@@ -266,6 +248,19 @@ export function LandingPage() {
     watch()
     window.addEventListener('resize', watch)
     return () => { observer?.disconnect(); window.removeEventListener('resize', watch) }
+  }, [])
+
+  // Looping CSS animations (bouncing dots, the glass sheen, the footer's live dot) keep ticking even
+  // when their section is far off screen, costing style work on every scrolled frame. Pause them
+  // whenever their section is out of view.
+  useEffect(() => {
+    const sections = document.querySelectorAll<HTMLElement>('#main-content section, .k-footer-frame')
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach((entry) => entry.target.classList.toggle('is-offscreen', !entry.isIntersecting)),
+      { rootMargin: '120px 0px' }
+    )
+    sections.forEach((section) => observer.observe(section))
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -278,30 +273,21 @@ export function LandingPage() {
     ;(async () => {
       try {
         const { default: Lenis } = await import('lenis')
-        const lenis = new Lenis({ lerp: 0.08, smoothWheel: true })
+        const lenis = new Lenis({ lerp: 0.1, smoothWheel: true, autoRaf: false })
         document.documentElement.classList.add('lenis')
-        lenis.on('scroll', (event: { scroll: number }) => {
-          scheduleScrollVisualUpdate(event.scroll)
-        })
-        scheduleScrollVisualUpdate(window.scrollY)
-        let raf: number
-        const tick = (t: number) => { lenis.raf(t); raf = requestAnimationFrame(tick) }
-        raf = requestAnimationFrame(tick)
-        cleanup = () => { cancelAnimationFrame(raf); lenis.destroy(); document.documentElement.classList.remove('lenis') }
+        lenis.on('scroll', (event: { scroll: number }) => updateHeader(event.scroll))
+        updateHeader(window.scrollY)
+        const step = ({ timestamp }: { timestamp: number }) => lenis.raf(timestamp)
+        frame.update(step, true)
+        cleanup = () => { cancelFrame(step); lenis.destroy(); document.documentElement.classList.remove('lenis') }
       } catch {
-        const onScroll = () => scheduleScrollVisualUpdate(window.scrollY)
+        const onScroll = () => updateHeader(window.scrollY)
         onScroll()
         window.addEventListener('scroll', onScroll, { passive: true })
         cleanup = () => window.removeEventListener('scroll', onScroll)
       }
     })()
-    return () => {
-      cleanup?.()
-      if (scrollRafRef.current !== null) {
-        cancelAnimationFrame(scrollRafRef.current)
-        scrollRafRef.current = null
-      }
-    }
+    return () => cleanup?.()
   }, [])
 
   const handleStart = () => {
@@ -326,6 +312,9 @@ export function LandingPage() {
         @import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Gabarito:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap');
 
         html.lenis, html.lenis body { height: auto; }
+        .word { opacity: 0; transform: translateY(12px); margin-right: 0.28em; transition: opacity 0.42s ease, transform 0.42s ease; transition-delay: calc(var(--wi, 0) * 22ms); }
+        .is-revealed .word { opacity: 1; transform: none; }
+        .is-offscreen *, .is-offscreen *::before, .is-offscreen *::after { animation-play-state: paused !important; }
         .lenis.lenis-smooth { scroll-behavior: auto !important; }
         .lenis.lenis-stopped { overflow: hidden; }
 
@@ -596,8 +585,8 @@ export function LandingPage() {
         }
       `}</style>
 
-      <header className={`k-header ${isReady ? 'ready' : ''}${footerReached ? ' away' : ''}`}>
-        <div className={`k-header-inner${scrolled ? ' on' : ''}`}>
+      <header ref={headerRef} className={`k-header ${isReady ? 'ready' : ''}`}>
+        <div ref={headerInnerRef} className="k-header-inner">
           <a href="/" className="k-logo" aria-label="Kavi">
             <KaviMark size={28} />
           </a>
@@ -719,7 +708,7 @@ export function LandingPage() {
                   <div className="k-feat-text">
                     <h2 className="k-feat-h2 font-archivo">
                       {['The','antidote','to','context','rot'].map((w, i) => (
-                        <span key={i} className="word inline-block" style={{ opacity:0, transform:'translateY(12px)', transition:'opacity 0.42s ease, transform 0.42s ease', marginRight:'0.28em' }}>{w}</span>
+                        <span key={i} className="word inline-block">{w}</span>
                       ))}
                     </h2>
                     <p className="k-feat-p font-archivo">Kavi brings architecture decisions back to the surface — not summaries, but the actual reasoning that happened in review threads.</p>
@@ -791,7 +780,7 @@ export function LandingPage() {
                   <div className="k-feat-text">
                     <h2 className="k-feat-h2 font-archivo">
                       {['Ask','in','plain','language'].map((w, i) => (
-                        <span key={i} className="word inline-block" style={{ opacity:0, transform:'translateY(12px)', transition:'opacity 0.42s ease, transform 0.42s ease', marginRight:'0.28em' }}>{w}</span>
+                        <span key={i} className="word inline-block">{w}</span>
                       ))}
                     </h2>
                     <p className="k-feat-p font-archivo">Every response cites the pull request, the author, and the date. Fully traceable, never hallucinated.</p>
