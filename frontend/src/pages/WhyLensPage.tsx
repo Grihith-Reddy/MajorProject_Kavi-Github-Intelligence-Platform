@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -15,33 +15,22 @@ import {
 } from 'lucide-react'
 
 import cloudImg from '../assets/cloud.webp'
-import { CODE_THEME_COLORS, tokenizeCodeLine } from '../features/chat/codeTokens'
+import { CodeLens } from '../features/whylens/CodeLens'
+import { HistorySlider } from '../features/whylens/HistorySlider'
+import { COMMIT_COLOR, PR_COLORS, segmentKey } from '../features/whylens/whyLensUtils'
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { getRepositoryTree, getWhyLens, type WhyLensResponse, type WhySegment } from '../services/insightsService'
 import { listKnowledgeFiles } from '../services/knowledgeService'
 import { getApiErrorMessage } from '../utils/errors'
 
-// Pastel bands that read well on the dark code surface; same family as the card palette.
-const PR_COLORS = ['var(--kv-sky-2)', '#C3B1F5', '#FFB59A', '#A9D18E', '#F7D774', '#8FD9D2', '#F2A7C3', '#B0C4F5']
-const COMMIT_COLOR = '#5B6670'
 const CARD_COLORS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'var(--kv-ice)', 'var(--kv-sage)', 'var(--kv-mint)']
 const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
-
-function languageFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() ?? ''
-  const map: Record<string, string> = { py: 'python', ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'javascript', java: 'java', go: 'go', cs: 'csharp', sql: 'sql', kt: 'java', rb: 'python' }
-  return map[ext] ?? 'typescript'
-}
 
 function formatDate(value?: string | null): string {
   if (!value) return ''
   const parsed = Date.parse(value)
   return Number.isFinite(parsed) ? new Date(parsed).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''
-}
-
-function segmentKey(segment: WhySegment): string {
-  return segment.pr_number ? `pr-${segment.pr_number}` : `c-${segment.commit_oid ?? segment.start_line}`
 }
 
 function readStoredRepoId(): string | null {
@@ -130,96 +119,6 @@ function FilePicker({ repoId, onPick }: { repoId: string; onPick: (path: string)
   )
 }
 
-// ── Code lens ───────────────────────────────────────────────────────────────
-
-function CodeLens({
-  data,
-  colorFor,
-  activeKey,
-  hoverKey,
-  onHover,
-  onSelect,
-  focusLine,
-}: {
-  data: WhyLensResponse
-  colorFor: (segment: WhySegment) => string
-  activeKey: string | null
-  hoverKey: string | null
-  onHover: (key: string | null) => void
-  onSelect: (segment: WhySegment) => void
-  focusLine: number | null
-}) {
-  const lines = useMemo(() => (data.content ?? '').replace(/\r\n/g, '\n').split('\n'), [data.content])
-  const language = languageFromPath(data.path)
-  const segmentByLine = useMemo(() => {
-    const map = new Map<number, WhySegment>()
-    for (const segment of data.segments) {
-      for (let line = segment.start_line; line <= segment.end_line; line++) map.set(line, segment)
-    }
-    return map
-  }, [data.segments])
-  const bodyRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!focusLine || !bodyRef.current) return
-    const row = bodyRef.current.querySelector<HTMLElement>(`[data-line="${focusLine}"]`)
-    row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [focusLine, data.path])
-
-  return (
-    <div className="wl-code">
-      <div className="wl-code-head">
-        <div className="wl-code-title">
-          <FileCode2 size={14} />
-          <span>{data.path.split('/').pop()}</span>
-        </div>
-        <div className="wl-code-meta">
-          <span>{lines.length} lines</span>
-          <span>·</span>
-          <span>{data.ref}</span>
-          {data.commit_oid && (<><span>·</span><span>{data.commit_oid.slice(0, 7)}</span></>)}
-        </div>
-      </div>
-      <div className="wl-code-body" ref={bodyRef} onMouseLeave={() => onHover(null)}>
-        {lines.map((line, index) => {
-          const number = index + 1
-          const segment = segmentByLine.get(number)
-          const key = segment ? segmentKey(segment) : null
-          const color = segment ? colorFor(segment) : 'transparent'
-          const isActive = key !== null && key === activeKey
-          const isHover = key !== null && key === hoverKey && !isActive
-          const isStart = segment?.start_line === number
-          const tokens = tokenizeCodeLine(line, language)
-          return (
-            <div
-              key={number}
-              data-line={number}
-              className={`wl-line${isActive ? ' is-active' : ''}${isHover ? ' is-hover' : ''}${number === focusLine ? ' is-focus' : ''}`}
-              style={{ ['--band' as string]: color }}
-              onMouseEnter={() => onHover(key)}
-              onClick={() => segment && onSelect(segment)}
-            >
-              <span className="wl-band" />
-              <span className="wl-num">{number}</span>
-              <span className="wl-src">
-                {tokens.map((token, tokenIndex) => (
-                  <span key={tokenIndex} style={{ color: CODE_THEME_COLORS[token.kind] }}>{token.text}</span>
-                ))}
-                {line === '' ? ' ' : ''}
-              </span>
-              {isStart && segment && (
-                <span className="wl-tag" style={{ color }}>
-                  {segment.pr_number ? `#${segment.pr_number}` : segment.commit_short}
-                </span>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export function WhyLensPage() {
@@ -236,6 +135,8 @@ export function WhyLensPage() {
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   const [focusLine, setFocusLine] = useState<number | null>(null)
+  const [asOf, setAsOf] = useState<string | null>(null)
+  const [historySegments, setHistorySegments] = useState<WhySegment[]>([])
 
   const { data: hotFiles } = useAsync(() => (repoId ? listKnowledgeFiles(api, repoId) : Promise.resolve(null)), [api, repoId])
 
@@ -244,10 +145,12 @@ export function WhyLensPage() {
     let active = true
     setLoading(true)
     setError(null)
-    getWhyLens(api, repoId, path)
+    getWhyLens(api, repoId, path, asOf)
       .then((result) => {
         if (!active) return
         setData(result)
+        // Keep the newest blame's dates as slider stops while scrubbing into the past.
+        if (!asOf) setHistorySegments(result.segments)
         const target = lineParam
           ? result.segments.find((s) => s.start_line <= lineParam && s.end_line >= lineParam)
           : result.segments.find((s) => s.pr_number && s.pr_number === result.prs[0]?.pr_number) ?? result.segments[0]
@@ -257,7 +160,9 @@ export function WhyLensPage() {
       .catch((err) => { if (active) setError(getApiErrorMessage(err, 'Unable to open this file')) })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [api, repoId, path, lineParam])
+  }, [api, repoId, path, lineParam, asOf])
+
+  useEffect(() => { setAsOf(null); setHistorySegments([]) }, [path])
 
   const colorByPr = useMemo(() => {
     const map = new Map<number, string>()
@@ -360,7 +265,7 @@ export function WhyLensPage() {
           </section>
         )}
 
-        {path && loading && (
+        {path && loading && !data && (
           <div className="wl-layout" aria-busy="true">
             <div className="wl-skeleton" style={{ height: 520 }} />
             <div className="wl-skeleton" style={{ height: 360 }} />
@@ -374,8 +279,12 @@ export function WhyLensPage() {
           </div>
         )}
 
-        {path && data && !loading && !error && (
-          <div className="wl-layout">
+        {path && data && !error && (
+          <HistorySlider segments={historySegments.length ? historySegments : data.segments} value={asOf} onChange={setAsOf} disabled={loading} />
+        )}
+
+        {path && data && !error && (
+          <div className={`wl-layout${loading ? ' is-loading' : ''}`}>
             <CodeLens
               data={data}
               colorFor={colorFor}
@@ -568,8 +477,8 @@ const WHY_LENS_CSS = `
 .wl-code-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: #10171D; border-bottom: 1px solid #1F262B; }
 .wl-code-title { display: inline-flex; align-items: center; gap: 8px; font-family: var(--kv-font-read); font-size: 13px; font-weight: 600; color: #E6EDF3; min-width: 0; }
 .wl-code-meta { display: inline-flex; gap: 6px; font-family: var(--kv-font-label); font-size: 12px; color: #6D7B89; white-space: nowrap; overflow: hidden; }
-.wl-code-body { max-height: calc(100vh - 240px); min-height: 360px; overflow: auto; padding: 10px 0 14px; font-family: var(--kv-font-mono); font-size: 12.5px; line-height: 1.6; color: #E6EDF3; scrollbar-width: thin; scrollbar-color: #2A333A transparent; }
-.wl-line { position: relative; display: grid; grid-template-columns: 4px 52px minmax(0, 1fr) auto; align-items: start; cursor: pointer; white-space: pre; transition: background 0.12s ease; }
+.wl-code-body { height: calc(100vh - 300px); min-height: 360px; overflow: auto; padding: 0; font-family: var(--kv-font-mono); font-size: 12.5px; line-height: 1.6; color: #E6EDF3; scrollbar-width: thin; scrollbar-color: #2A333A transparent; }
+.wl-line { position: relative; display: grid; grid-template-columns: 4px 52px minmax(0, 1fr) auto; align-items: center; height: 20px; line-height: 20px; cursor: pointer; white-space: pre; transition: background 0.12s ease; }
 .wl-band { align-self: stretch; background: var(--band); opacity: 0.55; transition: opacity 0.15s ease; }
 .wl-line.is-hover { background: rgba(255,255,255,0.035); }
 .wl-line.is-hover .wl-band { opacity: 0.85; }
@@ -611,6 +520,35 @@ const WHY_LENS_CSS = `
 .wl-empty { border-radius: 32px; background: var(--kv-mist); border: 1px solid var(--kv-line); padding: 56px 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .wl-empty-title { font-family: var(--kv-font-read); font-size: 22px; font-weight: 600; color: var(--kv-ink); }
 .wl-empty-text { font-family: var(--kv-font-read); font-size: 15px; color: var(--kv-ink-2); max-width: 480px; margin-bottom: 8px; }
+
+.wl-code-tools { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.wl-search-in { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 10px; border-radius: 9999px; background: #0b0f13; border: 1px solid #263039; color: #8b98a5; }
+.wl-search-in:focus-within { border-color: #4a6a82; }
+.wl-search-in input { width: 130px; border: none; outline: none; background: transparent; color: #e6edf3; font-family: var(--kv-font-read); font-size: 12.5px; padding: 0; box-shadow: none; }
+.wl-search-in input::placeholder { color: #5d6b78; }
+.wl-search-in button { width: 22px; height: 22px; border-radius: 9999px; border: none; background: transparent; color: #a9b6c2; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.wl-search-in button:hover:not(:disabled) { background: #1c252d; color: #fff; }
+.wl-search-in button:disabled { opacity: 0.35; cursor: default; }
+.wl-search-count { font-family: var(--kv-font-label); font-size: 11.5px; color: #8b98a5; font-variant-numeric: tabular-nums; }
+.wl-code-main { display: grid; grid-template-columns: minmax(0, 1fr) 14px; }
+.wl-line.is-match .wl-src { background: rgba(247, 215, 116, 0.12); }
+.wl-line.is-current-match .wl-src { background: rgba(247, 215, 116, 0.28); }
+.wl-minimap { position: relative; background: #0d1217; border-left: 1px solid #1f262b; cursor: pointer; }
+.wl-mini-band { position: absolute; left: 3px; right: 3px; border-radius: 2px; opacity: 0.55; transition: opacity 0.15s ease; }
+.wl-mini-band.is-active { opacity: 1; }
+.wl-mini-match { position: absolute; left: 0; right: 0; height: 2px; background: #f7d774; }
+.wl-mini-viewport { position: absolute; left: 0; right: 0; background: rgba(230, 237, 243, 0.12); border: 1px solid rgba(230, 237, 243, 0.25); border-radius: 3px; pointer-events: none; }
+.wl-history { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-radius: 9999px; background: var(--kv-mist); border: 1px solid var(--kv-line); }
+.wl-history-label { display: inline-flex; align-items: center; gap: 6px; font-family: var(--kv-font-label); font-size: 13px; font-weight: 600; color: var(--kv-ink-2); white-space: nowrap; }
+.wl-history-range { flex: 1; appearance: none; height: 6px; border-radius: 9999px; background: linear-gradient(90deg, var(--kv-solid) var(--fill), var(--kv-line) var(--fill)); cursor: pointer; }
+.wl-history-range::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 9999px; background: var(--kv-surface); border: 2px solid var(--kv-solid); box-shadow: 0 2px 8px rgb(var(--kv-shadow-rgb) / 0.2); transition: transform 0.2s var(--kv-spring); }
+.wl-history-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.wl-history-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 9999px; background: var(--kv-surface); border: 2px solid var(--kv-solid); }
+.wl-history-range:disabled { opacity: 0.5; }
+.wl-history-value { min-width: 96px; text-align: right; font-family: var(--kv-font-read); font-size: 13px; font-weight: 600; color: var(--kv-ink); font-variant-numeric: tabular-nums; }
+.wl-history-value.is-past { color: var(--kv-sky-ink); }
+.wl-layout.is-loading { opacity: 0.55; pointer-events: none; transition: opacity 0.2s ease; }
+@media (max-width: 768px) { .wl-search-in input { width: 90px; } .wl-code-meta { display: none; } .wl-history { border-radius: 20px; flex-wrap: wrap; } }
 
 @media (max-width: 1100px) {
   .wl-layout { grid-template-columns: 1fr; }
