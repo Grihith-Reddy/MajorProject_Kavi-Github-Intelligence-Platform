@@ -10,6 +10,9 @@ import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { getGitHubStatus } from '../services/githubService'
 import cloudImg from '../assets/cloud.webp'
+import { MemoryTimeline } from '../features/landing/MemoryTimeline'
+import { MemoryWindow } from '../features/landing/MemoryWindow'
+import '../features/landing/landing2.css'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -113,12 +116,20 @@ const FAQ_ITEMS = [
     a: 'Yes. Teams use Kavi to understand why architecture changed, trace decision intent, and speed up context transfer across engineers.',
   },
   {
-    q: 'Is there a free trial?',
-    a: 'Every new team gets a free trial with full access. No credit card required. We send a reminder before it ends.',
+    q: 'What does Guardian do?',
+    a: 'Guardian is a GitHub Action that reviews each new pull request against the decisions KAVI remembers. It comments when a change contradicts a past decision, skips files that usually change together, or keeps an open promise.',
   },
   {
-    q: 'How long does the initial sync take?',
-    a: 'Most repositories with up to 2,000 PRs are fully indexed in under 10 minutes. Larger histories may take up to an hour.',
+    q: 'Can I ask about the past?',
+    a: 'Yes. With Time-Travel you pick a date and KAVI answers as of that day, using only pull requests merged by then and the code from that commit.',
+  },
+  {
+    q: 'Is KAVI free?',
+    a: 'KAVI runs entirely on free tiers: the Gemini API, Neon, Render, Vercel and GitHub Actions. There is nothing to pay to run it.',
+  },
+  {
+    q: 'How long does a sync take?',
+    a: 'The first sync reads every pull request once. After that, syncs are incremental: only new or updated pull requests are analysed, so they usually finish in seconds.',
   },
 ]
 
@@ -575,6 +586,15 @@ export function LandingPage() {
           .k-sec-h2 { font-size: clamp(30px, 9vw, 40px); }
         }
 
+        .k-hero-new {
+          display: inline-flex; align-items: center; gap: 10px; margin-top: 28px; padding: 6px 16px 6px 6px;
+          border-radius: 9999px; border: none; cursor: pointer; background: rgb(var(--kv-veil-rgb) / 0.75);
+          backdrop-filter: blur(10px); color: var(--kv-ink); font-size: 14px; font-weight: 600;
+          transition: transform 0.25s var(--kv-spring), background 0.2s ease;
+        }
+        .k-hero-new:hover { transform: translateY(-2px); background: rgb(var(--kv-veil-rgb) / 0.95); }
+        .k-hero-new-tag { padding: 4px 10px; border-radius: 9999px; background: var(--kv-solid); color: var(--kv-on-solid); font-size: 12px; }
+
         @media (prefers-reduced-motion: reduce) {
           *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
           .word { opacity: 1 !important; transform: none !important; }
@@ -590,7 +610,7 @@ export function LandingPage() {
             <span className="k-logo-name">KAVI</span>
           </a>
           <nav className="k-nav" aria-label="Main navigation">
-            {[['About','about'],['How it works','how'],['Impact','impact'],['Security','trust'],['FAQ','faq']].map(([l,id]) => (
+            {[['About','about'],["What's new",'new'],['How it works','how'],['Impact','impact'],['Security','trust'],['FAQ','faq']].map(([l,id]) => (
               <button key={id} type="button" className="k-nav-link font-archivo" onClick={() => scrollTo(id)}>{l}</button>
             ))}
           </nav>
@@ -621,9 +641,15 @@ export function LandingPage() {
                 <h1 id="hero-heading" className="k-hero-h1">
                   Your codebase<br />has memory now.
                 </h1>
+                <button type="button" className="k-hero-new font-archivo" onClick={() => scrollTo('new')}>
+                  <span className="k-hero-new-tag">New in 2.0</span>
+                  Why-Lens, Guardian and Time-Travel <ArrowRight size={14} />
+                </button>
               </div>
             </div>
           </section>
+
+          <MemoryWindow />
 
           <section id="about" aria-labelledby="about-heading" className="k-sec">
             <div className="k-inner">
@@ -891,6 +917,12 @@ export function LandingPage() {
                   `}</style>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section id="new" aria-label="What's new in KAVI 2.0" className="k-sec">
+            <div className="k-inner">
+              <MemoryTimeline />
             </div>
           </section>
 
