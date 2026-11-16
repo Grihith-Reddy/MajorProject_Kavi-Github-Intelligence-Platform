@@ -622,10 +622,8 @@ export function LandingPage() {
             <div className={`k-hero-card ${isReady ? 'expanded' : ''}`}>
               <ParallaxHero>
               <div className="k-hero-center">
-                <p className="k-hero-eyebrow">Pull-request intelligence</p>
-                <h1 id="hero-heading" className="k-hero-h1">
-                  Your codebase<br />has memory now.
-                </h1>
+                {/* The scene carries the visual title; the heading stays for screen readers and search. */}
+                <h1 id="hero-heading" className="sr-only">KAVI: your codebase has memory now</h1>
                 <button type="button" className="k-hero-new font-archivo" onClick={() => scrollTo('new')}>
                   <span className="k-hero-new-tag">New in 2.0</span>
                   Why-Lens, Guardian and Time-Travel <ArrowRight size={14} />
