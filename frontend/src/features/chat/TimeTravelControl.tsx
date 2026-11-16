@@ -30,6 +30,7 @@ export function TimeTravelButton({ value, onChange, disabled }: { value: string 
         aria-expanded={open}
         aria-label="Ask about a past date"
         data-tip="Ask about a past date"
+        data-tip-align="start"
       >
         <History size={15} />
       </button>

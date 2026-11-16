@@ -328,21 +328,28 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
           }
 
           .db-chat-input-row {
-            border-radius: 16px !important;
-            padding: 8px 8px 8px 12px !important;
-            gap: 8px !important;
+            border-radius: 9999px !important;
+            padding: 5px !important;
+            gap: 6px !important;
+            align-items: center !important;
+          }
+
+          .db-chat-input-row .kv-tt-btn,
+          .db-chat-input-row .db-send-btn {
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 9999px !important;
           }
 
           /* 16px keeps iOS Safari from zooming the page when the field is focused. */
           .db-chat-textarea {
             font-size: 16px !important;
+            line-height: 24px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+            padding: 10px 6px !important;
           }
 
-          .db-send-btn {
-            width: 34px !important;
-            height: 34px !important;
-            border-radius: 10px !important;
-          }
 
           .db-overlay-panel {
             left: 0 !important;

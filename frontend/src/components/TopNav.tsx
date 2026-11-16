@@ -4,7 +4,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LogIn, LogOut, Zap } from 'lucide-react'
 
 import { useAuth } from '../features/auth/useAuth'
-import { MobileNav } from './MobileNav'
+import { MobileHeaderMenu, MobileNav } from './MobileNav'
 
 const navItems = [
   { to: '/chat', label: 'Chat' },
@@ -239,6 +239,7 @@ export function TopNav() {
 
           {/* Auth button */}
           <div className="kavi-nav-right">
+            {isAuthenticated && <MobileHeaderMenu resolve={resolveNavTarget} onLogout={logout} />}
             {isAuthenticated ? (
               <button onClick={logout} className="kavi-nav-btn kavi-nav-btn-logout">
                 <LogOut size={14} />
@@ -253,7 +254,7 @@ export function TopNav() {
           </div>
         </motion.div>
       </header>
-      {isAuthenticated && <MobileNav resolve={resolveNavTarget} onLogout={logout} />}
+      {isAuthenticated && <MobileNav resolve={resolveNavTarget} />}
     </>
   )
 }

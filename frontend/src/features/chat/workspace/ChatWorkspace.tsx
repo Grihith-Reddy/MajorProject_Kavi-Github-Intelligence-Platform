@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
+import { setChatHeaderActions } from '../chatHeaderActions'
 import { ChatPane } from './ChatPane'
 import { WorkspaceIconRail, WorkspaceMenuSheet, WorkspaceOverlayPanel } from './WorkspacePanels'
 import { WORKSPACE_PANEL_ITEMS } from './chatHelpers'
@@ -19,6 +20,19 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [activePanel, menuOpen])
+
+  // Phone header: New chat + Export live in the header's More menu.
+  const controlsRef = useRef(props.controls)
+  controlsRef.current = props.controls
+  const hasConversation = props.messages.some((message) => message.role === 'user')
+  useEffect(() => {
+    setChatHeaderActions({
+      onNewChat: () => controlsRef.current.onNewChat(),
+      onExport: (format) => controlsRef.current.onExport(format),
+      hasConversation,
+    })
+  }, [hasConversation])
+  useEffect(() => () => setChatHeaderActions(null), [])
 
   const closePanel = () => setActivePanel(null)
   const handlePanelToggle = (panel: WorkspacePanelId) => setActivePanel((c) => (c === panel ? null : panel))
