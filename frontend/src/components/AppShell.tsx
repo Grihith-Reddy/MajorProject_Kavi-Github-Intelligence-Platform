@@ -16,6 +16,7 @@ export function AppShell({ children }: AppShellProps) {
     >
       <TopNav />
       <main
+        className="kavi-app-main"
         style={{
           maxWidth: '1440px',
           margin: '0 auto',
