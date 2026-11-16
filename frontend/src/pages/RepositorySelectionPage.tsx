@@ -15,6 +15,7 @@ import {
 } from '../services/githubService'
 import { getRepositoryHealth, type RepositoryHealth } from '../services/insightsService'
 import { getApiErrorMessage } from '../utils/errors'
+import { useToast } from '../features/toast/toastContext'
 import cloudImg from '../assets/cloud.webp'
 
 // ─── Card colour palette (matches landing page pastel cards) ─────────────────
@@ -111,6 +112,7 @@ function RepoHealthStrip({ repoId, health }: { repoId: string; health: Repositor
 export function RepositorySelectionPage() {
   const api = useApiClient()
   const navigate = useNavigate()
+  const toast = useToast()
   const { data, error, loading, setData } = useAsync(() => listRepositories(api), [api])
   const [health, setHealth] = useState<Record<string, RepositoryHealth>>({})
   useEffect(() => {
@@ -176,6 +178,7 @@ export function RepositorySelectionPage() {
       }
 
       if (syncedRepoId && totalPrs > 0) {
+        toast.success(`${repo.full_name} synced`, { description: syncedPrs ? `${syncedPrs} pull request${syncedPrs === 1 ? '' : 's'} analysed.` : 'Already up to date.' })
         if (fullResync || repo.synced_at) {
           setSyncNotice(
             syncedPrs > 0

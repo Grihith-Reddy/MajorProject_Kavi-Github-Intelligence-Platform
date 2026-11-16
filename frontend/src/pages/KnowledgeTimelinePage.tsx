@@ -129,7 +129,7 @@ export function KnowledgeTimelinePage() {
                     const ratio = Math.max(6, Math.round((Number(item.pr_count || 0) / maxMonthlyPrs) * 100))
                     const bg = BAR_COLORS[i % BAR_COLORS.length]
                     return (
-                      <article key={item.month} style={{ ...INNER_CARD }}>
+                      <article key={item.month} className="kv-lift" style={{ ...INNER_CARD }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                           <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>{item.month}</span>
                           <span style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>{item.pr_count} PRs · {item.merged_count} merged</span>
@@ -189,7 +189,7 @@ export function KnowledgeTimelinePage() {
                   <p style={{ ...EYEBROW }}>Top Changed Files</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                     {topFiles.slice(0, 8).map((item: any, i: number) => (
-                      <article key={item.file_path} style={{ ...INNER_CARD, background: BAR_COLORS[i % BAR_COLORS.length] + '66', border: '1px solid rgb(var(--kv-ink-rgb) / 0.06)' }}>
+                      <article key={item.file_path} className="kv-lift" style={{ ...INNER_CARD, background: `color-mix(in srgb, ${BAR_COLORS[i % BAR_COLORS.length]} 40%, transparent)`, border: '1px solid rgb(var(--kv-ink-rgb) / 0.06)' }}>
                         <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.file_path}</p>
                         <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.5)', marginTop: 2 }}>{item.change_count} references</p>
                       </article>
@@ -203,7 +203,7 @@ export function KnowledgeTimelinePage() {
                   <p style={{ ...EYEBROW }}>Top Contributors</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                     {contributors.slice(0, 8).map((item: any) => (
-                      <article key={item.author_login} style={{ ...INNER_CARD }}>
+                      <article key={item.author_login} className="kv-lift" style={{ ...INNER_CARD }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--kv-ink)' }}>{item.author_login}</p>
                           <span style={{ ...PILL, fontSize: 11 }}>{item.pr_count} PRs</span>

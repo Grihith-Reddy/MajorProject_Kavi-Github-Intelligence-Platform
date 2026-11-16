@@ -14,13 +14,16 @@ import {
   type PersonalToken,
 } from '../../services/insightsService'
 import { getApiErrorMessage } from '../../utils/errors'
+import { useToast } from '../toast/toastContext'
 
 function useCopy() {
+  const toast = useToast()
   const [copied, setCopied] = useState<string | null>(null)
   const copy = async (key: string, value: string) => {
     try {
       await navigator.clipboard.writeText(value)
       setCopied(key)
+      toast.success('Copied to clipboard')
       setTimeout(() => setCopied((current) => (current === key ? null : current)), 1600)
     } catch {
       // Clipboard can be blocked; the value stays visible for manual copying.
@@ -54,6 +57,7 @@ function Step({ index, title, children, done }: { index: number; title: string; 
 
 export function IntegrationsSection() {
   const api = useApiClient()
+  const toast = useToast()
   const { copied, copy } = useCopy()
   const [repos, setRepos] = useState<RepositorySummary[]>([])
   const [tokens, setTokens] = useState<PersonalToken[] | null>(null)
@@ -90,6 +94,7 @@ export function IntegrationsSection() {
       if (scope === 'guardian') setGuardianToken(token)
       else setMcpToken(token)
       setTokens(await listTokens(api))
+      toast.success(scope === 'guardian' ? 'Guardian token created' : 'Editor token created', { description: 'Copy it now; it is shown only once.' })
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not create a token'))
     } finally {
@@ -102,6 +107,7 @@ export function IntegrationsSection() {
     try {
       await revokeToken(api, token.id)
       setTokens((current) => (current ?? []).filter((item) => item.id !== token.id))
+      toast.show('Token revoked', { description: 'Anything using it stops working right away.' })
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not revoke the token'))
     } finally {
@@ -270,7 +276,10 @@ const INTEGRATIONS_CSS = `
 .int-error { border-radius: 16px; background: var(--kv-danger-bg); color: var(--kv-danger-ink); padding: 12px 16px; font-family: var(--kv-font-read); font-size: 14px; }
 .int-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .int-side { display: flex; flex-direction: column; gap: 16px; }
-.int-card { border-radius: 28px; padding: 28px; }
+.int-card { border-radius: 28px; padding: 28px; transition: transform 0.3s var(--kv-spring), box-shadow 0.3s ease; }
+.int-card:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgb(var(--kv-shadow-rgb) / 0.08); }
+.int-token-list li { transition: border-color 0.15s ease; }
+.int-token-list li:hover { border-color: var(--kv-line-strong); }
 .int-guardian { background: var(--kv-peach); }
 .int-mcp { background: var(--kv-ice); }
 .int-tokens { background: var(--kv-mist); border: 1px solid var(--kv-line); padding: 20px 22px; }
