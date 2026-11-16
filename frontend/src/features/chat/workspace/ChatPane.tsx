@@ -354,7 +354,7 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
             disabled={chatLoading}
             aria-label="Ask KAVI about this repository"
             placeholder="Ask about this repository…"
-            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink)', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0, scrollbarWidth: 'none' }}
+            style={{ flex: '1 1 0', minWidth: 0, width: '100%', resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink)', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0, scrollbarWidth: 'none' }}
           />
           {chatLoading ? (
             <button className="db-send-btn kv-stop-btn" type="button" onClick={controls.onStop} aria-label="Stop answering" data-tip="Stop answering">

@@ -573,24 +573,22 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
 .kv-mhead { display: none; }
 @media (max-width: 1024px) {
   .kv-mhead { display: flex; align-items: center; gap: 8px; }
+  /* One size for everything in the phone header: logo and both buttons are 44px. */
+  .kavi-nav-logomark { width: 44px !important; height: 44px !important; border-radius: 14px !important; }
+  .kavi-nav-logomark svg { width: 18px; height: 18px; }
   /* Their actions moved to the header More menu. */
   .kv-chat-toolbar .kv-chat-toolbar-actions { display: none; }
 }
-.kv-mhead-new {
-  display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 18px 0 15px; border-radius: 9999px; border: none;
-  background: var(--kv-solid); color: var(--kv-on-solid); cursor: pointer;
-  font-family: var(--kv-font-read); font-size: 14px; font-weight: 600; letter-spacing: 0.01em;
-  transition: background 0.15s ease, transform 0.2s var(--kv-spring);
-}
-.kv-mhead-new:hover { background: var(--kv-solid-hover); }
-.kv-mhead-new:active, .kv-mhead-more:active { transform: scale(0.97); }
-.kv-mhead-more {
+.kv-mhead-btn {
   width: 44px; height: 44px; border-radius: 9999px; border: 1px solid var(--kv-line); background: var(--kv-surface);
-  color: var(--kv-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  color: var(--kv-ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
   transition: background 0.15s ease, transform 0.2s var(--kv-spring);
 }
-.kv-mhead-more:hover { background: var(--kv-mist); }
-.kv-mhead-new:focus-visible, .kv-mhead-more:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+.kv-mhead-btn:hover { background: var(--kv-mist); }
+.kv-mhead-btn.is-solid { border-color: transparent; background: var(--kv-solid); color: var(--kv-on-solid); }
+.kv-mhead-btn.is-solid:hover { background: var(--kv-solid-hover); }
+.kv-mhead-btn:active { transform: scale(0.96); }
+.kv-mhead-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
 .kv-sheet-divider { height: 1px; margin: 6px 14px; background: var(--kv-line); }
 
 .kv-sheet-backdrop { position: fixed; inset: 0; z-index: 1150; border: none; background: rgb(var(--kv-shadow-rgb) / 0.3); cursor: pointer; }
