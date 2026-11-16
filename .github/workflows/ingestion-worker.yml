@@ -1,8 +1,9 @@
-name: Scheduled ingestion worker
+name: Ingestion worker (manual)
 
+# Syncs already run inside the API process (INLINE_SYNC_WORKER=true), so this is a manual fallback
+# only. It is not scheduled: on a private repository a run every 10 minutes would use more than the
+# free GitHub Actions minutes each month. Start it from the Actions tab if a sync ever gets stuck.
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 permissions:

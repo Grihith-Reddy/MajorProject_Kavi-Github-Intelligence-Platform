@@ -5,7 +5,7 @@ This guide describes a $0, hobby/demo topology. It is not a production availabil
 - **Frontend:** Vercel Hobby static hosting (personal, non-commercial use only).
 - **API:** Render Free web service; it can spin down when idle and consumes the workspace's shared free instance hours.
 - **Database:** Neon Free PostgreSQL; current plan limits include 1 GB per project and 100 CU-hours per project. Check the current plan before relying on it.
-- **Ingestion worker:** GitHub Actions, scheduled every 10 minutes, processing at most one queued repository per run.
+- **Ingestion worker:** runs inside the API (`INLINE_SYNC_WORKER=true`). A manual GitHub Actions workflow is kept as a fallback.
 
 The Render free PostgreSQL database is intentionally not used: it expires 30 days after creation and is deleted after its upgrade grace period. Render free services also are not intended for production workloads. Free-plan limits can change; confirm them before deployment.
 
@@ -104,7 +104,7 @@ The Render free PostgreSQL database is intentionally not used: it expires 30 day
 5. If the production URL differs from the value used for `FRONTEND_URL`, update Render's `FRONTEND_URL` to the exact origin and redeploy the API.
 6. Add the exact production hostname to Firebase's authorized domains and verify the callback URL in the GitHub App settings.
 
-## 7. Configure the free scheduled ingestion worker
+## 7. Optional: the manual ingestion worker
 
 In the GitHub repository's **Settings → Secrets and variables → Actions**, add:
 
@@ -112,7 +112,7 @@ In the GitHub repository's **Settings → Secrets and variables → Actions**, a
 - `TOKEN_ENCRYPTION_KEY`: exactly the same Fernet key used by Render.
 - `AI_API_KEY`: Gemini API key used for repository summaries.
 
-The committed `.github/workflows/ingestion-worker.yml` runs every 10 minutes and can also be started manually from the Actions tab. It processes one queued sync job per run. GitHub may delay scheduled runs, and the number of free runner minutes depends on repository visibility and account plan; monitor Actions usage and queue age. Do not enable the workflow until these secrets are configured.
+Syncs normally run inside the API. `.github/workflows/ingestion-worker.yml` is manual only (Actions tab → **Ingestion worker (manual)** → **Run workflow**) and processes one queued sync job per run. It is deliberately not scheduled: private repositories get a limited number of free Actions minutes each month.
 
 ## 8. Add UptimeRobot monitoring (optional)
 
@@ -129,7 +129,7 @@ UptimeRobot is monitoring, not an uptime guarantee. Its periodic requests may ke
 2. Open `https://<render-api-domain>/health/ready`; expect HTTP 200 and `{"status":"ready"}`. A 503 means the database is unavailable or a required migration is missing.
 3. Open the Vercel production URL; sign in with Google.
 4. Connect GitHub, verify the intended account, and select a repository.
-5. Trigger a repository sync, then manually run **Scheduled ingestion worker** once in GitHub Actions. Confirm the job completes and the repository shows indexed pull requests.
+5. Trigger a repository sync and confirm the repository shows indexed pull requests. If a sync stays queued, run **Ingestion worker (manual)** once from the Actions tab.
 6. Ask KAVI a question about the selected repository, including an exact file-content question, and verify that the answer is grounded in the connected repository.
 7. Check Render logs, Actions logs, and Neon usage after the smoke test. Never include secret values in logs or support reports.
 
