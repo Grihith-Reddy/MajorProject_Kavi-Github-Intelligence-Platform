@@ -43,6 +43,8 @@ void main() {
   vec3 dayTop = vec3(0.082, 0.682, 0.918), dayHor = vec3(0.451, 0.808, 0.949);
   vec3 nightTop = vec3(0.035, 0.07, 0.13), nightHor = vec3(0.15, 0.23, 0.32);
   vec3 col = mix(mix(dayHor, nightHor, uNight), mix(dayTop, nightTop, uNight), smoothstep(0.0, 1.0, uv.y));
+  // A deeper blue right at the top of the day sky gives it depth and colour.
+  col = mix(col, vec3(0.02, 0.56, 0.9), smoothstep(0.72, 1.0, uv.y) * 0.55 * (1.0 - uNight));
 
   // Sun / moon in the upper right, clear of the headline. Measured in units of the shorter side
   // so it stays the same size on a tall phone as on a wide desktop.
@@ -51,7 +53,7 @@ void main() {
   float orbY = mix(0.66, 0.88, smoothstep(0.6, 1.2, aspect));
   vec2 orbPx = vec2(uRes.x * 0.84, uRes.y * orbY);
   float d = length(gl_FragCoord.xy - orbPx) / unit;
-  col += mix(vec3(1.0, 0.97, 0.86) * 0.22, vec3(0.72, 0.8, 0.95) * 0.28, uNight) * exp(-d * 3.6);
+  col += mix(vec3(1.0, 0.95, 0.82) * 0.16, vec3(0.72, 0.8, 0.95) * 0.28, uNight) * exp(-d * 3.6);
 
   // Stars (night only), hidden behind clouds below
   vec2 cell = p * vec2(90.0);
@@ -70,7 +72,8 @@ void main() {
   float c = fbm(q + warp);
   // fbm here spans roughly 0.18-0.68, so the cloud thresholds sit inside that range
   float cover = smoothstep(0.33, 0.56, c) * smoothstep(0.02, 0.38, uv.y);
-  vec3 shade = mix(vec3(0.74, 0.8, 0.88), vec3(0.15, 0.19, 0.27), uNight);
+  // Day undersides take the sky's blue rather than flat grey.
+  vec3 shade = mix(vec3(0.66, 0.8, 0.95), vec3(0.15, 0.19, 0.27), uNight);
   vec3 bright = mix(vec3(1.0, 1.0, 1.0), vec3(0.36, 0.42, 0.53), uNight);
   // bright tops, soft grey undersides: compare with the noise a little lower down
   float under = fbm(q + vec2(0.0, -0.18) + warp); // reuses the warp: three noise stacks per pixel, not four
