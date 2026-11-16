@@ -6,6 +6,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { useApiClient } from '../../services/apiClient'
 import { getPromises, setPromiseStatus, type PromiseItem, type PromiseKind, type PromiseStatus } from '../../services/insightsService'
 import { PanelError, PanelSkeleton } from './PanelStates'
+import { useToast } from '../toast/toastContext'
 
 const KIND_META: Record<PromiseKind, { label: string; color: string }> = {
   follow_up: { label: 'Follow-up', color: 'var(--kv-ice)' },
@@ -39,6 +40,7 @@ export function PromisesPanel({ repoId }: { repoId: string }) {
   const { data, error, loading, setData } = useAsync(() => getPromises(api, repoId), [api, repoId])
   const [filter, setFilter] = useState<PromiseStatus | 'all'>('open')
   const [busy, setBusy] = useState<string | null>(null)
+  const toast = useToast()
 
   const promises = useMemo(() => data?.promises ?? [], [data])
   const visible = useMemo(() => (filter === 'all' ? promises : promises.filter((p) => p.status === filter)), [promises, filter])
@@ -48,6 +50,9 @@ export function PromisesPanel({ repoId }: { repoId: string }) {
     setBusy(promise.id)
     try {
       await setPromiseStatus(api, promise.id, status)
+      toast.show(status === 'kept' ? 'Marked as kept' : status === 'dismissed' ? 'Promise dismissed' : 'Promise reopened', {
+        action: { label: 'Undo', onClick: () => { void update({ ...promise, status }, promise.status) } },
+      })
       setData((current) => {
         if (!current) return current
         const next = current.promises.map((p) => (p.id === promise.id ? { ...p, status } : p))

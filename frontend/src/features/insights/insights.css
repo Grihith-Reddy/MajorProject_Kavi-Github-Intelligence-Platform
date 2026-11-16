@@ -184,3 +184,12 @@
   .ins-review-head { grid-template-columns: auto minmax(0, 1fr) auto; }
   .ins-review-meta { display: none; }
 }
+
+/* Hover polish */
+.ins-promise, .ins-review, .ins-trust-card, .ins-case { transition: border-color 0.2s ease, transform 0.25s var(--kv-spring), box-shadow 0.25s ease; }
+.ins-promise:hover, .ins-review:hover { border-color: var(--kv-line-strong); transform: translateY(-2px); box-shadow: 0 14px 32px rgb(var(--kv-shadow-rgb) / 0.07); }
+.ins-trust-card:hover { transform: translateY(-2px); }
+.ins-case:hover { transform: translateX(2px); }
+.ins-filter:hover:not(.is-active) { border-color: var(--kv-line-strong); color: var(--kv-ink); }
+.ins-review-head:hover .ins-review-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--kv-line-strong); }
+@media (prefers-reduced-motion: reduce) { .ins-promise:hover, .ins-review:hover, .ins-trust-card:hover, .ins-case:hover { transform: none; } }

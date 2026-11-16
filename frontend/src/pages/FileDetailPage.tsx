@@ -122,7 +122,7 @@ export function FileDetailPage() {
                   {entries.length ? entries.map((entry, index) => (
                     <motion.article
                       key={entry.knowledge_entry_id ?? index}
-                      style={{ ...INNER_CARD, background: PASTEL_CARDS[index % PASTEL_CARDS.length] + '99', border: '1px solid rgb(var(--kv-ink-rgb) / 0.06)' }}
+                      style={{ ...INNER_CARD, background: `color-mix(in srgb, ${PASTEL_CARDS[index % PASTEL_CARDS.length]} 60%, transparent)`, border: '1px solid rgb(var(--kv-ink-rgb) / 0.06)' }}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.08 + index * 0.04 }}
@@ -152,11 +152,11 @@ export function FileDetailPage() {
               >
                 <p style={EYEBROW}>Summary</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ ...INNER_CARD }}>
+                  <div className="kv-lift" style={{ ...INNER_CARD }}>
                     <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>PR references</p>
                     <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 28, fontWeight: 600, color: 'var(--kv-ink)', letterSpacing: '-0.02em' }}>{entries.length}</p>
                   </div>
-                  <div style={{ ...INNER_CARD }}>
+                  <div className="kv-lift" style={{ ...INNER_CARD }}>
                     <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, color: 'rgb(var(--kv-ink-rgb) / 0.45)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Most recent PR</p>
                     <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--kv-ink)', lineHeight: 1.4 }}>{primary?.pr_title ?? 'N/A'}</p>
                   </div>

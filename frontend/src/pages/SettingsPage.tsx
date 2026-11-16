@@ -71,14 +71,14 @@ export function SettingsPage() {
 
             {/* Name + email */}
             <div className="st-fields" style={{ marginBottom: 12 }}>
-              <div style={{ ...INNER_CARD }}>
+              <div className="kv-lift" style={{ ...INNER_CARD }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <User size={12} color="rgb(var(--kv-ink-rgb) / 0.4)" />
                   <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.4)' }}>Full Name</p>
                 </div>
                 <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 15, fontWeight: 600, color: 'var(--kv-ink)' }}>{user?.name ?? 'Developer'}</p>
               </div>
-              <div style={{ ...INNER_CARD }}>
+              <div className="kv-lift" style={{ ...INNER_CARD }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <Mail size={12} color="rgb(var(--kv-ink-rgb) / 0.4)" />
                   <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.4)' }}>Email</p>
@@ -88,7 +88,7 @@ export function SettingsPage() {
             </div>
 
             {/* Auth sub */}
-            <div style={{ ...INNER_CARD }}>
+            <div className="kv-lift" style={{ ...INNER_CARD }}>
               <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgb(var(--kv-ink-rgb) / 0.4)', marginBottom: 8 }}>External Identifier</p>
               <p style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--kv-ink-2)', wordBreak: 'break-all', lineHeight: 1.5 }}>{data?.user?.auth0_sub ?? 'not synced'}</p>
             </div>
