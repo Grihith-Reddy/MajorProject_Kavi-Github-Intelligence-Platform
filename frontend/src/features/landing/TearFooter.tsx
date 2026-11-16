@@ -249,6 +249,27 @@ function Clock({ label }: { label: string }) {
   )
 }
 
+/** Where in-page (#id) and in-app (/path) footer links go; supplied by TearFooter. */
+const FooterNav = React.createContext<{ onAnchor?: (id: string) => void; onRoute?: (path: string) => void }>({})
+
+/**
+ * A footer link. Lives at module level: defined inside TearFooter it would be a new component on
+ * every render, and React would rebuild every link each time the footer's state changed.
+ */
+function A({ href, className, label, children, style }: { href: string; className?: string; label?: string; children: React.ReactNode; style?: React.CSSProperties }) {
+  const { onAnchor, onRoute } = React.useContext(FooterNav)
+  const external = /^https?:/.test(href)
+  const onClick = (e: React.MouseEvent) => {
+    if (href.startsWith('#') && onAnchor) { e.preventDefault(); onAnchor(href.slice(1)) }
+    else if (href.startsWith('/') && onRoute) { e.preventDefault(); onRoute(href) }
+  }
+  return (
+    <a href={href} className={className} aria-label={label} title={label} onClick={onClick} style={style} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+      {children}
+    </a>
+  )
+}
+
 function Pin({ base, id }: { base: string; id: string }) {
   const hi = mixHex(base, '#ffffff', 0.62)
   const mid = base
@@ -538,18 +559,7 @@ export function TearFooter({
 
   const toTop = () => window.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' })
 
-  const A = ({ href, className, label, children, style }: { href: string; className?: string; label?: string; children: React.ReactNode; style?: React.CSSProperties }) => {
-    const external = /^https?:/.test(href)
-    const onClick = (e: React.MouseEvent) => {
-      if (href.startsWith('#') && onAnchor) { e.preventDefault(); onAnchor(href.slice(1)) }
-      else if (href.startsWith('/') && onRoute) { e.preventDefault(); onRoute(href) }
-    }
-    return (
-      <a href={href} className={className} aria-label={label} title={label} onClick={onClick} style={style} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-        {children}
-      </a>
-    )
-  }
+  const nav = React.useMemo(() => ({ onAnchor, onRoute }), [onAnchor, onRoute])
 
   const pinBase = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(sheet) ? sheet : '#15aeea'
   const flapBase = mixHex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(paper) ? paper : '#f3f3f1', '#ffffff', 0.35)
@@ -566,6 +576,7 @@ export function TearFooter({
   const cls = ['tpf', stage >= 1 && 's1', stage >= 2 && 's2', stage >= 3 && 's3', hit && 'is-hit'].filter(Boolean).join(' ')
 
   return (
+    <FooterNav.Provider value={nav}>
     <footer ref={rootRef} className={cls} style={vars} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
       <svg ref={svgRef} className="tpf-stage" aria-hidden="true">
         <defs>
@@ -720,5 +731,6 @@ export function TearFooter({
         {handle && <A href={handle.href} className="tpf-handle tpf-p" style={H(5)}>{handle.label}</A>}
       </div>
     </footer>
+    </FooterNav.Provider>
   )
 }

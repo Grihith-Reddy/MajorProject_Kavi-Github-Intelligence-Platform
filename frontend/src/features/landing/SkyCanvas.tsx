@@ -18,7 +18,6 @@ precision mediump float;
 uniform vec2 uRes;
 uniform float uTime;
 uniform float uNight;
-uniform float uScroll;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -39,7 +38,9 @@ void main() {
   vec2 p = vec2(uv.x * aspect, uv.y);
 
   // Sky gradient: horizon (bottom) to zenith (top)
-  vec3 dayTop = vec3(0.33, 0.6, 0.85), dayHor = vec3(0.8, 0.9, 0.95);
+  // Day colours are the app's sky tokens (#15aeea at the zenith, #73cef2 at the horizon), so the
+  // hero sky matches the sky sections further down the page.
+  vec3 dayTop = vec3(0.082, 0.682, 0.918), dayHor = vec3(0.451, 0.808, 0.949);
   vec3 nightTop = vec3(0.035, 0.07, 0.13), nightHor = vec3(0.15, 0.23, 0.32);
   vec3 col = mix(mix(dayHor, nightHor, uNight), mix(dayTop, nightTop, uNight), smoothstep(0.0, 1.0, uv.y));
 
@@ -48,7 +49,7 @@ void main() {
   float unit = min(uRes.x, uRes.y);
   // On tall phones the top is taken by the headline, so the orb sits lower, above the mountain.
   float orbY = mix(0.66, 0.88, smoothstep(0.6, 1.2, aspect));
-  vec2 orbPx = vec2(uRes.x * 0.84, uRes.y * (orbY + uScroll * 0.08));
+  vec2 orbPx = vec2(uRes.x * 0.84, uRes.y * orbY);
   float d = length(gl_FragCoord.xy - orbPx) / unit;
   col += mix(vec3(1.0, 0.97, 0.86) * 0.22, vec3(0.72, 0.8, 0.95) * 0.28, uNight) * exp(-d * 3.6);
 
@@ -61,9 +62,10 @@ void main() {
   float twinkle = 0.55 + 0.45 * sin(uTime * 1.3 + h * 50.0);
   float star = step(0.986, h) * smoothstep(0.07, 0.0, length(f - offset)) * twinkle * smoothstep(0.3, 0.85, uv.y);
 
-  // Clouds: two octaves of domain-warped noise drifting sideways; scrolling lifts them a little
+  // Clouds: domain-warped noise drifting sideways. Scroll motion comes from the parallax layer that
+  // holds this canvas (moved by the GPU), so the picture itself never has to redraw for scrolling.
   float t = uTime * 0.011;
-  vec2 q = p * vec2(1.05, 1.9) + vec2(t, uScroll * 0.35);
+  vec2 q = p * vec2(1.05, 1.9) + vec2(t, 0.0);
   float warp = fbm(q * 0.7 + vec2(t * 0.6, -t * 0.3)) * 0.9;
   float c = fbm(q + warp);
   // fbm here spans roughly 0.18-0.68, so the cloud thresholds sit inside that range
@@ -126,7 +128,6 @@ export function SkyCanvas({ className }: { className?: string }) {
     const uRes = gl.getUniformLocation(program, 'uRes')
     const uTime = gl.getUniformLocation(program, 'uTime')
     const uNight = gl.getUniformLocation(program, 'uNight')
-    const uScroll = gl.getUniformLocation(program, 'uScroll')
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     let night = isDark() ? 1 : 0
@@ -147,11 +148,9 @@ export function SkyCanvas({ className }: { className?: string }) {
     const draw = (now: number) => {
       night += (nightTarget - night) * 0.06
       if (Math.abs(nightTarget - night) < 0.001) night = nightTarget
-      const scroll = Math.min(1, window.scrollY / Math.max(window.innerHeight, 1))
       gl.uniform2f(uRes, canvas.width, canvas.height)
       gl.uniform1f(uTime, reduceMotion.matches ? 40 : (now - start) / 1000)
       gl.uniform1f(uNight, night)
-      gl.uniform1f(uScroll, reduceMotion.matches ? 0 : scroll)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
 

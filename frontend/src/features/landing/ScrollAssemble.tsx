@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useReducedMotion, useScroll, useTransform, type MotionValue } from 'framer-motion'
+import { motion, useReducedMotion, useTransform, type MotionValue } from 'framer-motion'
 import { FileCode2, GitCommitHorizontal, GitPullRequest, MessageSquareText, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
+import { useScrollProgress } from './useScrollProgress'
 
 /**
  * Scroll-assembled statement (adapted from 21st.dev "Text scroll animation", Skiper 31).
@@ -73,7 +74,7 @@ export function ScrollAssemble() {
   const reduce = useReducedMotion()
   const spread = useSpread()
   // 0 when the section's top enters the bottom of the screen, 1 when its stage unpins.
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end end'] })
+  const scrollYProgress = useScrollProgress(ref, ['start end', 'end end'])
   // Under reduced motion everything sits assembled.
   const still = useTransform(scrollYProgress, () => 1)
   const captionOpacity = useTransform(scrollYProgress, [PIECES_RANGE[0] - 0.1, PIECES_RANGE[0] + 0.08], [0, 1])

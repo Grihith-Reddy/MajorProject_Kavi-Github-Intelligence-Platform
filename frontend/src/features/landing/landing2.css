@@ -5,10 +5,17 @@
 .mw { position: relative; height: 260vh; }
 .mw-sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .mw-window { position: absolute; inset: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.mw-mask { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+/* Same box as .mw-window; its spread shadow paints the page colour everywhere outside the opening.
+   Painted once, then only scaled. */
+.mw-hole {
+  position: absolute; inset: 16px; border-radius: 36px; transform-origin: 50% 50%; will-change: transform;
+  box-shadow: 0 0 0 100vmax var(--kv-surface);
+}
 .mw-sky { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(170deg, var(--kv-sky-1) 0%, var(--kv-sky-2) 100%); }
 .mw-cloud { position: absolute; width: 120%; left: -10%; bottom: -18%; opacity: 0.6; transform-origin: 50% 100%; pointer-events: none; will-change: transform; }
 .mw-caption {
-  position: absolute; top: 9vh; left: 0; right: 0; text-align: center; z-index: 3;
+  position: absolute; top: 9vh; left: 0; right: 0; text-align: center; z-index: 3; will-change: opacity;
   font-family: var(--kv-font-label); font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--kv-ink-3);
 }
 .mw-callout {

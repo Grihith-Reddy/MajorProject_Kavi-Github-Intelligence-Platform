@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from 'react'
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { motion, useReducedMotion, useTransform } from 'framer-motion'
 
 import farDay from '../../assets/parallax/far-day.webp'
 import farNight from '../../assets/parallax/far-night.webp'
@@ -9,6 +9,7 @@ import frontDay from '../../assets/parallax/front-day.webp'
 import frontNight from '../../assets/parallax/front-night.webp'
 import { GlassGithubMark } from './GlassGithubMark'
 import { SkyCanvas } from './SkyCanvas'
+import { useScrollProgress } from './useScrollProgress'
 
 /**
  * Landing hero as a layered landscape (adapted from 21st.dev / Osmo "Parallax"): an animated
@@ -32,7 +33,7 @@ export function ParallaxHero({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion()
 
   // 0 while the hero fills the screen, 1 once it has scrolled fully out of view.
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
+  const scrollYProgress = useScrollProgress(ref, ['start start', 'end start'])
   const ySky = useTransform(scrollYProgress, [0, 1], ['0%', '30%'])
   const yFar = useTransform(scrollYProgress, [0, 1], ['0%', '58%'])
   const yMid = useTransform(scrollYProgress, [0, 1], ['0%', '42%'])
