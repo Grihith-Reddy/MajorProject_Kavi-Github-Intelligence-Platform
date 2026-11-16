@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import type { AuthContextValue, AuthUser } from './AuthContext'
 import { AuthContext } from './AuthContext'
 import { firebaseAuth, googleProvider } from './firebase'
+import { ACTIVE_REPO_STORAGE_KEY } from '../../utils/repoId'
 
-const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
 
 interface AuthProviderProps {
   children: ReactNode

@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect, type ReactNode } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppShell } from '../components/AppShell'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { RequireAuth } from '../features/auth/RequireAuth'
 import { RequireGitHubConnection } from '../features/auth/RequireGitHubConnection'
 
@@ -58,6 +59,7 @@ export default function App() {
   }, [location.pathname])
 
   return (
+    <ErrorBoundary resetKey={location.pathname}>
     <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--kv-surface)' }} />}>
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
@@ -163,5 +165,6 @@ export default function App() {
         </Routes>
       </AnimatePresence>
     </Suspense>
+    </ErrorBoundary>
   )
 }

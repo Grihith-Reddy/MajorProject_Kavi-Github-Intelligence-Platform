@@ -4,7 +4,7 @@ import { type ChatEntry, type StructuredAnswer, type WorkspacePanelId } from './
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
+export { ACTIVE_REPO_STORAGE_KEY, readStoredRepoId } from '../../../utils/repoId'
 export const CHAT_STORAGE_PREFIX = 'kavi.chat.'
 export const DEFAULT_ASSISTANT_MESSAGE = 'I am ready. Ask why code exists, who decided something, what changed and why, or use "Explain Entire Repo".'
 export const QUICK_PROMPTS = ['Explain Entire Repo', 'Explain the main architecture', 'What changed recently, and why?', 'Who knows the most about auth?', 'Which promises are still open?']
@@ -54,10 +54,6 @@ export function getChatStorageKey(userSub: string | null, repoId: string | null)
   return `${CHAT_STORAGE_PREFIX}${userSub}.${repoId}`
 }
 
-export function readStoredRepoId(): string | null {
-  if (typeof window === 'undefined') return null
-  try { return window.localStorage.getItem(ACTIVE_REPO_STORAGE_KEY) } catch { return null }
-}
 
 export function splitFilePath(path: string) {
   const normalized = String(path || '').replace(/\\/g, '/')

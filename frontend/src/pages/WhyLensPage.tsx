@@ -23,18 +23,14 @@ import { useApiClient } from '../services/apiClient'
 import { getRepositoryTree, getWhyLens, type WhyLensResponse, type WhySegment } from '../services/insightsService'
 import { listKnowledgeFiles } from '../services/knowledgeService'
 import { getApiErrorMessage } from '../utils/errors'
+import { asRepoId, readStoredRepoId } from '../utils/repoId'
 
 const CARD_COLORS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'var(--kv-ice)', 'var(--kv-sage)', 'var(--kv-mint)']
-const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
 
 function formatDate(value?: string | null): string {
   if (!value) return ''
   const parsed = Date.parse(value)
   return Number.isFinite(parsed) ? new Date(parsed).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''
-}
-
-function readStoredRepoId(): string | null {
-  try { return window.localStorage.getItem(ACTIVE_REPO_STORAGE_KEY) } catch { return null }
 }
 
 // ── File picker ─────────────────────────────────────────────────────────────
@@ -125,7 +121,7 @@ export function WhyLensPage() {
   const api = useApiClient()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const repoId = searchParams.get('repoId') || readStoredRepoId()
+  const repoId = asRepoId(searchParams.get('repoId')) || readStoredRepoId()
   const path = searchParams.get('path')
   const lineParam = Number(searchParams.get('line')) || null
 

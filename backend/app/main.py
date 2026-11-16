@@ -7,7 +7,12 @@ from sqlalchemy import text
 
 from app.api import auth, chat, github, guardian, ingestion, insights, knowledge, mcp
 from app.core.database import SessionLocal
-from app.core.middleware import RateLimitMiddleware, RequestContextMiddleware, RequestSizeLimitMiddleware
+from app.core.middleware import (
+    RateLimitMiddleware,
+    RequestContextMiddleware,
+    RequestSizeLimitMiddleware,
+    UnhandledErrorMiddleware,
+)
 from app.core.settings import settings
 
 
@@ -25,6 +30,8 @@ app = FastAPI(
     openapi_url=None if settings.is_production else "/openapi.json",
 )
 
+# Innermost first: unexpected errors are caught inside CORS and the request-id middleware.
+app.add_middleware(UnhandledErrorMiddleware)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(RateLimitMiddleware)

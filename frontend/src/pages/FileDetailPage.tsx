@@ -6,6 +6,8 @@ import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { getFileDetails } from '../services/knowledgeService'
 import { formatLineRange } from '../utils/format'
+import { getApiErrorMessage } from '../utils/errors'
+import { asRepoId } from '../utils/repoId'
 
 const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', padding: '24px 28px' }
 const INNER_CARD: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--kv-line)', background: 'var(--kv-surface)', padding: '14px 16px' }
@@ -18,7 +20,7 @@ const PASTEL_CARDS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'v
 export function FileDetailPage() {
   const api = useApiClient()
   const [searchParams] = useSearchParams()
-  const repoId = searchParams.get('repoId')
+  const repoId = asRepoId(searchParams.get('repoId'))
   const filePath = searchParams.get('path')
 
   const { data, error, loading } = useAsync<any>(
@@ -87,7 +89,7 @@ export function FileDetailPage() {
 
         {/* ── Loading / error ── */}
         {loading && <div style={{ ...CARD, textAlign: 'center', padding: '32px', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Loading file insights…</div>}
-        {error && <div style={{ ...CARD, background: 'var(--kv-danger-bg)', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-danger-ink)' }}>Failed to load file details: {error.message}</div>}
+        {error && <div style={{ ...CARD, background: 'var(--kv-danger-bg)', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-danger-ink)' }}>{getApiErrorMessage(error, "Couldn't load this file's history")}</div>}
 
         {!loading && !error && (
           <div className="fd-layout">

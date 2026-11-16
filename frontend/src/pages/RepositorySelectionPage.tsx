@@ -670,7 +670,7 @@ export function RepositorySelectionPage() {
             <div className="repo-empty-icon">
               <FolderGit2 size={24} color="rgb(var(--kv-ink-rgb) / 0.4)" />
             </div>
-            <p className="font-archivo">Unable to load repositories. {error.message}</p>
+            <p className="font-archivo">{getApiErrorMessage(error, "Couldn't load your repositories")}</p>
           </div>
         )}
 

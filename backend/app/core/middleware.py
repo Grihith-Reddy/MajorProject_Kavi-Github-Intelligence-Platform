@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import re
 import threading
 import time
@@ -29,7 +30,7 @@ EXPENSIVE_PATH_PREFIXES = (
     "/api/chat/query",
     "/api/chat/stream",
     "/api/mcp/ask",
-    "/api/repositories/sync",
+    "/api/ingestion/repositories/sync",
     "/api/guardian/review",
     "/api/guardian/sync",
 )
@@ -38,6 +39,29 @@ EXPENSIVE_PATH_SUFFIXES = ("/quality/run",)
 
 def is_expensive(path: str, method: str) -> bool:
     return method == "POST" and (path.startswith(EXPENSIVE_PATH_PREFIXES) or path.endswith(EXPENSIVE_PATH_SUFFIXES))
+
+
+logger = logging.getLogger("kavi.errors")
+
+
+class UnhandledErrorMiddleware(BaseHTTPMiddleware):
+    """Last line of defence: an unexpected exception becomes a clean JSON 500 with the request id.
+
+    Registered innermost (inside CORS and the request-id middleware), so the browser still gets
+    CORS and security headers and can show a readable message instead of a CORS failure. The full
+    traceback goes to the server log only.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except Exception:
+            request_id = getattr(request.state, "request_id", None)
+            logger.exception("Unhandled error on %s %s (request %s)", request.method, request.url.path, request_id)
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": "Something went wrong on our side. Try again in a moment.", "request_id": request_id},
+            )
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):

@@ -202,6 +202,15 @@ class HardeningTests(unittest.TestCase):
         self.assertTrue(is_expensive("/api/chat/stream", "POST"))
         self.assertTrue(is_expensive("/api/insights/repositories/x/quality/run", "POST"))
         self.assertFalse(is_expensive("/api/chat/conversations", "GET"))
+        self.assertTrue(is_expensive("/api/ingestion/repositories/sync", "POST"))
+
+    def test_every_expensive_prefix_is_a_real_route(self):
+        from app.core.middleware import EXPENSIVE_PATH_PREFIXES
+        from app.main import app
+
+        paths = {getattr(route, "path", "") for route in app.routes}
+        for prefix in EXPENSIVE_PATH_PREFIXES:
+            self.assertIn(prefix, paths, f"{prefix} does not match any route, so it is never rate limited")
         with patch.object(settings, "RATE_LIMIT_EXPENSIVE_PER_MINUTE", 2):
             statuses = [self.client.post("/api/chat/stream", json={}).status_code for _ in range(3)]
         self.assertNotEqual(statuses[1], 429)
@@ -216,3 +225,26 @@ class HardeningTests(unittest.TestCase):
             with self.assertRaises(HTTPException) as ctx:
                 check(None, "1 OR 1=1", "auth0|x")  # db is never used
             self.assertEqual(ctx.exception.status_code, 404)
+
+
+class UnhandledErrorTests(unittest.TestCase):
+    def test_unexpected_errors_become_clean_json_with_request_id(self):
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        def boom():
+            raise RuntimeError("database password is hunter2")
+
+        app.add_api_route("/__test_boom", boom, methods=["GET"])
+        try:
+            client = TestClient(app, raise_server_exceptions=False)
+            response = client.get("/__test_boom", headers={"Origin": "http://localhost:5173"})
+        finally:
+            app.router.routes = [r for r in app.router.routes if getattr(r, "path", None) != "/__test_boom"]
+        self.assertEqual(response.status_code, 500)
+        body = response.json()
+        self.assertIn("request_id", body)
+        self.assertNotIn("hunter2", response.text)  # internals never reach the client
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertIn("access-control-allow-origin", {k.lower() for k in response.headers})

@@ -6,6 +6,8 @@ import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { getProjectEvolution } from '../services/knowledgeService'
 import cloudImg from '../assets/cloud.webp'
+import { getApiErrorMessage } from '../utils/errors'
+import { asRepoId } from '../utils/repoId'
 
 // ─── Shared style tokens ──────────────────────────────────────────────────────
 const CARD: React.CSSProperties = { borderRadius: 28, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', padding: '24px 28px' }
@@ -21,7 +23,7 @@ const BAR_COLORS = ['var(--kv-sand)', 'var(--kv-lilac)', 'var(--kv-peach)', 'var
 export function KnowledgeTimelinePage() {
   const api = useApiClient()
   const [searchParams] = useSearchParams()
-  const repoId = searchParams.get('repoId')
+  const repoId = asRepoId(searchParams.get('repoId'))
 
   const { data, error, loading } = useAsync(
     () => (repoId ? getProjectEvolution(api, repoId) : Promise.resolve(null)),
@@ -85,13 +87,13 @@ export function KnowledgeTimelinePage() {
             <h1 style={{ ...H1, background: 'linear-gradient(169deg,rgba(3,123,181,0.9) 20%,rgba(3,120,176,0.95) 74%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
               Repository decisions<br />over time.
             </h1>
-            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 14, color: 'var(--kv-sky-ink)', marginTop: 12 }}>{data?.repository?.full_name ?? repoId}</p>
+            <p style={{ fontFamily: "'Gabarito', sans-serif", fontSize: 14, color: 'var(--kv-sky-ink)', marginTop: 12 }}>{data?.repository?.full_name ?? ''}</p>
           </div>
         </motion.section>
 
         {/* ── Loading / error ── */}
         {loading && <div style={{ ...CARD, textAlign: 'center', padding: '32px', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>Loading project evolution…</div>}
-        {error && <div style={{ ...CARD, background: 'var(--kv-danger-bg)', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-danger-ink)' }}>Failed to load timeline: {error.message}</div>}
+        {error && <div style={{ ...CARD, background: 'var(--kv-danger-bg)', border: '1px solid rgba(155,58,38,0.12)', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-danger-ink)' }}>{getApiErrorMessage(error, "Couldn't load the timeline")}</div>}
 
         {!loading && !error && (
           <>

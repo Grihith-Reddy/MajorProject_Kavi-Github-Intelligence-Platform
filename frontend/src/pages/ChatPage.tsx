@@ -13,6 +13,7 @@ import { getGitVisualization, listKnowledgeEntries, listKnowledgeFiles } from '.
 import { ChatWorkspace } from '../features/chat/workspace/ChatWorkspace'
 import { ACTIVE_REPO_STORAGE_KEY, defaultMessages, getChatStorageKey, readStoredRepoId, resolveChatMode, resolveUserDisplayName } from '../features/chat/workspace/chatHelpers'
 import { type ChatEntry, type ChatQueryResponse, type ChatSource, type StructuredAnswer } from '../features/chat/workspace/chatTypes'
+import { asRepoId } from '../utils/repoId'
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ export function ChatPage() {
   const api = useApiClient()
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const queryRepoId = searchParams.get('repoId')
+  const queryRepoId = asRepoId(searchParams.get('repoId'))
   const [storedRepoId, setStoredRepoId] = useState<string | null>(() => readStoredRepoId())
   const repoId = queryRepoId || storedRepoId
   const userSub = typeof user?.sub === 'string' ? user.sub : null

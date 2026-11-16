@@ -11,6 +11,7 @@ import '../features/insights/insights.css'
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { getRepositoryStatus } from '../services/githubService'
+import { asRepoId, readStoredRepoId } from '../utils/repoId'
 
 type TabId = 'promises' | 'map' | 'guardian' | 'quality'
 const TABS: Array<{ id: TabId; label: string; icon: LucideIcon; blurb: string }> = [
@@ -19,16 +20,11 @@ const TABS: Array<{ id: TabId; label: string; icon: LucideIcon; blurb: string }>
   { id: 'guardian', label: 'Guardian', icon: ShieldCheck, blurb: 'Pull requests checked against the decisions your team already made.' },
   { id: 'quality', label: 'Quality', icon: FlaskConical, blurb: 'How reliably KAVI retrieves the right evidence, measured.' },
 ]
-const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
-
-function readStoredRepoId(): string | null {
-  try { return window.localStorage.getItem(ACTIVE_REPO_STORAGE_KEY) } catch { return null }
-}
 
 export function InsightsPage() {
   const api = useApiClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const repoId = searchParams.get('repoId') || readStoredRepoId()
+  const repoId = asRepoId(searchParams.get('repoId')) || readStoredRepoId()
   const tab = (TABS.find((item) => item.id === searchParams.get('tab'))?.id ?? 'promises') as TabId
   const { data: status } = useAsync(() => (repoId ? getRepositoryStatus(api, repoId) : Promise.resolve(null)), [api, repoId])
   const repoName = status?.repository?.full_name ?? ''
