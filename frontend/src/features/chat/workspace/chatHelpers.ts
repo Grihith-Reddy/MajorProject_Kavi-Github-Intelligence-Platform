@@ -8,13 +8,13 @@ export const ACTIVE_REPO_STORAGE_KEY = 'kavi.activeRepoId'
 export const CHAT_STORAGE_PREFIX = 'kavi.chat.'
 export const DEFAULT_ASSISTANT_MESSAGE = 'I am ready. Ask why code exists, who decided something, what changed and why, or use "Explain Entire Repo".'
 export const QUICK_PROMPTS = ['Explain Entire Repo', 'Explain the main architecture', 'What changed recently, and why?', 'Who knows the most about auth?', 'Which promises are still open?']
-export const WORKSPACE_PANEL_ITEMS: { id: WorkspacePanelId; label: string; icon: LucideIcon }[] = [
-  { id: 'repository', label: 'Repository', icon: FolderGit2 },
-  { id: 'history', label: 'History', icon: History },
-  { id: 'focus', label: 'Focus', icon: Compass },
-  { id: 'prs', label: 'PRs', icon: GitPullRequest },
-  { id: 'files', label: 'Files', icon: File },
-  { id: 'git', label: 'Git Visualization', icon: GitBranch },
+export const WORKSPACE_PANEL_ITEMS: { id: WorkspacePanelId; label: string; hint: string; icon: LucideIcon }[] = [
+  { id: 'repository', label: 'Repository', hint: 'Stats for this repository', icon: FolderGit2 },
+  { id: 'history', label: 'History', hint: 'Earlier conversations', icon: History },
+  { id: 'focus', label: 'Focus', hint: 'Tips for sharper answers', icon: Compass },
+  { id: 'prs', label: 'PRs', hint: 'Pull requests this chat draws on', icon: GitPullRequest },
+  { id: 'files', label: 'Files', hint: 'Files KAVI has indexed', icon: File },
+  { id: 'git', label: 'Git Visualization', hint: 'Branches and merges over time', icon: GitBranch },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

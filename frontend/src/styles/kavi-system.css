@@ -553,8 +553,9 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--kv-line); box-shadow: 0 16px 40px rgb(var(--kv-shadow-rgb) / 0.16);
   }
-  .kavi-app-main { padding-bottom: 104px !important; }
-  .db-workspace-shell { bottom: 92px !important; }
+  /* Leave room for the floating dock (61px tall, 12px or the safe area from the bottom). */
+  .kavi-app-main { padding-bottom: calc(max(12px, env(safe-area-inset-bottom)) + 88px) !important; }
+  .db-workspace-shell { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 72px) !important; }
 }
 .kv-tab {
   position: relative; display: flex; align-items: center; justify-content: center; min-width: 0;
@@ -609,6 +610,89 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
   padding: 10px 14px 10px 20px; border-bottom: 1px solid var(--kv-line); background: rgb(var(--kv-veil-rgb) / 0.4);
 }
 .kv-chat-toolbar-meta { font-family: var(--kv-font-label); font-size: 12.5px; color: var(--kv-ink-3); }
+.kv-chat-menu-btn {
+  display: none; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 11px; border-radius: 12px;
+  border: 1px solid var(--kv-line); background: var(--kv-surface); color: var(--kv-ink); cursor: pointer;
+  font-family: var(--kv-font-label); font-size: 13px; font-weight: 600;
+  transition: background 0.15s ease, transform 0.2s var(--kv-spring);
+}
+.kv-chat-menu-btn:active { transform: scale(0.97); }
+.kv-chat-menu-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+@media (min-width: 821px) { .kv-chat-toolbar.is-bare { display: none; } }
+@media (max-width: 820px) {
+  .kv-chat-toolbar { padding: 8px 8px 8px 10px; }
+  .kv-chat-menu-btn { display: inline-flex; }
+  .kv-chat-toolbar-meta { display: none; }
+  /* One suggestion is enough on a small screen. */
+  .kv-followup ~ .kv-followup { display: none; }
+}
+
+/* ── Tooltips: shown on hover and keyboard focus (never the slow native title) ── */
+
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); z-index: 60;
+  transform: translate(-50%, 4px); padding: 5px 9px; border-radius: 8px; white-space: nowrap; pointer-events: none;
+  background: var(--kv-solid); color: var(--kv-on-solid); font-family: var(--kv-font-label); font-size: 12px; font-weight: 600; line-height: 1.2;
+  opacity: 0; transition: opacity 150ms cubic-bezier(0.7, 0, 0.84, 0), transform 150ms cubic-bezier(0.7, 0, 0.84, 0);
+}
+[data-tip][data-tip-pos='below']::after { bottom: auto; top: calc(100% + 8px); transform: translate(-50%, -4px); }
+[data-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1); }
+@media (hover: hover) {
+  [data-tip]:hover::after { opacity: 1; transform: translate(-50%, 0); transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1) 150ms, transform 200ms cubic-bezier(0.16, 1, 0.3, 1) 150ms; }
+}
+[data-tip]:disabled::after { display: none; }
+@media (prefers-reduced-motion: reduce) { [data-tip]::after { transition: opacity 100ms linear !important; transform: translate(-50%, 0) !important; } }
+
+/* ── Touch: 44px hit targets (WCAG 2.5.5) ── */
+@media (pointer: coarse) {
+  .kv-chat-menu-btn { height: 44px; }
+  .kv-chat-toolbar .kv-msg-action, .kv-sheet .kv-icon-btn, .db-send-btn, .kv-tt-btn { width: 44px !important; height: 44px !important; }
+}
+
+/* ── Chat workspace rail ──────────────────────────────────────────────── */
+
+.db-rail-wrap { position: relative; z-index: 40; min-height: 0; }
+.db-icon-rail {
+  height: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px;
+  background: var(--kv-mist); border-radius: 24px; border: 1px solid var(--kv-line);
+}
+.db-rail-btn {
+  flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border-radius: 14px; border: 1px solid var(--kv-line); background: var(--kv-surface);
+  color: rgb(var(--kv-ink-rgb) / 0.6); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.2s var(--kv-spring);
+}
+button.db-rail-btn:hover { color: var(--kv-ink); }
+.db-rail-btn.is-active { border-color: transparent; background: var(--kv-solid); color: var(--kv-on-solid); }
+.db-rail-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+/* Same padding as the rail so each icon stays put while its name slides in beside it. */
+.db-rail-expanded {
+  position: absolute; top: 0; left: 0; bottom: 0; width: 228px;
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 8px 12px 6px;
+  border-radius: 24px; background: var(--kv-surface); border: 1px solid var(--kv-line);
+  box-shadow: 0 24px 60px rgb(var(--kv-shadow-rgb) / 0.16);
+}
+.db-rail-item {
+  display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px 0 0; flex-shrink: 0;
+  border: none; border-radius: 14px; background: transparent; cursor: pointer; text-align: left;
+  font-family: var(--kv-font-read); font-size: 14px; font-weight: 500; color: var(--kv-ink-2);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.db-rail-item:hover, .db-rail-item.is-focused { background: var(--kv-mist); color: var(--kv-ink); }
+.db-rail-item:hover .db-rail-btn:not(.is-active) { color: var(--kv-ink); }
+.db-rail-item.is-active { color: var(--kv-ink); font-weight: 600; }
+.db-rail-item.is-focused { box-shadow: inset 0 0 0 2px var(--kv-sky-1); }
+.db-rail-label { white-space: nowrap; }
+.db-rail-backdrop {
+  position: absolute; inset: 0 0 0 66px; z-index: 38; border-radius: 24px; pointer-events: none;
+  background: rgb(var(--kv-veil-rgb) / 0.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+@media (max-width: 820px) { .db-rail-wrap, .db-rail-backdrop { display: none; } }
+
+.kv-sheet-item-rich { gap: 12px; padding-top: 8px; padding-bottom: 8px; }
+.kv-sheet-item-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.kv-sheet-item-text small { font-family: var(--kv-font-label); font-size: 12px; font-weight: 500; color: var(--kv-ink-3); }
 .kv-chat-toolbar-actions { display: flex; align-items: center; gap: 4px; }
 .kv-msg-action {
   width: 30px; height: 30px; border-radius: 10px; border: 1px solid transparent; background: transparent;

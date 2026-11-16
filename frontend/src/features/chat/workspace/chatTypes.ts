@@ -60,6 +60,6 @@ export interface ChatControls {
   onExport: (format: 'markdown' | 'pdf') => void
   onNewChat: () => void
 }
-export interface ChatPaneProps { controls: ChatControls; repoId: string; timeTravel: string | null; setTimeTravel: (value: string | null) => void; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void }
+export interface ChatPaneProps { controls: ChatControls; repoId: string; timeTravel: string | null; setTimeTravel: (value: string | null) => void; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void; onOpenMenu: () => void; menuOpen: boolean }
 
 export type WorkspacePanelId = 'repository' | 'history' | 'focus' | 'prs' | 'files' | 'git'

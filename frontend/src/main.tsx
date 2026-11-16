@@ -1,4 +1,5 @@
 import ReactDOM from 'react-dom/client'
+import { MotionConfig } from 'framer-motion'
 import { BrowserRouter } from 'react-router-dom'
 
 import App from './app/App'
@@ -12,10 +13,12 @@ watchSystemTheme()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <AuthProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
-    </AuthProvider>
+    <MotionConfig reducedMotion="user">
+      <AuthProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </AuthProvider>
+    </MotionConfig>
   </BrowserRouter>
 )

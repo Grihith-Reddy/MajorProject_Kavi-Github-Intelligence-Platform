@@ -32,10 +32,10 @@ export function AnswerFeedback({ messageId, initial = 0 }: { messageId: string; 
           {rating === 1 ? 'Thanks, noted.' : 'Noted. This shows up on Insights → Quality.'}
         </motion.span>
       )}
-      <button type="button" className={`kv-feedback-btn${rating === 1 ? ' is-active' : ''}`} onClick={() => choose(1)} disabled={saving} aria-pressed={rating === 1} aria-label="Helpful" title="Helpful">
+      <button type="button" className={`kv-feedback-btn${rating === 1 ? ' is-active' : ''}`} onClick={() => choose(1)} disabled={saving} aria-pressed={rating === 1} aria-label="Mark helpful" data-tip="Mark helpful">
         <ThumbsUp size={13} />
       </button>
-      <button type="button" className={`kv-feedback-btn${rating === -1 ? ' is-active is-down' : ''}`} onClick={() => choose(-1)} disabled={saving} aria-pressed={rating === -1} aria-label="Not helpful" title="Not helpful">
+      <button type="button" className={`kv-feedback-btn${rating === -1 ? ' is-active is-down' : ''}`} onClick={() => choose(-1)} disabled={saving} aria-pressed={rating === -1} aria-label="Mark not helpful" data-tip="Mark not helpful">
         <ThumbsDown size={13} />
       </button>
     </div>

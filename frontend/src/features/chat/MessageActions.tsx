@@ -21,11 +21,11 @@ export function AnswerActions({ content, onRegenerate, canRegenerate }: { conten
 
   return (
     <div className="kv-msg-actions">
-      <button type="button" className="kv-msg-action" onClick={copy} aria-label="Copy answer" title="Copy answer">
+      <button type="button" className="kv-msg-action" onClick={copy} aria-label="Copy answer" data-tip="Copy answer">
         {copied ? <Check size={13} /> : <Copy size={13} />}
       </button>
       {canRegenerate && onRegenerate && (
-        <button type="button" className="kv-msg-action" onClick={onRegenerate} aria-label="Regenerate answer" title="Regenerate answer">
+        <button type="button" className="kv-msg-action" onClick={onRegenerate} aria-label="Regenerate answer" data-tip="Regenerate answer">
           <RotateCcw size={13} />
         </button>
       )}
@@ -36,7 +36,7 @@ export function AnswerActions({ content, onRegenerate, canRegenerate }: { conten
 /** Edit the latest question (puts it back in the composer). */
 export function EditQuestionButton({ onEdit }: { onEdit: () => void }) {
   return (
-    <button type="button" className="kv-edit-question" onClick={onEdit} aria-label="Edit question" title="Edit question">
+    <button type="button" className="kv-edit-question" onClick={onEdit} aria-label="Edit question" data-tip="Edit question">
       <Pencil size={12} />
     </button>
   )
