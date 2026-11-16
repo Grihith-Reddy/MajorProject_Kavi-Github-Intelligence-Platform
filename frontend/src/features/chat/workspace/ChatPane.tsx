@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Loader2, Send } from 'lucide-react'
+import { Download, FileDown, FileText, Loader2, MessageSquarePlus, Send, Square } from 'lucide-react'
 import { AgentTrace } from '../../../features/chat/AgentTrace'
 import { AnswerFeedback } from '../../../features/chat/AnswerFeedback'
 import { TimeTravelBanner, TimeTravelButton } from '../../../features/chat/TimeTravelControl'
 import { formatAsOf } from '../../../utils/format'
 import { MarkdownMessage } from '../../../features/chat/MarkdownMessage'
+import { AnswerActions, EditQuestionButton } from '../../../features/chat/MessageActions'
 import { StreamingText } from './StreamingText'
 import { StructuredAssistantBody } from './StructuredAssistantBody'
-import { QUICK_PROMPTS, shouldRenderStructuredAnswer } from './chatHelpers'
+import { QUICK_PROMPTS, followUpsFor, shouldRenderStructuredAnswer } from './chatHelpers'
 import { type ChatPaneProps } from './chatTypes'
 
 // ─── Chat pane ────────────────────────────────────────────────────────────────
 
-export function ChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete }: ChatPaneProps) {
+export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete }: ChatPaneProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const assistantMessageRefs = useRef<Record<number, HTMLElement | null>>({})
 
@@ -58,8 +59,48 @@ export function ChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLoad
     followAssistantStream(liveIndex)
   }, [followAssistantStream, liveIndex, liveContentLength, liveTraceLength, hasLiveAnswer])
 
+  const [exportOpen, setExportOpen] = useState(false)
+  const questionCount = messages.filter((message) => message.role === 'user').length
+  const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user')
+  const lastAssistantIndex = messages.map((message) => message.role).lastIndexOf('assistant')
+  const lastAssistant = messages[lastAssistantIndex]
+  const followUps = !chatLoading && lastAssistant && !lastAssistant.live && lastAssistantIndex > lastUserIndex && questionCount > 0
+    ? followUpsFor(lastAssistant.sources, lastAssistant.asOf)
+    : []
+
   return (
     <section className="db-chat-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--kv-mist)', borderRadius: 24, border: '1px solid var(--kv-line)', overflow: 'hidden' }}>
+      {questionCount > 0 && (
+        <div className="kv-chat-toolbar">
+          <span className="kv-chat-toolbar-meta">{questionCount} question{questionCount === 1 ? '' : 's'} in this conversation</span>
+          <div className="kv-chat-toolbar-actions">
+            <button type="button" className="kv-msg-action" onClick={controls.onNewChat} aria-label="New conversation" title="New conversation">
+              <MessageSquarePlus size={14} />
+            </button>
+            <div className="kv-export">
+              <button type="button" className="kv-msg-action" onClick={() => setExportOpen((open) => !open)} aria-expanded={exportOpen} aria-label="Export conversation" title="Export conversation">
+                <Download size={14} />
+              </button>
+              <AnimatePresence>
+                {exportOpen && (
+                  <motion.div
+                    className="kv-export-menu"
+                    initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    onMouseLeave={() => setExportOpen(false)}
+                  >
+                    <button type="button" onClick={() => { controls.onExport('markdown'); setExportOpen(false) }}><FileText size={14} /> Markdown file</button>
+                    <button type="button" onClick={() => { controls.onExport('pdf'); setExportOpen(false) }}><FileDown size={14} /> PDF (print)</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="db-chat-messages" ref={messagesContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}>
 
@@ -107,9 +148,14 @@ export function ChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLoad
                       )}
                       <AgentTrace steps={message.trace ?? message.structured?.trace ?? []} notes={message.notes} active={Boolean(message.live)} />
                       {(message.content || !message.live) && (
-                        <MarkdownMessage content={message.content} streaming={Boolean(message.live)} repoId={repoId} prUrls={message.prUrls} />
+                        <MarkdownMessage content={message.content} streaming={Boolean(message.live)} repoId={repoId} prUrls={message.prUrls} sources={message.sources} />
                       )}
-                      {!message.live && message.messageId && <AnswerFeedback messageId={message.messageId} />}
+                      {!message.live && message.content && (
+                        <div className="kv-msg-footer">
+                          <AnswerActions content={message.content} canRegenerate={index === lastAssistantIndex && !chatLoading && lastUserIndex >= 0} onRegenerate={controls.onRegenerate} />
+                          {message.messageId && <AnswerFeedback messageId={message.messageId} />}
+                        </div>
+                      )}
                     </>
                   )
                   : useStreamingRenderer
@@ -128,6 +174,7 @@ export function ChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLoad
                   : message.role === 'assistant'
                     ? <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
                     : message.content}
+                {message.role === 'user' && index === lastUserIndex && !chatLoading && <EditQuestionButton onEdit={controls.onEditLast} />}
               </div>
             </motion.article>
           )
@@ -139,6 +186,24 @@ export function ChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLoad
             Thinking…
           </div>
         )}
+
+        <AnimatePresence>
+          {followUps.length > 0 && (
+            <motion.div
+              key={`followups-${lastAssistantIndex}`}
+              className="kv-followups"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.15, type: 'spring', stiffness: 280, damping: 28 }}
+            >
+              <span className="kv-eyebrow">Ask next</span>
+              {followUps.map((question) => (
+                <button key={question} type="button" className="kv-followup" onClick={() => onSend(question)}>{question}</button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div ref={messagesEndRef} />
       </div>
@@ -195,15 +260,22 @@ export function ChatPane({ repoId, timeTravel, setTimeTravel, messages, chatLoad
             placeholder="Ask about architecture, PR evolution, or type 'Explain Entire Repo'…"
             style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink)', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0 }}
           />
-          <button
-            className="db-send-btn"
-            type="button"
-            onClick={() => onSend(chatInput)}
-            disabled={chatLoading || !chatInput.trim()}
-            style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 12, background: 'var(--kv-solid)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (!chatInput.trim() || chatLoading) ? 0.4 : 1, transition: 'opacity 0.15s' }}
-          >
-            <Send size={15} color="var(--kv-on-solid)" />
-          </button>
+          {chatLoading ? (
+            <button className="db-send-btn kv-stop-btn" type="button" onClick={controls.onStop} aria-label="Stop answering" title="Stop">
+              <Square size={12} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              className="db-send-btn"
+              type="button"
+              onClick={() => onSend(chatInput)}
+              disabled={!chatInput.trim()}
+              aria-label="Send"
+              style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 12, background: 'var(--kv-solid)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: !chatInput.trim() ? 0.4 : 1, transition: 'opacity 0.15s, transform 0.2s var(--kv-spring)' }}
+            >
+              <Send size={15} color="var(--kv-on-solid)" />
+            </button>
+          )}
         </div>
       </div>
 

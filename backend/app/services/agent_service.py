@@ -202,9 +202,11 @@ class RepoAgentTools:
             "rank": float(row.get("rank") or existing.get("rank") or 0),
         }
 
-    def _add_file_source(self, path: str, start_line: int, end_line: int) -> None:
+    def _add_file_source(self, path: str, start_line: int, end_line: int, excerpt: str | None = None) -> None:
         key = f"live-file::{path}"
         self.sources[key] = {
+            # A short excerpt powers hover previews of file citations in the UI.
+            "excerpt": (excerpt or "")[:1600] or None,
             "entry_id": key,
             "pr_number": None,
             "pr_title": f"Live file: {path}",
@@ -321,7 +323,7 @@ class RepoAgentTools:
         start = max(1, int(start_line or 1))
         end = min(len(lines), int(end_line or (start + 199)))
         end = min(end, start + 249)
-        self._add_file_source(normalized, start, end)
+        self._add_file_source(normalized, start, end, "\n".join(lines[start - 1 : min(end, start + 24)]))
         numbered = "\n".join(f"{index + 1:>5}  {lines[index]}" for index in range(start - 1, end))
         result = {"path": normalized, "total_lines": len(lines), "start_line": start, "end_line": end, "content": numbered}
         if self.as_of:
@@ -345,7 +347,8 @@ class RepoAgentTools:
 
         file_why = get_file_why(self.db, repo_meta=self.repo_meta, github=self.github, path=path, ref=self.ref)
         narrowed = why_for_lines(file_why, start_line, end_line)
-        self._add_file_source(narrowed["path"], narrowed["start_line"], narrowed["end_line"])
+        excerpt_lines = [line[7:] for line in (narrowed.get("excerpt") or "").splitlines()]
+        self._add_file_source(narrowed["path"], narrowed["start_line"], narrowed["end_line"], "\n".join(excerpt_lines[:25]))
         for pr in narrowed["prs"]:
             self._add_pr_source({**pr, "github_pr_number": pr.get("pr_number")})
         return {

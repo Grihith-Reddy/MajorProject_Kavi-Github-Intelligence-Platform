@@ -582,3 +582,94 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
 }
 .kv-sheet-item:hover, .kv-sheet-item.active { background: var(--kv-mist); }
 .kv-sheet-item.is-danger { color: var(--kv-danger-ink); }
+
+/* ── Citation hover previews ─────────────────────────────────────────── */
+
+.kv-cite-card {
+  position: fixed; z-index: 2100; width: 340px; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column; gap: 6px; padding: 12px 14px;
+  border-radius: 16px; background: var(--kv-surface); border: 1px solid var(--kv-line);
+  box-shadow: 0 18px 44px rgb(var(--kv-shadow-rgb) / 0.16); pointer-events: none;
+}
+.kv-cite-kicker { display: flex; align-items: center; gap: 6px; font-family: var(--kv-font-label); font-size: 11.5px; font-weight: 600; color: var(--kv-ink-3); overflow-wrap: anywhere; }
+.kv-cite-title { font-family: var(--kv-font-read); font-size: 14px; font-weight: 600; color: var(--kv-ink); line-height: 1.35; }
+.kv-cite-text { font-family: var(--kv-font-read); font-size: 12.5px; line-height: 1.55; color: var(--kv-ink-2); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.kv-cite-foot { display: inline-flex; align-items: center; gap: 4px; font-family: var(--kv-font-label); font-size: 11.5px; color: var(--kv-sky-ink); }
+.kv-cite-code {
+  margin: 2px 0 0; padding: 8px 0; border-radius: 10px; background: #0b0f13; color: #e6edf3;
+  font-family: var(--kv-font-mono); font-size: 11px; line-height: 1.5; overflow: hidden; white-space: pre;
+}
+.kv-cite-ln { display: inline-block; width: 34px; padding-right: 10px; text-align: right; color: #56636f; user-select: none; }
+
+/* ── Chat controls ────────────────────────────────────────────────────── */
+
+.kv-chat-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px 10px 20px; border-bottom: 1px solid var(--kv-line); background: rgb(var(--kv-veil-rgb) / 0.4);
+}
+.kv-chat-toolbar-meta { font-family: var(--kv-font-label); font-size: 12.5px; color: var(--kv-ink-3); }
+.kv-chat-toolbar-actions { display: flex; align-items: center; gap: 4px; }
+.kv-msg-action {
+  width: 30px; height: 30px; border-radius: 10px; border: 1px solid transparent; background: transparent;
+  color: var(--kv-ink-3); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.2s var(--kv-spring);
+}
+.kv-msg-action:hover { background: var(--kv-mist); color: var(--kv-ink); }
+.kv-msg-action:active { transform: scale(0.92); }
+.kv-msg-action:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
+.kv-export { position: relative; }
+.kv-export-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 180px;
+  display: flex; flex-direction: column; padding: 6px; border-radius: 16px;
+  background: var(--kv-surface); border: 1px solid var(--kv-line); box-shadow: 0 18px 40px rgb(var(--kv-shadow-rgb) / 0.14);
+  transform-origin: top right;
+}
+.kv-export-menu button {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; border: none; background: transparent;
+  font-family: var(--kv-font-read); font-size: 13.5px; font-weight: 500; color: var(--kv-ink); cursor: pointer; text-align: left;
+}
+.kv-export-menu button:hover { background: var(--kv-mist); }
+.kv-msg-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.kv-msg-footer .kv-feedback { margin-top: 0; }
+.kv-msg-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.2s ease; }
+.db-message-bubble:hover .kv-msg-actions, .kv-msg-actions:focus-within { opacity: 1; }
+@media (hover: none) { .kv-msg-actions { opacity: 1; } }
+.db-message-bubble.is-user { position: relative; }
+.kv-edit-question {
+  position: absolute; left: -36px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; border-radius: 9999px; border: 1px solid var(--kv-line); background: var(--kv-surface);
+  color: var(--kv-ink-3); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  opacity: 0; transition: opacity 0.2s ease, color 0.15s ease;
+}
+.db-message-row.is-user:hover .kv-edit-question, .kv-edit-question:focus-visible { opacity: 1; }
+.kv-edit-question:hover { color: var(--kv-ink); }
+@media (hover: none) { .kv-edit-question { opacity: 1; } }
+.kv-followups { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 4px 0 8px; max-width: min(88%, 760px); }
+.kv-followup {
+  text-align: left; border-radius: 14px; border: 1px solid var(--kv-line); background: var(--kv-surface); padding: 8px 12px;
+  font-family: var(--kv-font-read); font-size: 13px; color: var(--kv-ink-2); cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, transform 0.25s var(--kv-spring), box-shadow 0.18s ease;
+}
+.kv-followup:hover { border-color: var(--kv-line-strong); color: var(--kv-ink); transform: translateX(3px); box-shadow: 0 6px 18px rgb(var(--kv-shadow-rgb) / 0.06); }
+.kv-stop-btn {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 12px; border: 1.5px solid var(--kv-solid); background: var(--kv-surface);
+  color: var(--kv-ink); display: flex; align-items: center; justify-content: center; cursor: pointer;
+  animation: kv-stop-pulse 1.6s ease-in-out infinite;
+}
+@keyframes kv-stop-pulse { 50% { box-shadow: 0 0 0 4px rgb(var(--kv-ink-rgb) / 0.08); } }
+.db-send-btn:not(:disabled):hover { transform: scale(1.06); }
+@media (prefers-reduced-motion: reduce) { .kv-stop-btn { animation: none; } }
+
+/* ── Print / PDF export: just the conversation ───────────────────────── */
+
+@media print {
+  :root { --kv-surface: #fff; --kv-mist: #fff; }
+  .kavi-topnav-wrap, .kv-tabbar, .db-icon-rail, .db-chat-compose, .kv-chat-toolbar, .kv-msg-footer,
+  .kv-followups, .kv-edit-question, .kv-trace, .kv-toaster { display: none !important; }
+  .db-workspace-shell { position: static !important; inset: auto !important; }
+  .db-workspace-grid { display: block !important; height: auto !important; }
+  .db-chat-pane { height: auto !important; border: none !important; overflow: visible !important; }
+  .db-chat-messages { overflow: visible !important; height: auto !important; }
+  .db-message-bubble { box-shadow: none !important; break-inside: avoid; }
+  .kavi-app-main { padding: 0 !important; }
+}

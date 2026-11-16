@@ -28,6 +28,7 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
         <div className="db-workspace-grid" style={{ display: 'grid', gridTemplateColumns: '54px minmax(0,1fr)', gap: 12, height: '100%', minHeight: 0 }}>
           <WorkspaceIconRail activePanel={activePanel} onToggle={handlePanelToggle} />
           <ChatPane
+            controls={props.controls}
             repoId={props.repoId}
             timeTravel={props.timeTravel}
             setTimeTravel={props.setTimeTravel}

@@ -20,6 +20,7 @@ export interface ChatEntry {
   live?: boolean
   prUrls?: Record<number, string>
   messageId?: string
+  sources?: ChatSource[]
   asOf?: string | null
 }
 export interface ChatSource { [key: string]: unknown }
@@ -50,8 +51,15 @@ export interface ChatQueryResponse {
   conversation_id?: string | null
   conversation?: ChatConversationSummary | null
 }
-export interface WorkspaceRenderProps { repoId: string; repositoryName: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; chatSources: ChatSource[]; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; renderHistory: (close: () => void) => ReactNode; timeTravel: string | null; setTimeTravel: (value: string | null) => void }
+export interface WorkspaceRenderProps { repoId: string; repositoryName: string; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; chatSources: ChatSource[]; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; renderHistory: (close: () => void) => ReactNode; timeTravel: string | null; setTimeTravel: (value: string | null) => void; controls: ChatControls }
 export interface WorkspaceOverlayProps { repoId: string; repositoryName: string; entries: KnowledgeEntryRow[]; files: KnowledgeFileRow[]; chatSources: ChatSource[]; entriesLoading: boolean; entriesError: Error | null; filesLoading: boolean; filesError: Error | null; onNavigate?: () => void; gitVisualization: GitVisualizationResponse | null; gitVisualizationLoading: boolean; gitVisualizationError: Error | null; historyNode?: ReactNode }
-export interface ChatPaneProps { repoId: string; timeTravel: string | null; setTimeTravel: (value: string | null) => void; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void }
+export interface ChatControls {
+  onStop: () => void
+  onRegenerate: () => void
+  onEditLast: () => void
+  onExport: (format: 'markdown' | 'pdf') => void
+  onNewChat: () => void
+}
+export interface ChatPaneProps { controls: ChatControls; repoId: string; timeTravel: string | null; setTimeTravel: (value: string | null) => void; messages: ChatEntry[]; chatLoading: boolean; chatInput: string; setChatInput: (v: string) => void; noPrContext: boolean; onSend: (input: string) => void; messagesEndRef: RefObject<HTMLDivElement>; streamingIndex: number | null; onAssistantStreamComplete: (index: number) => void }
 
 export type WorkspacePanelId = 'repository' | 'history' | 'focus' | 'prs' | 'files' | 'git'
