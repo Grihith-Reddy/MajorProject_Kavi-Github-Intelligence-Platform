@@ -701,6 +701,8 @@ export function LandingPage() {
             </div>
           </section>
 
+          <ScrollAssemble />
+
           <section aria-label="Key features" className="k-sec">
             <div className="k-inner">
               <div className="k-feat-grid" ref={featRef as React.RefObject<HTMLDivElement>}>
@@ -898,8 +900,6 @@ export function LandingPage() {
               <MemoryTimeline />
             </div>
           </section>
-
-          <ScrollAssemble />
 
           <section id="how" aria-labelledby="how-heading" className="k-sec" style={{ paddingTop: 16 }}>
             <div className="k-inner">
