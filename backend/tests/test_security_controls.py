@@ -216,7 +216,9 @@ class HardeningTests(unittest.TestCase):
         from app.core.middleware import EXPENSIVE_PATH_PREFIXES
         from app.main import app
 
-        paths = {getattr(route, "path", "") for route in app.routes}
+        # The OpenAPI schema lists every mounted route on all FastAPI versions (newer versions no
+        # longer flatten included routers into app.routes).
+        paths = set(app.openapi()["paths"])
         for prefix in EXPENSIVE_PATH_PREFIXES:
             self.assertIn(prefix, paths, f"{prefix} does not match any route, so it is never rate limited")
         with patch.object(settings, "RATE_LIMIT_EXPENSIVE_PER_MINUTE", 2):
