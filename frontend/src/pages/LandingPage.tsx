@@ -263,9 +263,32 @@ export function LandingPage() {
     return () => observer.disconnect()
   }, [])
 
+  // The opening zoom waits until the hero's landscape for the current theme has downloaded and
+  // decoded, and until the tab is actually visible. On a first visit the images arrive from the
+  // network a moment after the page; starting earlier zooms in an empty card and the hills pop in.
+  // Capped so a slow connection still opens, and never sooner than the original 300 ms beat.
   useEffect(() => {
-    const timer = setTimeout(() => setIsReady(true), 300)
-    return () => clearTimeout(timer)
+    let cancelled = false
+    let timer = 0
+    const started = performance.now()
+    const art = document.documentElement.getAttribute('data-theme') === 'dark' ? 'night' : 'day'
+    const images = [...document.querySelectorAll<HTMLImageElement>(`.k-hero-card .px-img-${art}`)]
+    const decoded = Promise.all(images.map((img) => img.decode().catch(() => undefined)))
+    const capped = new Promise((resolve) => { timer = window.setTimeout(resolve, 2500) })
+    const visible = new Promise<void>((resolve) => {
+      if (document.visibilityState === 'visible') return resolve()
+      const onVisible = () => {
+        if (document.visibilityState !== 'visible') return
+        document.removeEventListener('visibilitychange', onVisible)
+        resolve()
+      }
+      document.addEventListener('visibilitychange', onVisible)
+    })
+    void Promise.all([Promise.race([decoded, capped]), visible]).then(() => {
+      const wait = Math.max(0, 300 - (performance.now() - started))
+      timer = window.setTimeout(() => requestAnimationFrame(() => { if (!cancelled) setIsReady(true) }), wait)
+    })
+    return () => { cancelled = true; clearTimeout(timer) }
   }, [])
 
   useEffect(() => {

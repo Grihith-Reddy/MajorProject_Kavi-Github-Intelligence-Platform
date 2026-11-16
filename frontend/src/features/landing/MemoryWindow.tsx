@@ -28,7 +28,7 @@ export function MemoryWindow() {
   if (reduce) {
     return (
       <section className="mw-static" aria-label="KAVI at work">
-        <div className="mw-sky"><img src={cloudImg} alt="" className="mw-cloud" /></div>
+        <div className="mw-sky"><img src={cloudImg} alt="" className="mw-cloud" loading="lazy" decoding="async" /></div>
         <div className="mw-product-wrap"><ProductPreview /></div>
       </section>
     )
@@ -40,7 +40,8 @@ export function MemoryWindow() {
         <motion.p className="mw-caption" style={{ opacity: captionOpacity }}>Scroll to look inside</motion.p>
         <div className="mw-window">
           <div className="mw-sky">
-            <motion.img src={cloudImg} alt="" className="mw-cloud" style={{ scale: cloudScale }} />
+            {/* Below the fold: load when scrolled near, so it does not compete with the hero art. */}
+            <motion.img src={cloudImg} alt="" className="mw-cloud" loading="lazy" decoding="async" style={{ scale: cloudScale }} />
           </div>
           <motion.div className="mw-product-wrap" style={{ scale: productScale, y: productY }}>
             <ProductPreview />
