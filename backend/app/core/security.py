@@ -19,6 +19,7 @@ from app.core.settings import settings
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
+TOKEN_CLOCK_SKEW_SECONDS = 10
 
 _FIREBASE_APP = None
 _FIREBASE_APP_LOCK = threading.Lock()
@@ -87,7 +88,12 @@ def verify_jwt_token(token: str) -> dict[str, Any]:
         ) from exc
 
     try:
-        payload = firebase_auth.verify_id_token(token, app=firebase_app, check_revoked=True)
+        # A fresh token's issued-at time comes from Google's clock. If this machine runs even a
+        # second behind, a zero-tolerance check rejects every newly refreshed token as
+        # "used too early", so allow a small skew (Firebase permits up to 60s).
+        payload = firebase_auth.verify_id_token(
+            token, app=firebase_app, check_revoked=True, clock_skew_seconds=TOKEN_CLOCK_SKEW_SECONDS
+        )
         return payload
     except firebase_auth.ExpiredIdTokenError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired") from exc

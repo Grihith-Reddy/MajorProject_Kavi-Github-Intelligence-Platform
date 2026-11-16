@@ -64,11 +64,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [navigate])
 
-  const getToken = useCallback(async () => {
+  const getToken = useCallback(async (forceRefresh = false) => {
     const currentUser = firebaseAuth.currentUser
     if (!currentUser) return undefined
-    return currentUser.getIdToken()
+    return currentUser.getIdToken(forceRefresh)
   }, [])
+
+  const expireSession = useCallback(async () => {
+    const here = `${window.location.pathname}${window.location.search}`
+    clearSessionStorageArtifacts()
+    setUser(null)
+    setIsLoading(false)
+    try {
+      await signOut(firebaseAuth)
+    } finally {
+      navigate(`/login?reason=expired&returnTo=${encodeURIComponent(here)}`, { replace: true })
+    }
+  }, [navigate])
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -77,9 +89,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user,
       login,
       logout: logoutUser,
-      getToken
+      getToken,
+      expireSession
     }),
-    [user, isLoading, login, logoutUser, getToken]
+    [user, isLoading, login, logoutUser, getToken, expireSession]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

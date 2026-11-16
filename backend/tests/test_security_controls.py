@@ -89,7 +89,7 @@ class AuthenticationAndOutboundSecretTests(unittest.TestCase):
             payload = verify_jwt_token("firebase-token")
 
         self.assertEqual(payload["uid"], "user-1")
-        verify.assert_called_once_with("firebase-token", app=app, check_revoked=True)
+        verify.assert_called_once_with("firebase-token", app=app, check_revoked=True, clock_skew_seconds=10)
 
     def test_oauth_state_is_signed_and_tampering_is_rejected(self):
         with patch.object(settings, "GITHUB_STATE_SECRET", "state-secret-for-tests-at-least-32-bytes"):

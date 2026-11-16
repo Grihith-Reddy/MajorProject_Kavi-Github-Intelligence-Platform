@@ -128,7 +128,7 @@
 .kv-btn-dark { background: var(--kv-solid); color: var(--kv-on-solid); }
 .kv-btn-dark:hover:not(:disabled) { background: var(--kv-solid-hover); }
 .kv-btn-soft { background: var(--kv-mist); color: var(--kv-ink); border: 1px solid var(--kv-line); }
-.kv-btn-soft:hover:not(:disabled) { background: #ececee; }
+.kv-btn-soft:hover:not(:disabled) { background: color-mix(in srgb, var(--kv-ink) 7%, var(--kv-mist)); }
 .kv-btn-sm { padding: 7px 14px; font-size: 13px; }
 
 /* ── Citation chips ───────────────────────────────────────────────────── */
@@ -650,6 +650,18 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
   /* One suggestion is enough on a small screen. */
   .kv-followup ~ .kv-followup { display: none; }
 }
+
+/* ── Error / empty states ─────────────────────────────────────────────── */
+
+.kv-state-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--kv-surface); }
+.kv-state {
+  width: min(420px, 100%); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+  padding: 28px 24px; border-radius: 24px; background: var(--kv-mist); border: 1px solid var(--kv-line);
+}
+.kv-state-icon { width: 44px; height: 44px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; background: var(--kv-surface); color: var(--kv-ink-3); }
+.kv-state-icon.is-danger { background: var(--kv-danger-bg); color: var(--kv-danger-ink); }
+.kv-state-title { margin: 0; font-family: var(--kv-font-read); font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--kv-ink); }
+.kv-state-text { margin: 0; font-family: var(--kv-font-read); font-size: 14px; line-height: 1.55; color: var(--kv-ink-2); }
 
 /* ── Tooltips: shown on hover and keyboard focus (never the slow native title) ── */
 
