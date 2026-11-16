@@ -317,3 +317,62 @@ def quality_runs(
     except Exception:
         db.rollback()  # migration 006 not applied yet
     return {"runs": runs, "feedback": feedback}
+
+
+# ── Repository health (repository cards) ─────────────────────────────────────
+
+
+@router.get("/health")
+def repositories_health(
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Small health summary for every repository the user can open."""
+    user_id = require_user_id(db, current_user.sub)
+    rows = db.execute(
+        text(
+            """
+            SELECT DISTINCT r.id, r.synced_at,
+                   (SELECT COUNT(*) FROM pull_requests pr WHERE pr.repo_id = r.id) AS pr_count,
+                   (SELECT COUNT(*) FROM knowledge_entries k WHERE k.repo_id = r.id) AS indexed_count
+            FROM repositories r
+            JOIN repository_access ra ON ra.repository_id = r.id
+            JOIN github_accounts ga ON ga.id = ra.github_account_id
+            WHERE ga.user_id = :user_id
+            """
+        ),
+        {"user_id": user_id},
+    ).mappings().all()
+    health: dict[str, Any] = {}
+    for row in rows:
+        repo_id = str(row["id"])
+        entry: dict[str, Any] = {
+            "synced_at": row["synced_at"],
+            "pr_count": int(row["pr_count"] or 0),
+            "indexed_count": int(row["indexed_count"] or 0),
+            "open_promises": 0,
+            "kept_promises": 0,
+            "at_risk_modules": 0,
+            "single_expert_modules": 0,
+        }
+        try:
+            promise_counts = db.execute(
+                text(
+                    """
+                    SELECT COUNT(*) FILTER (WHERE status = 'open') AS open,
+                           COUNT(*) FILTER (WHERE status = 'kept') AS kept
+                    FROM pr_promises WHERE repo_id = :repo_id
+                    """
+                ),
+                {"repo_id": repo_id},
+            ).mappings().one()
+            entry["open_promises"] = int(promise_counts["open"] or 0)
+            entry["kept_promises"] = int(promise_counts["kept"] or 0)
+            if entry["indexed_count"]:
+                summary = build_knowledge_map(db, repo_id)["summary"]
+                entry["at_risk_modules"] = int(summary.get("at_risk") or 0)
+                entry["single_expert_modules"] = int(summary.get("single_expert") or 0)
+        except Exception:
+            db.rollback()  # migration 005 missing: basic counts only
+        health[repo_id] = entry
+    return {"repositories": health}

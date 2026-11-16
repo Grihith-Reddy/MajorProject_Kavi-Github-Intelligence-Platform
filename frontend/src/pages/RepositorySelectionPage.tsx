@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, FolderGit2, GitPullRequest, RefreshCw, Search } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, ArrowRight, Clock3, FolderGit2, GitPullRequest, Handshake, RefreshCw, Search, UserRound } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
@@ -13,6 +13,7 @@ import {
   listRepositories,
   syncRepository,
 } from '../services/githubService'
+import { getRepositoryHealth, type RepositoryHealth } from '../services/insightsService'
 import { getApiErrorMessage } from '../utils/errors'
 import cloudImg from '../assets/cloud.webp'
 
@@ -73,10 +74,51 @@ function SyncProgressCapsule({ progress }: { progress?: SyncJobProgress & { stat
   )
 }
 
+function relativeSync(value?: string | null): string {
+  if (!value) return 'Never synced'
+  const minutes = Math.round((Date.now() - Date.parse(value)) / 60000)
+  if (!Number.isFinite(minutes)) return 'Synced'
+  if (minutes < 2) return 'Synced just now'
+  if (minutes < 60) return `Synced ${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `Synced ${hours}h ago`
+  return `Synced ${Math.round(hours / 24)}d ago`
+}
+
+function RepoHealthStrip({ repoId, health }: { repoId: string; health: RepositoryHealth }) {
+  const insights = (tab: string) => `/insights?repoId=${encodeURIComponent(repoId)}&tab=${tab}`
+  return (
+    <div className="repo-health">
+      {health.open_promises > 0 && (
+        <Link to={insights('promises')} className="repo-health-chip is-promise" title="Commitments from reviews that no later PR has kept yet">
+          <Handshake size={12} /> {health.open_promises} open promise{health.open_promises === 1 ? '' : 's'}
+        </Link>
+      )}
+      {health.at_risk_modules > 0 ? (
+        <Link to={insights('map')} className="repo-health-chip is-risk" title="Modules whose only expert has gone quiet">
+          <AlertTriangle size={12} /> {health.at_risk_modules} at-risk module{health.at_risk_modules === 1 ? '' : 's'}
+        </Link>
+      ) : health.single_expert_modules > 0 ? (
+        <Link to={insights('map')} className="repo-health-chip" title="Modules where one person holds most of the context">
+          <UserRound size={12} /> {health.single_expert_modules} single-expert
+        </Link>
+      ) : null}
+      <span className="repo-health-chip is-muted"><Clock3 size={12} /> {relativeSync(health.synced_at)}</span>
+    </div>
+  )
+}
+
 export function RepositorySelectionPage() {
   const api = useApiClient()
   const navigate = useNavigate()
   const { data, error, loading, setData } = useAsync(() => listRepositories(api), [api])
+  const [health, setHealth] = useState<Record<string, RepositoryHealth>>({})
+  useEffect(() => {
+    if (!data) return
+    let active = true
+    getRepositoryHealth(api).then((result) => { if (active) setHealth(result) }).catch(() => undefined)
+    return () => { active = false }
+  }, [api, data])
 
   const [syncing, setSyncing] = useState<Record<string, boolean>>({})
   const [syncError, setSyncError] = useState<string | null>(null)
@@ -361,7 +403,18 @@ export function RepositorySelectionPage() {
           margin-bottom: 16px;
         }
 
-        .repo-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+        .repo-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .repo-health { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+        .repo-health-chip {
+          display: inline-flex; align-items: center; gap: 5px; border-radius: 10px; padding: 4px 10px;
+          font-family: var(--kv-font-label); font-size: 12.5px; font-weight: 600; text-decoration: none;
+          color: var(--kv-ink-2); background: rgb(var(--kv-veil-rgb) / 0.55);
+          transition: transform 0.2s var(--kv-spring), background 0.15s ease, color 0.15s ease;
+        }
+        a.repo-health-chip:hover { transform: translateY(-1px); background: var(--kv-solid); color: var(--kv-on-solid); }
+        .repo-health-chip.is-promise { color: var(--kv-warn-ink); }
+        .repo-health-chip.is-risk { color: var(--kv-danger-ink); }
+        .repo-health-chip.is-muted { color: var(--kv-ink-3); background: transparent; padding-left: 2px; }
         .repo-stat-pill {
           display: inline-flex;
           align-items: center;
@@ -684,6 +737,10 @@ export function RepositorySelectionPage() {
                             <span className="repo-stat-pill font-archivo">Public</span>
                           )}
                         </div>
+
+                        {resolvedRepoId && health[resolvedRepoId] && (
+                          <RepoHealthStrip repoId={resolvedRepoId} health={health[resolvedRepoId]} />
+                        )}
                       </div>
 
                       <div>
