@@ -3,6 +3,8 @@ services:
     name: kavi-api
     runtime: python
     plan: free
+    # Same region as the Neon database, so each query is a short hop.
+    region: singapore
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     # Render's proxy is the only thing that can reach the service, so trust its X-Forwarded-For;
