@@ -4,6 +4,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LogIn, LogOut, Zap } from 'lucide-react'
 
 import { useAuth } from '../features/auth/useAuth'
+import { MobileNav } from './MobileNav'
 
 const navItems = [
   { to: '/chat', label: 'Chat' },
@@ -122,9 +123,11 @@ export function TopNav() {
           gap: 4px;
           pointer-events: none;
         }
-        @media (max-width: 768px) { .kavi-nav-links { display: none; } }
+        @media (max-width: 1024px) { .kavi-nav-links { display: none; } }
 
         .kavi-nav-link {
+          position: relative;
+          isolation: isolate;
           pointer-events: auto;
           font-family: 'Archivo', sans-serif;
           font-size: 15px;
@@ -137,11 +140,10 @@ export function TopNav() {
           white-space: nowrap;
         }
         .kavi-nav-link:hover { background: rgb(var(--kv-ink-rgb) / 0.07); }
-        .kavi-nav-link.active {
-          background: var(--kv-solid);
-          color: var(--kv-on-solid);
-        }
-        .kavi-nav-link.active:hover { background: var(--kv-solid); }
+        .kavi-nav-link.active { color: var(--kv-on-solid); }
+        .kavi-nav-link.active:hover { background: transparent; }
+        .kavi-nav-pill { position: absolute; inset: 0; border-radius: 9999px; background: var(--kv-solid); z-index: -1; }
+        .kavi-nav-link span.kavi-nav-text { position: relative; }
 
         /* Right side */
         .kavi-nav-right {
@@ -223,7 +225,12 @@ export function TopNav() {
                   `kavi-nav-link${isActive ? ' active' : ''}`
                 }
               >
-                {item.label}
+                {({ isActive }) => (
+                  <>
+                    {isActive && <motion.span layoutId="kavi-nav-pill" className="kavi-nav-pill" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+                    <span className="kavi-nav-text">{item.label}</span>
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
@@ -244,6 +251,7 @@ export function TopNav() {
           </div>
         </motion.div>
       </header>
+      {isAuthenticated && <MobileNav resolve={resolveNavTarget} onLogout={logout} />}
     </>
   )
 }
