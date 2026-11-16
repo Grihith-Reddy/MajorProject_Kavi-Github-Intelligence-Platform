@@ -50,3 +50,15 @@ export function useThemePreference(): [ThemePreference, (value: ThemePreference)
   }, [])
   return [preference, setThemePreference]
 }
+
+/** Whether the page is currently dark, following every change (toggle, Settings, or the OS). */
+export function useResolvedDark(): boolean {
+  const read = () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark'
+  const [dark, setDark] = useState(read)
+  useEffect(() => {
+    const observer = new MutationObserver(() => setDark(read()))
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
+  }, [])
+  return dark
+}

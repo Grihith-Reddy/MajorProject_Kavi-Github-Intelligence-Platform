@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, GitPullRequest, DatabaseZap, MessageSquareText, ShieldCheck, LockKeyhole } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { firebaseAuth } from '../features/auth/firebase'
@@ -9,17 +9,14 @@ import { getGitHubStatus } from '../services/githubService'
 import { MemoryTimeline } from '../features/landing/MemoryTimeline'
 import { MemoryWindow } from '../features/landing/MemoryWindow'
 import { ParallaxHero } from '../features/landing/ParallaxHero'
+import { KaviFooter } from '../features/landing/KaviFooter'
+import { ScrollAssemble } from '../features/landing/ScrollAssemble'
 import '../features/landing/landing2.css'
 import { KaviMark } from '../components/KaviMark'
 import { ThemeToggle } from '../features/theme/ThemeToggle'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const MARQUEE_TOKENS = [
-  'PR Discussions', 'Review Intent', 'Design Tradeoffs', 'File Impact',
-  'Decision History', 'Architecture Context', 'Grounded Answers', 'Team Memory',
-  'Merge Rationale', 'Code Ownership', 'Incident Traces', 'Author Intent',
-]
 
 const FLOW_STEPS = [
   {
@@ -220,6 +217,8 @@ export function LandingPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [isReady, setIsReady] = useState(false)
+  const [footerReached, setFooterReached] = useState(false)
+  const footerRef = useRef<HTMLDivElement>(null)
   const scrolledRef = useRef(false)
   const latestScrollYRef = useRef(0)
   const scrollRafRef = useRef<number | null>(null)
@@ -250,6 +249,24 @@ export function LandingPage() {
       }
     })
   }
+
+  // Watch only the top strip of the screen (where the header floats): once the footer covers it,
+  // the header slides away; scrolling back up brings it back.
+  useEffect(() => {
+    const el = footerRef.current
+    if (!el) return
+    let observer: IntersectionObserver | null = null
+    const watch = () => {
+      observer?.disconnect()
+      observer = new IntersectionObserver(([entry]) => setFooterReached(entry.isIntersecting), {
+        rootMargin: `0px 0px -${Math.max(0, window.innerHeight - 96)}px 0px`,
+      })
+      observer.observe(el)
+    }
+    watch()
+    window.addEventListener('resize', watch)
+    return () => { observer?.disconnect(); window.removeEventListener('resize', watch) }
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => setIsReady(true), 300)
@@ -302,8 +319,6 @@ export function LandingPage() {
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 96, behavior: 'smooth' })
   }
 
-  const streamFwd = useMemo(() => [...MARQUEE_TOKENS, ...MARQUEE_TOKENS, ...MARQUEE_TOKENS], [])
-  const streamRev = useMemo(() => [...MARQUEE_TOKENS, ...MARQUEE_TOKENS, ...MARQUEE_TOKENS], [])
 
   return (
     <>
@@ -332,6 +347,8 @@ export function LandingPage() {
           transition-delay: 1.2s;
         }
         .k-header.ready { opacity: 1; transform: translateY(0); }
+        /* The footer has its own logo, theme toggle and call to action: step aside while it fills the top. */
+        .k-header.ready.away { opacity: 0; transform: translateY(-120%); pointer-events: none; }
         @media (max-width: 768px) { .k-header { padding: 12px; } }
 
         .k-header-inner {
@@ -345,6 +362,8 @@ export function LandingPage() {
           backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
           box-shadow: 0 4px 22px rgba(116,130,151,0.15);
         }
+        .k-footer-frame { margin: 16px; border-radius: 32px; overflow: hidden; }
+        @media (max-width: 768px) { .k-footer-frame { margin: 12px; border-radius: 22px; } }
         .k-logo { display: flex; align-items: center; height: 40px; padding: 0 6px; color: #fff; text-decoration: none; z-index: 10; transition: color 0.25s ease; }
         .k-header-inner.on .k-logo { color: var(--kv-ink); }
         .k-header-right { display: flex; align-items: center; gap: 10px; }
@@ -429,14 +448,6 @@ export function LandingPage() {
         .k-feat-p { font-family: 'Archivo', sans-serif; font-size: 20px; font-weight: 400; line-height: 1.4; letter-spacing: 0.025em; color: var(--kv-ink-2); }
 
         /* Marquee */
-        .k-marquee-sec { overflow: hidden; border-top: 1px solid var(--kv-line); border-bottom: 1px solid var(--kv-line); padding: 16px 0; background: var(--kv-surface); }
-        .k-marquee-row { position: relative; overflow: hidden; margin-bottom: 12px; }
-        .k-track { display: flex; gap: 12px; width: max-content; will-change: transform; backface-visibility: hidden; }
-        .k-fwd { animation: k-marquee-fwd 30s linear infinite; }
-        .k-rev { animation: k-marquee-rev 24s linear infinite; }
-        @keyframes k-marquee-fwd { from { transform: translateX(0); } to { transform: translateX(-33.333%); } }
-        @keyframes k-marquee-rev { from { transform: translateX(-33.333%); } to { transform: translateX(0); } }
-        .k-token { display: inline-flex; align-items: center; flex-shrink: 0; border: 1px solid var(--kv-line); border-radius: 9999px; padding: 6px 16px; font-family: 'Archivo', sans-serif; font-size: 16px; font-weight: 400; color: var(--kv-ink-2); white-space: nowrap; background: var(--kv-surface); }
 
         /* How it works */
         .k-how-card { border-radius: 32px; background: var(--kv-sand); padding: 64px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
@@ -499,13 +510,6 @@ export function LandingPage() {
         .kfaq-a { font-family: 'Archivo', sans-serif; font-size: 18px; color: var(--kv-ink-2); line-height: 1.5; padding: 0 24px 24px; }
 
         /* Footer */
-        .k-footer-card { border-radius: 32px; background: var(--kv-solid); padding: 48px; display: flex; flex-direction: column; gap: 48px; }
-        .k-footer-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 32px; }
-        .k-footer-links { display: flex; gap: 96px; }
-        .k-footer-col { display: flex; flex-direction: column; gap: 8px; }
-        .k-footer-a { font-family: 'Archivo', sans-serif; font-size: 18px; color: var(--kv-on-solid); text-decoration: none; background: none; border: none; cursor: pointer; padding: 0; text-align: left; transition: color 0.15s; }
-        .k-footer-a:hover { color: rgb(var(--kv-veil-rgb) / 0.7); }
-        .k-footer-copy { font-family: 'Archivo', sans-serif; font-size: 16px; color: rgb(var(--kv-veil-rgb) / 0.4); }
 
         @media (max-width: 1100px) {
           .k-about-card { min-height: 620px; }
@@ -521,8 +525,6 @@ export function LandingPage() {
           .k-faq-card { padding: 38px 30px; }
           .k-trust-header { padding: 38px 30px 26px; }
           .k-cta-card { padding: 46px 30px; }
-          .k-footer-card { padding: 38px 30px; gap: 36px; }
-          .k-footer-links { gap: 48px; }
         }
 
         @media (max-width: 768px) {
@@ -538,7 +540,6 @@ export function LandingPage() {
           .k-feat-text { padding: 24px 20px; gap: 12px; }
           .k-feat-h2 { font-size: clamp(28px, 7.8vw, 38px); }
           .k-feat-p { font-size: 16px; line-height: 1.45; }
-          .k-token { font-size: 14px; padding: 6px 12px; }
           .k-how-card { border-radius: 20px; padding: 28px 20px; gap: 24px; }
           .k-step { gap: 12px; padding: 12px; }
           .k-step-title { font-size: 15px; }
@@ -548,7 +549,6 @@ export function LandingPage() {
           .k-testi-card,
           .k-faq-card,
           .k-cta-card,
-          .k-footer-card { border-radius: 20px; }
           .k-out-card,
           .k-testi-card,
           .k-faq-card { padding: 28px 20px; }
@@ -568,10 +568,6 @@ export function LandingPage() {
           .kfaq-btn { gap: 14px; padding: 16px 14px 16px 16px; }
           .kfaq-q { font-size: 17px; }
           .kfaq-a { font-size: 15px; padding: 0 16px 16px; }
-          .k-footer-card { padding: 28px 20px; gap: 24px; }
-          .k-footer-links { gap: 24px; flex-wrap: wrap; }
-          .k-footer-a { font-size: 15px; }
-          .k-footer-copy { font-size: 14px; }
         }
 
         @media (max-width: 480px) {
@@ -600,7 +596,7 @@ export function LandingPage() {
         }
       `}</style>
 
-      <header className={`k-header ${isReady ? 'ready' : ''}`}>
+      <header className={`k-header ${isReady ? 'ready' : ''}${footerReached ? ' away' : ''}`}>
         <div className={`k-header-inner${scrolled ? ' on' : ''}`}>
           <a href="/" className="k-logo" aria-label="Kavi">
             <KaviMark size={28} />
@@ -914,20 +910,7 @@ export function LandingPage() {
             </div>
           </section>
 
-          <section aria-label="Context signals" className="k-marquee-sec">
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              <div className="k-marquee-row">
-                <div className="k-track k-fwd">
-                  {streamFwd.map((t, i) => <span key={`f${i}`} className="k-token font-archivo">{t}</span>)}
-                </div>
-              </div>
-              <div className="k-marquee-row">
-                <div className="k-track k-rev">
-                  {streamRev.map((t, i) => <span key={`r${i}`} className="k-token font-archivo">{t}</span>)}
-                </div>
-              </div>
-            </div>
-          </section>
+          <ScrollAssemble />
 
           <section id="how" aria-labelledby="how-heading" className="k-sec" style={{ paddingTop: 16 }}>
             <div className="k-inner">
@@ -1113,23 +1096,9 @@ export function LandingPage() {
 
         </main>
 
-        <footer className="k-sec" style={{ paddingTop: 16 }}>
-          <div className="k-inner">
-            <div className="k-footer-card">
-              <div className="k-footer-top">
-                <span style={{ display:'inline-flex', color:'var(--kv-on-solid)' }}><KaviMark size={30} title="KAVI" /></span>
-                <div className="k-footer-links">
-                  <div className="k-footer-col">
-                    <span style={{ fontFamily:"'Archivo', sans-serif", fontSize:15, fontWeight:600, color:'var(--kv-on-solid)' }}>Product</span>
-                    <button type="button" className="k-footer-a font-archivo" onClick={() => scrollTo('about')}>About</button>
-                    <button type="button" className="k-footer-a font-archivo" onClick={() => scrollTo('faq')}>FAQ</button>
-                  </div>
-                </div>
-              </div>
-              <p className="k-footer-copy font-archivo">© Copyright 2026. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
+        <div className="k-footer-frame" ref={footerRef}>
+          <KaviFooter onStart={handleStart} onAnchor={scrollTo} onRoute={(path) => navigate(path)} />
+        </div>
 
       </div>
     </>
