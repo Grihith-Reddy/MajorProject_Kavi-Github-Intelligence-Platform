@@ -574,8 +574,7 @@ a.kv-chip:hover .kv-chip-range { color: rgb(var(--kv-veil-rgb) / 0.7); }
 @media (max-width: 1024px) {
   .kv-mhead { display: flex; align-items: center; gap: 8px; }
   /* One size for everything in the phone header: logo and both buttons are 44px. */
-  .kavi-nav-logomark { width: 44px !important; height: 44px !important; border-radius: 14px !important; }
-  .kavi-nav-logomark svg { width: 18px; height: 18px; }
+  .kavi-nav-logomark { width: 44px !important; height: 44px !important; }
   /* Their actions moved to the header More menu. */
   .kv-chat-toolbar .kv-chat-toolbar-actions { display: none; }
 }

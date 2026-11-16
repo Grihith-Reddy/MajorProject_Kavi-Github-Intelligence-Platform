@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, Mail, Lock, Zap, ArrowRight, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 
 import {
@@ -12,6 +12,7 @@ import {
 import { firebaseAuth, googleProvider } from '../features/auth/firebase'
 import { useAuth } from '../features/auth/useAuth'
 import cloudImg from '../assets/cloud.webp'
+import { KaviMark } from '../components/KaviMark'
 
 function GoogleIcon() {
   return (
@@ -217,25 +218,11 @@ export function LoginPage() {
 
         /* Logo */
         .login-logo {
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 8px;
           margin-bottom: 32px;
-          text-decoration: none;
-        }
-        .login-logo-mark {
-          width: 34px; height: 34px;
-          background: var(--kv-solid);
-          border-radius: 10px;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-        .login-logo-name {
-          font-family: 'Audiowide', sans-serif;
-          font-size: 18px;
-          font-weight: 400;
-          letter-spacing: 0.04em;
           color: var(--kv-ink);
+          text-decoration: none;
         }
 
         .login-title {
@@ -440,11 +427,8 @@ export function LoginPage() {
           >
             {/* ── Left column: logo + Google ── */}
             <div className="login-left">
-              <Link to="/" className="login-logo">
-                <div className="login-logo-mark">
-                  <Zap size={16} color="var(--kv-on-solid)" strokeWidth={2} />
-                </div>
-                <span className="login-logo-name">KAVI</span>
+              <Link to="/" className="login-logo" aria-label="KAVI home">
+                <KaviMark size={30} />
               </Link>
 
               <h1 className="login-title">{title}</h1>
