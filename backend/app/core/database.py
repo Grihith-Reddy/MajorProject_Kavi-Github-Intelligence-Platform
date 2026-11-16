@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import sessionmaker
 
 from app.core.settings import settings
@@ -7,7 +7,20 @@ from app.core.settings import settings
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", ""}
 
 
-def tls_connect_args(database_url: str) -> dict[str, str]:
+def database_url(raw: str) -> URL:
+    """The configured database URL, always using the psycopg2 driver that KAVI ships with.
+
+    Hosting dashboards hand out plain postgresql:// (or postgres://) URLs. SQLAlchemy picks a default
+    driver for those, and newer SQLAlchemy releases default to psycopg 3, which is not installed, so
+    a URL without an explicit driver is pinned to psycopg2 here. An explicit driver is kept.
+    """
+    url = make_url(raw)
+    if url.drivername in ("postgresql", "postgres"):
+        url = url.set(drivername="postgresql+psycopg2")
+    return url
+
+
+def tls_connect_args(database_url: str | URL) -> dict[str, str]:
     """Insist on an encrypted connection to any database that is not on this machine.
 
     A URL that already names an sslmode (for example Neon's sslmode=require, or verify-full) is
@@ -21,14 +34,15 @@ def tls_connect_args(database_url: str) -> dict[str, str]:
     return {"sslmode": "require"}
 
 
+_DATABASE_URL = database_url(settings.DATABASE_URL)
 engine = create_engine(
-    settings.DATABASE_URL,
+    _DATABASE_URL,
     pool_pre_ping=True,
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_timeout=settings.DB_POOL_TIMEOUT_SECONDS,
     pool_recycle=settings.DB_POOL_RECYCLE_SECONDS,
-    connect_args=tls_connect_args(settings.DATABASE_URL),
+    connect_args=tls_connect_args(_DATABASE_URL),
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

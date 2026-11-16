@@ -212,6 +212,17 @@ class HardeningTests(unittest.TestCase):
         self.assertEqual(tls_connect_args("postgresql+psycopg2://u:p@ep-x.neon.tech/db?sslmode=verify-full"), {})
         self.assertEqual(tls_connect_args("postgresql+psycopg2://u:p@localhost:5432/kavi"), {})
 
+    def test_plain_postgres_urls_use_the_bundled_driver(self):
+        from app.core.database import database_url
+
+        # Neon and Render hand out driverless URLs; newer SQLAlchemy would pick psycopg 3 for them.
+        self.assertEqual(database_url("postgresql://u:p@ep-x.neon.tech/db?sslmode=require").drivername, "postgresql+psycopg2")
+        self.assertEqual(database_url("postgres://u:p@host/db").drivername, "postgresql+psycopg2")
+        self.assertEqual(database_url("postgresql+psycopg2://u:p@localhost/kavi").drivername, "postgresql+psycopg2")
+        url = database_url("postgresql://u:p%40ss@ep-x.neon.tech/db?sslmode=require&channel_binding=require")
+        self.assertEqual(url.password, "p@ss")
+        self.assertEqual(dict(url.query), {"sslmode": "require", "channel_binding": "require"})
+
     def test_every_expensive_prefix_is_a_real_route(self):
         from app.core.middleware import EXPENSIVE_PATH_PREFIXES
         from app.main import app
