@@ -35,7 +35,7 @@ Answers are grounded in the evidence KAVI has indexed. When the evidence is miss
 
 | Feature | What it does |
 |---|---|
-| **Agentic, streaming chat** | Gemini function-calling over KAVI's own tools (memory search, PRs, live code, blame, experts, promises). Answers stream with a visible reasoning trace and cite `[PR #12]` / `path:10-24` as clickable chips. Rate answers with thumbs up/down. |
+| **Agentic, streaming chat** | Gemini function-calling over KAVI's own tools (memory search, PRs, live code, blame, experts, promises). Answers stream with a visible reasoning trace and cite `[PR #12]` / `path:10-24` as clickable chips. Rate answers with thumbs up/down, export a chat, or clear every chat for a repository. |
 | **Hybrid semantic memory** | Free Gemini embeddings fused with PostgreSQL full-text and keyword search (Reciprocal Rank Fusion). Works without pgvector; falls back to a local embedder offline. |
 | **Why-Lens** | Every line of a file mapped through GitHub blame to the PR that introduced it, with a file-history slider to step back in time. |
 | **Guardian** | A GitHub Action that reviews new PRs against remembered decisions, estimates change impact and suggests reviewers. KAVI's GitHub App stays read-only. |
@@ -51,6 +51,7 @@ Everything runs on free tiers (Gemini API free tier, Neon, Render, Vercel, GitHu
 
 - **Light and dark themes** that follow the device by default; switch them from the header or Settings.
 - **Animated landing page**: a WebGL cloudscape with a parallax hill, a scroll-assembled "Remember why" section and a tear-away footer. All motion respects *reduce motion*.
+- **Chat**: a centred start screen that moves the composer down after the first question, a black pill composer, and a ChatGPT-style "thinking" shimmer while KAVI works.
 - **Phone layout**: a compact bottom dock, a header menu for everything else, and a full-width chat composer.
 - **Error handling**: a friendly crash page with *Try again*, a "Lost in the clouds" 404 page, an offline bar, and plain-language error messages. Server errors carry a short reference id instead of internal details.
 
@@ -183,6 +184,7 @@ Database integration tests run when `TEST_DATABASE_URL` points to a database who
 - GitHub tokens are encrypted at rest (Fernet). The GitHub App is read-only and uses PKCE.
 - Per-user rate limits (stricter for AI-heavy routes), request size limits, strict security headers and CSP.
 - Unexpected server errors are logged with a request id and returned as a generic message, never as internal text.
+- Connections to a remote database require TLS; SQL uses bound parameters throughout.
 - Repository ids from the address bar are validated before they reach an API path; login redirects only go to same-site paths.
 
 Found a vulnerability? Please open a private security advisory on GitHub rather than a public issue.

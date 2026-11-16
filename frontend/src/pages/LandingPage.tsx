@@ -369,8 +369,8 @@ export function LandingPage() {
         .k-header-right { display: flex; align-items: center; gap: 10px; }
         .k-theme-btn {
           width: 42px; height: 42px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
-          background: rgb(255 255 255 / 0.16); color: #fff; border: 1.5px solid rgb(255 255 255 / 0.4); cursor: pointer;
-          backdrop-filter: blur(8px); transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+          background: rgb(255 255 255 / 0.2); color: #fff; border: 1.5px solid rgb(255 255 255 / 0.45); cursor: pointer;
+          transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
         }
         .k-theme-btn:hover { background: rgb(255 255 255 / 0.26); }
         .k-theme-btn:focus-visible { outline: 2px solid var(--kv-sky-1); outline-offset: 2px; }
@@ -384,7 +384,7 @@ export function LandingPage() {
         .k-header-inner.on .k-nav-link { color: var(--kv-ink); }
         .k-header-inner.on .k-nav-link:hover { background: rgb(var(--kv-ink-rgb) / 0.08); }
         .k-header-right { position: relative; z-index: 10; }
-        .k-btn-dark { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: rgb(255 255 255 / 0.16); color: #fff; border: 1.5px solid rgb(255 255 255 / 0.4); border-radius: 9999px; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease; backdrop-filter: blur(8px); }
+        .k-btn-dark { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: rgb(255 255 255 / 0.2); color: #fff; border: 1.5px solid rgb(255 255 255 / 0.45); border-radius: 9999px; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease; }
         @media (max-width: 768px) { .k-btn-dark { font-size: 16px; padding: 8px 16px; } }
         .k-btn-dark:hover { background: rgb(255 255 255 / 0.26); }
         .k-header-inner.on .k-btn-dark { background: var(--kv-solid); color: var(--kv-on-solid); border-color: transparent; }
@@ -582,8 +582,8 @@ export function LandingPage() {
 
         .k-hero-new {
           display: inline-flex; align-items: center; gap: 10px; margin-top: 28px; padding: 6px 16px 6px 6px;
-          border-radius: 9999px; border: none; cursor: pointer; background: rgb(var(--kv-veil-rgb) / 0.75);
-          backdrop-filter: blur(10px); color: var(--kv-ink); font-size: 14px; font-weight: 600;
+          border-radius: 9999px; border: none; cursor: pointer; background: rgb(var(--kv-veil-rgb) / 0.86);
+          color: var(--kv-ink); font-size: 14px; font-weight: 600;
           transition: transform 0.25s var(--kv-spring), background 0.2s ease;
         }
         .k-hero-new:hover { transform: translateY(-2px); background: rgb(var(--kv-veil-rgb) / 0.95); }

@@ -41,6 +41,12 @@ export const listConversations = async (api: AxiosInstance, repoId: string) => {
   return ((data?.conversations ?? []) as ConversationSummary[])
 }
 
+/** Deletes every chat the signed-in user has in this repository. */
+export const clearConversations = async (api: AxiosInstance, repoId: string) => {
+  const { data } = await api.delete('/chat/conversations', { params: { repo_id: repoId } })
+  return Number(data?.deleted ?? 0)
+}
+
 export const getConversation = async (api: AxiosInstance, conversationId: string) => {
   const { data } = await api.get(`/chat/conversations/${conversationId}`)
   return data as { conversation: ConversationSummary; messages: ConversationMessage[] }

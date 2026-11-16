@@ -143,6 +143,7 @@ All endpoints below require a Firebase bearer token unless noted.
 
 ### Chat
 - `POST /chat/stream`: same body as `/chat/query`; responds with Server-Sent Events `meta`, `step`, `note`, `token`, `legacy`, `done`, `error`.
+- `DELETE /chat/conversations?repo_id=`: deletes all of the caller's conversations in that repository (messages, answer feedback and chat-learned memory go with them) and returns `{deleted}`. Other users' chats are untouched.
 - `POST /chat/messages/{message_id}/feedback`: `{rating: 1 | -1, reason?}` records a thumbs up or down on an assistant answer (one per user, updated on repeat).
 
 ### Knowledge

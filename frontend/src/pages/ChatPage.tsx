@@ -7,7 +7,9 @@ import { ConversationHistory } from '../features/chat/ConversationHistory'
 import { streamChat, type AgentTraceStep } from '../services/chatStream'
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
-import { ChatMode, getConversation, queryChat } from '../services/chatService'
+import { ChatMode, clearConversations, getConversation, queryChat } from '../services/chatService'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { getApiErrorMessage } from '../utils/errors'
 import { getRepositoryStatus } from '../services/githubService'
 import { getGitVisualization, listKnowledgeEntries, listKnowledgeFiles } from '../services/knowledgeService'
 import { ChatWorkspace } from '../features/chat/workspace/ChatWorkspace'
@@ -333,6 +335,28 @@ export function ChatPage() {
     setStreamingIndex(null)
   }, [welcomeName])
 
+  const [clearOpen, setClearOpen] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [historyVersion, setHistoryVersion] = useState(0)
+  const clearAllChats = async () => {
+    if (!repoId) return
+    setClearing(true)
+    try {
+      const deleted = await clearConversations(api, repoId)
+      if (chatStorageKey) {
+        try { window.localStorage.removeItem(chatStorageKey) } catch { /* storage may be unavailable */ }
+      }
+      startNewConversation()
+      setHistoryVersion((version) => version + 1)
+      setClearOpen(false)
+      toast.success('All chats cleared', { description: deleted === 1 ? '1 conversation deleted.' : `${deleted} conversations deleted.` })
+    } catch (error) {
+      toast.error("Couldn't clear chats", { description: getApiErrorMessage(error, 'Please try again.') })
+    } finally {
+      setClearing(false)
+    }
+  }
+
   const openConversation = useCallback(async (conversationId: string) => {
     try {
       const { messages: rows } = await getConversation(api, conversationId)
@@ -381,9 +405,11 @@ export function ChatPage() {
   }
 
   return (
+    <>
     <ChatWorkspace
       repoId={repoId}
       repositoryName={repositoryName}
+      userName={welcomeName}
       messages={messages}
       chatLoading={chatLoading}
       chatInput={chatInput}
@@ -404,10 +430,11 @@ export function ChatPage() {
       gitVisualizationLoading={gitVisualizationLoading}
       gitVisualizationError={gitVisualizationError}
       timeTravel={timeTravel}
-      controls={{ onStop: stopAnswer, onRegenerate: regenerateAnswer, onEditLast: editLastQuestion, onExport: exportConversation, onNewChat: startNewConversation }}
+      controls={{ onStop: stopAnswer, onRegenerate: regenerateAnswer, onEditLast: editLastQuestion, onExport: exportConversation, onNewChat: startNewConversation, onClearAll: () => setClearOpen(true) }}
       setTimeTravel={setTimeTravel}
       renderHistory={(close) => (
         <ConversationHistory
+          key={historyVersion}
           repoId={repoId}
           activeConversationId={chatConversationId}
           onNew={() => { startNewConversation(); close() }}
@@ -415,5 +442,16 @@ export function ChatPage() {
         />
       )}
     />
+    <ConfirmDialog
+      open={clearOpen}
+      title="Clear all chats?"
+      description={<>This permanently deletes every conversation you have had about <strong>{repositoryName}</strong>, and what KAVI learned from them. It can't be undone.</>}
+      confirmLabel="Delete all chats"
+      destructive
+      busy={clearing}
+      onConfirm={() => { void clearAllChats() }}
+      onCancel={() => setClearOpen(false)}
+    />
+    </>
   )
 }

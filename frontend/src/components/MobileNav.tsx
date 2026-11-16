@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent }
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Clock3, FileDown, FileText, FolderGit2, LogOut, MessageSquarePlus, MessageSquareText, MoreHorizontal, Network, ScanLine, Settings, X, type LucideIcon } from 'lucide-react'
+import { Clock3, FileDown, FileText, FolderGit2, LogOut, MessageSquarePlus, MessageSquareText, MoreHorizontal, Network, ScanLine, Settings, Trash2, X, type LucideIcon } from 'lucide-react'
 
 import { useChatHeaderActions } from '../features/chat/chatHeaderActions'
 
@@ -111,6 +111,13 @@ export function MobileHeaderMenu({ resolve, onLogout }: Props) {
                     </button>
                     <button type="button" className="kv-sheet-item" onClick={() => exportAs('pdf')}>
                       <FileDown size={17} strokeWidth={1.75} /> Save as PDF
+                    </button>
+                  </>
+                )}
+                {onChatPage && (
+                  <>
+                    <button type="button" className="kv-sheet-item is-danger" onClick={() => { setOpen(false); chat.onClearAll() }}>
+                      <Trash2 size={17} strokeWidth={1.75} /> Clear all chats
                     </button>
                     <div className="kv-sheet-divider" role="separator" />
                   </>

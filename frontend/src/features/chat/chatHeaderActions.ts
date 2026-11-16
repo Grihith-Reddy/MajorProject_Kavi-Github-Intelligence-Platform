@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Lets the chat page put its actions (New chat, Export) into the phone header's
+ * Lets the chat page put its actions (New chat, Export, Clear all chats) into the phone header's
  * More menu without threading props through the app shell.
  */
 export interface ChatHeaderActions {
   onNewChat: () => void
   onExport: (format: 'markdown' | 'pdf') => void
+  onClearAll: () => void
   hasConversation: boolean
 }
 

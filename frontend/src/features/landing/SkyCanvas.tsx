@@ -64,13 +64,14 @@ void main() {
   // Clouds: two octaves of domain-warped noise drifting sideways; scrolling lifts them a little
   float t = uTime * 0.011;
   vec2 q = p * vec2(1.05, 1.9) + vec2(t, uScroll * 0.35);
-  float c = fbm(q + fbm(q * 0.7 + vec2(t * 0.6, -t * 0.3)) * 0.9);
+  float warp = fbm(q * 0.7 + vec2(t * 0.6, -t * 0.3)) * 0.9;
+  float c = fbm(q + warp);
   // fbm here spans roughly 0.18-0.68, so the cloud thresholds sit inside that range
   float cover = smoothstep(0.33, 0.56, c) * smoothstep(0.02, 0.38, uv.y);
   vec3 shade = mix(vec3(0.74, 0.8, 0.88), vec3(0.15, 0.19, 0.27), uNight);
   vec3 bright = mix(vec3(1.0, 1.0, 1.0), vec3(0.36, 0.42, 0.53), uNight);
   // bright tops, soft grey undersides: compare with the noise a little lower down
-  float under = fbm(q + vec2(0.0, -0.18) + fbm(q * 0.7) * 0.9);
+  float under = fbm(q + vec2(0.0, -0.18) + warp); // reuses the warp: three noise stacks per pixel, not four
   vec3 cloud = mix(shade, bright, smoothstep(0.36, 0.62, c) * (0.65 + 0.35 * smoothstep(0.0, 0.12, c - under)));
   col += vec3(star) * 0.85 * uNight * (1.0 - cover);
   col = mix(col, cloud, cover * mix(0.94, 0.78, uNight));
@@ -83,6 +84,8 @@ void main() {
 `
 
 const RENDER_SCALE = 0.55 // soft clouds look the same at half resolution and cost a quarter
+const MAX_WIDTH = 900 // pixel budget for very wide or high-density screens
+const FRAME_MS = 1000 / 30 - 2 // the clouds drift slowly; 30 fps looks the same and halves GPU time
 
 function isDark() {
   return document.documentElement.getAttribute('data-theme') === 'dark'
@@ -130,11 +133,12 @@ export function SkyCanvas({ className }: { className?: string }) {
     let nightTarget = night
     let visible = true
     let raf = 0
+    let lastDraw = 0
     const start = performance.now() - 40_000 // start mid-drift so the first frame already has clouds
 
     const resize = () => {
       // Layout size, not getBoundingClientRect: the hero card opens with a scale transform.
-      const scale = Math.min(window.devicePixelRatio || 1, 1.5) * RENDER_SCALE
+      const scale = Math.min(Math.min(window.devicePixelRatio || 1, 1.5) * RENDER_SCALE, MAX_WIDTH / Math.max(canvas.clientWidth, 1))
       canvas.width = Math.max(1, Math.round(canvas.clientWidth * scale))
       canvas.height = Math.max(1, Math.round(canvas.clientHeight * scale))
       gl.viewport(0, 0, canvas.width, canvas.height)
@@ -152,8 +156,8 @@ export function SkyCanvas({ className }: { className?: string }) {
     }
 
     const loop = (now: number) => {
-      draw(now)
       const settling = night !== nightTarget
+      if (settling || now - lastDraw >= FRAME_MS) { lastDraw = now; draw(now) }
       if (visible && (!reduceMotion.matches || settling)) raf = requestAnimationFrame(loop)
       else raf = 0
     }
