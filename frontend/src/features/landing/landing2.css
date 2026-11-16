@@ -178,7 +178,8 @@
   --gm-fill-a: rgb(214 230 250 / 0.42); --gm-fill-b: rgb(70 104 150 / 0.4); --gm-fill-c: rgb(170 198 232 / 0.4);
   --gm-rim-a: rgb(232 242 255 / 0.95); --gm-rim-b: rgb(20 36 60 / 0.75);
 }
-.gm-body { position: absolute; inset: 0; animation: gm-float 7s ease-in-out infinite; }
+/* Float on the compositor: pixel offsets in translate3d with will-change, so it glides instead of stepping. */
+.gm-body { position: absolute; inset: 0; will-change: transform; transform: translate3d(0, 0, 0); animation: gm-float 6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 .gm-frost, .gm-sheen { position: absolute; inset: 0; mask-size: 100% 100%; -webkit-mask-size: 100% 100%; mask-repeat: no-repeat; -webkit-mask-repeat: no-repeat; }
 .gm-frost { background: rgb(255 255 255 / 0.06); backdrop-filter: blur(7px) saturate(1.5) brightness(1.08); -webkit-backdrop-filter: blur(7px) saturate(1.5) brightness(1.08); }
 .gm-sheen {
@@ -188,13 +189,15 @@
 .gm-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 10px 22px rgb(20 45 70 / 0.32)) drop-shadow(0 1px 1px rgb(20 45 70 / 0.25)); }
 .gm-shadow {
   position: absolute; left: 14%; right: 14%; bottom: -5%; height: 11%; border-radius: 50%;
+  will-change: transform, opacity; animation: gm-shadow 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   background: radial-gradient(closest-side, rgb(24 44 20 / 0.34), transparent); filter: blur(2px);
 }
 :root[data-theme='dark'] .gm-shadow { background: radial-gradient(closest-side, rgb(0 0 0 / 0.5), transparent); }
-@keyframes gm-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3.5%); } }
+@keyframes gm-float { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -8px, 0); } }
+@keyframes gm-shadow { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(0.86); opacity: 0.7; } }
 @keyframes gm-sheen { 0% { background-position: 160% 0; } 45%, 100% { background-position: -60% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .gm-body, .gm-sheen { animation: none; }
+  .gm-body, .gm-sheen, .gm-shadow { animation: none; }
   .px-img { transition: none; }
 }
