@@ -1,7 +1,7 @@
 import { Fragment, useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { FileCode2, GitPullRequest } from 'lucide-react'
 
+import { FileChip, PrChip, type FileInfo, type PrInfo } from './CitationChips'
 import { CodeSnippetCard } from './CodeSnippetCard'
 
 /**
@@ -110,42 +110,8 @@ function parseMarkdown(source: string): Block[] {
 
 interface InlineContext {
   repoId?: string | null
-  prUrls: Record<number, string | undefined>
-}
-
-function PrChip({ number, url }: { number: number; url?: string }) {
-  const body = (
-    <>
-      <GitPullRequest size={11} strokeWidth={2} />
-      PR #{number}
-    </>
-  )
-  return url ? (
-    <a className="kv-chip" href={url} target="_blank" rel="noreferrer" title={`Open PR #${number} on GitHub`}>{body}</a>
-  ) : (
-    <span className="kv-chip">{body}</span>
-  )
-}
-
-function FileChip({ path, start, end, repoId }: { path: string; start?: string; end?: string; repoId?: string | null }) {
-  const name = path.split('/').pop() ?? path
-  const range = start ? `${start}${end ? `–${end}` : ''}` : ''
-  const label = (
-    <>
-      <FileCode2 size={11} strokeWidth={2} />
-      <span className="kv-chip-name">{name}</span>
-      {range && <span className="kv-chip-range">{range}</span>}
-    </>
-  )
-  if (!repoId) return <span className="kv-chip" title={path}>{label}</span>
-  const params = new URLSearchParams({ repoId, path })
-  if (start) params.set('line', start)
-  if (end) params.set('end', end)
-  return (
-    <Link className="kv-chip" to={`/why?${params.toString()}`} title={`Open ${path} in Why-Lens`}>
-      {label}
-    </Link>
-  )
+  prInfo: Record<number, PrInfo>
+  fileInfo: Record<string, FileInfo>
 }
 
 function renderInline(text: string, ctx: InlineContext): ReactNode[] {
@@ -160,7 +126,7 @@ function renderInline(text: string, ctx: InlineContext): ReactNode[] {
       const inner = token.slice(1, -1)
       const fileRef = inner.match(FILE_REF_RE)
       if (fileRef && (inner.includes('/') || fileRef[2])) {
-        nodes.push(<FileChip key={key++} path={fileRef[1]} start={fileRef[2]} end={fileRef[3]} repoId={ctx.repoId} />)
+        nodes.push(<FileChip key={key++} path={fileRef[1]} start={fileRef[2]} end={fileRef[3]} repoId={ctx.repoId} info={ctx.fileInfo[fileRef[1]] ?? ctx.fileInfo[fileRef[1].split('/').pop() ?? '']} />)
       } else {
         nodes.push(<code key={key++} className="kv-inline-code">{inner}</code>)
       }
@@ -169,7 +135,7 @@ function renderInline(text: string, ctx: InlineContext): ReactNode[] {
     } else if (match[3]) {
       const number = Number(token.match(/#(\d+)/)?.[1])
       const explicit = token.match(/\]\(([^)]*)\)/)?.[1]
-      nodes.push(<PrChip key={key++} number={number} url={explicit || ctx.prUrls[number]} />)
+      nodes.push(<PrChip key={key++} number={number} info={{ ...ctx.prInfo[number], url: explicit || ctx.prInfo[number]?.url }} />)
     } else if (match[4]) {
       const label = token.slice(1, token.indexOf(']('))
       const href = token.slice(token.indexOf('](') + 2, -1)
@@ -192,14 +158,42 @@ export function MarkdownMessage({
   streaming = false,
   repoId,
   prUrls = {},
+  sources = [],
 }: {
   content: string
   streaming?: boolean
   repoId?: string | null
   prUrls?: Record<number, string | undefined>
+  sources?: Array<Record<string, unknown>>
 }) {
   const blocks = useMemo(() => parseMarkdown(content), [content])
-  const ctx: InlineContext = { repoId, prUrls }
+  const ctx: InlineContext = useMemo(() => {
+    const prInfo: Record<number, PrInfo> = {}
+    const fileInfo: Record<string, FileInfo> = {}
+    for (const [number, url] of Object.entries(prUrls)) prInfo[Number(number)] = { url }
+    for (const source of sources) {
+      const number = Number(source.pr_number)
+      if (number) {
+        prInfo[number] = {
+          url: (source.pr_url as string) || prInfo[number]?.url,
+          title: source.pr_title as string,
+          intent: source.intent as string,
+          summary: source.summary as string,
+        }
+      }
+      const files = Array.isArray(source.files) ? (source.files as Array<Record<string, unknown>>) : []
+      for (const file of files) {
+        const path = String(file.file_path || '')
+        if (!path) continue
+        const info = { excerpt: (source.excerpt as string) || undefined, start: Number(file.start_line) || undefined, end: Number(file.end_line) || undefined }
+        if (!fileInfo[path] || info.excerpt) {
+          fileInfo[path] = info
+          fileInfo[path.split('/').pop() ?? path] = info
+        }
+      }
+    }
+    return { repoId, prInfo, fileInfo }
+  }, [repoId, prUrls, sources])
 
   return (
     <div className="kv-md">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
+import { useToast } from '../features/toast/toastContext'
 import { useAuth } from '../features/auth/useAuth'
 import { ConversationHistory } from '../features/chat/ConversationHistory'
 import { streamChat, type AgentTraceStep } from '../services/chatStream'
@@ -66,7 +67,7 @@ export function ChatPage() {
       const parsed = JSON.parse(raw) as { messages?: unknown; chatSources?: unknown; conversationId?: unknown }
       const persistedMessages = Array.isArray(parsed.messages)
         ? parsed.messages.filter((item): item is ChatEntry => Boolean(item) && typeof item === 'object' && (item as ChatEntry).role !== undefined && ((item as ChatEntry).role === 'assistant' || (item as ChatEntry).role === 'user') && typeof (item as ChatEntry).content === 'string')
-            .map((item) => ({ role: item.role, content: item.content, structured: item.structured && typeof item.structured === 'object' ? (item.structured as StructuredAnswer) : undefined, format: item.format === 'markdown' ? 'markdown' as const : undefined, trace: Array.isArray(item.trace) ? item.trace : undefined, prUrls: item.prUrls && typeof item.prUrls === 'object' ? item.prUrls : undefined, messageId: typeof item.messageId === 'string' ? item.messageId : undefined, asOf: typeof item.asOf === 'string' ? item.asOf : undefined }))
+            .map((item) => ({ role: item.role, content: item.content, structured: item.structured && typeof item.structured === 'object' ? (item.structured as StructuredAnswer) : undefined, format: item.format === 'markdown' ? 'markdown' as const : undefined, trace: Array.isArray(item.trace) ? item.trace : undefined, prUrls: item.prUrls && typeof item.prUrls === 'object' ? item.prUrls : undefined, messageId: typeof item.messageId === 'string' ? item.messageId : undefined, sources: Array.isArray(item.sources) ? item.sources : undefined, asOf: typeof item.asOf === 'string' ? item.asOf : undefined }))
         : []
       const persistedSources = Array.isArray(parsed.chatSources) ? parsed.chatSources : []
       const persistedConversationId = typeof parsed.conversationId === 'string' && parsed.conversationId.trim() ? parsed.conversationId.trim() : null
@@ -208,6 +209,7 @@ export function ChatPage() {
               content: finalAnswer ?? message.content,
               trace: Array.isArray(data.trace) ? (data.trace as AgentTraceStep[]) : message.trace,
               prUrls,
+              sources,
               messageId: typeof data.assistant_message_id === 'string' && data.assistant_message_id ? data.assistant_message_id : message.messageId,
               live: false,
             }))
@@ -254,6 +256,74 @@ export function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAsk, chatHydrated, repoId])
 
+  const toast = useToast()
+
+  const stopAnswer = useCallback(() => {
+    if (!streamAbortRef.current) return
+    streamAbortRef.current.abort()
+    updateLiveMessage((message) => ({ ...message, live: false, content: message.content || '_Stopped before an answer was written._' }))
+    setChatLoading(false)
+  }, [updateLiveMessage])
+
+  const lastUserQuestion = () => [...messages].reverse().find((message) => message.role === 'user')?.content ?? ''
+
+  const dropLastTurn = () => {
+    setMessages((prev) => {
+      const lastUser = prev.map((message) => message.role).lastIndexOf('user')
+      return lastUser >= 0 ? prev.slice(0, lastUser) : prev
+    })
+  }
+
+  const regenerateAnswer = () => {
+    const question = lastUserQuestion()
+    if (!question || chatLoading) return
+    dropLastTurn()
+    window.setTimeout(() => { void handleSend(question) }, 0)
+  }
+
+  const editLastQuestion = () => {
+    const question = lastUserQuestion()
+    if (!question || chatLoading) return
+    dropLastTurn()
+    setChatInput(question)
+  }
+
+  const exportConversation = (format: 'markdown' | 'pdf') => {
+    const turns = messages.filter((message) => message.content.trim() && !message.live)
+    if (!turns.length) return
+    if (format === 'pdf') {
+      window.print()
+      return
+    }
+    const lines = [`# KAVI conversation: ${repositoryName}`, '', `Exported ${new Date().toLocaleString()}`, '']
+    for (const message of turns) {
+      if (message.role === 'user') {
+        lines.push(`## ${message.content.trim()}`, '')
+        continue
+      }
+      if (message.asOf) lines.push(`_As of ${message.asOf}_`, '')
+      lines.push(message.content.trim(), '')
+      const cited = (message.sources ?? []).filter((source) => source.pr_number)
+      if (cited.length) {
+        lines.push('**Sources**', '')
+        for (const source of cited.slice(0, 8)) {
+          const title = String(source.pr_title || '').trim()
+          const url = typeof source.pr_url === 'string' ? source.pr_url : ''
+          lines.push(`- PR #${source.pr_number}${title ? `: ${title}` : ''}${url ? ` (${url})` : ''}`)
+        }
+        lines.push('')
+      }
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `kavi-${repositoryName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.md`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success('Conversation exported', { description: 'Saved as a Markdown file.' })
+  }
+
   const startNewConversation = useCallback(() => {
     streamAbortRef.current?.abort()
     setMessages(defaultMessages(welcomeName))
@@ -281,6 +351,7 @@ export function ChatPage() {
             format: structured?.format === 'markdown' ? ('markdown' as const) : undefined,
             trace: structured?.trace,
             prUrls,
+            sources: (row.sources ?? undefined) as ChatSource[] | undefined,
             messageId: row.role === 'assistant' ? row.id : undefined,
             asOf: structured?.as_of ?? null,
           }
@@ -332,6 +403,7 @@ export function ChatPage() {
       gitVisualizationLoading={gitVisualizationLoading}
       gitVisualizationError={gitVisualizationError}
       timeTravel={timeTravel}
+      controls={{ onStop: stopAnswer, onRegenerate: regenerateAnswer, onEditLast: editLastQuestion, onExport: exportConversation, onNewChat: startNewConversation }}
       setTimeTravel={setTimeTravel}
       renderHistory={(close) => (
         <ConversationHistory

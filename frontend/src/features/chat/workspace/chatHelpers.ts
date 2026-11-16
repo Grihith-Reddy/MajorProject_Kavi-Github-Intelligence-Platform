@@ -80,3 +80,18 @@ export function resolveChatMode(input: string): ChatMode {
   if (value.includes('entire repo') || value.includes('whole repo')) return 'repo_overview'
   return 'default'
 }
+
+/** Up to three follow-up questions built from an answer's sources (no extra AI call). */
+export function followUpsFor(sources: Array<Record<string, unknown>> | undefined, asOf?: string | null): string[] {
+  const list = sources ?? []
+  const suggestions: string[] = []
+  const pr = list.find((source) => Number(source.pr_number))
+  const file = list.flatMap((source) => (Array.isArray(source.files) ? (source.files as Array<Record<string, unknown>>) : []))
+    .map((item) => String(item.file_path || ''))
+    .find(Boolean)
+  if (pr) suggestions.push(`What problem was PR #${pr.pr_number} solving, and what alternatives were considered?`)
+  if (file) suggestions.push(`Why does ${file.split('/').pop()} exist, and what would break if I changed it?`)
+  if (pr) suggestions.push(`Who knows the most about ${String(pr.pr_title || 'this area').slice(0, 60)}?`)
+  else if (!asOf) suggestions.push('What changed most recently, and why?')
+  return suggestions.slice(0, 3)
+}
