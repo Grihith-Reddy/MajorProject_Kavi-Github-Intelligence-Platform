@@ -239,3 +239,18 @@ export const startQualityRun = async (api: AxiosInstance, repoId: string) => {
   const { data } = await api.post(`/insights/repositories/${repoId}/quality/run`)
   return data as { run_id: string; status: string }
 }
+
+export interface RepositoryHealth {
+  synced_at?: string | null
+  pr_count: number
+  indexed_count: number
+  open_promises: number
+  kept_promises: number
+  at_risk_modules: number
+  single_expert_modules: number
+}
+
+export const getRepositoryHealth = async (api: AxiosInstance) => {
+  const { data } = await api.get('/insights/health')
+  return (data?.repositories ?? {}) as Record<string, RepositoryHealth>
+}
