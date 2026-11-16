@@ -190,6 +190,8 @@ export function TopNav() {
           }
         }
 
+        @media (max-width: 1024px) { .kavi-nav-btn-logout { display: none; } }
+
         @media (max-width: 420px) {
           .kavi-nav-logoname { display: none; }
           .kavi-nav-btn {
@@ -238,7 +240,7 @@ export function TopNav() {
           {/* Auth button */}
           <div className="kavi-nav-right">
             {isAuthenticated ? (
-              <button onClick={logout} className="kavi-nav-btn">
+              <button onClick={logout} className="kavi-nav-btn kavi-nav-btn-logout">
                 <LogOut size={14} />
                 Logout
               </button>

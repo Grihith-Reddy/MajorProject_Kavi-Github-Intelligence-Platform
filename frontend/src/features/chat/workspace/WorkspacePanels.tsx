@@ -1,40 +1,189 @@
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { AlertCircle, ArrowRight, FolderGit2, GitPullRequest } from 'lucide-react'
+import { AlertCircle, ArrowRight, FolderGit2, GitPullRequest, X } from 'lucide-react'
 import { GitVisualizationPanel } from './GitVisualizationPanel'
 import { WORKSPACE_PANEL_ITEMS, splitFilePath } from './chatHelpers'
 import { type WorkspaceOverlayProps, type WorkspacePanelId } from './chatTypes'
 
 // ─── Icon rail ────────────────────────────────────────────────────────────────
 
-export function WorkspaceIconRail({ activePanel, onToggle }: { activePanel: WorkspacePanelId | null; onToggle: (panel: WorkspacePanelId) => void }) {
+const HOVER_OPEN_MS = 90
+const HOVER_CLOSE_MS = 150
+const EASE_OUT = [0.16, 1, 0.3, 1] as const
+const EASE_IN = [0.7, 0, 0.84, 0] as const
+
+/** Mouse and trackpad only: touch tablets tap an icon to open its panel directly. */
+function useFinePointer() {
+  const [fine, setFine] = useState(() => typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+  useEffect(() => {
+    const query = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const onChange = () => setFine(query.matches)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+  return fine
+}
+
+interface RailProps {
+  activePanel: WorkspacePanelId | null
+  onToggle: (panel: WorkspacePanelId) => void
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
+}
+
+/**
+ * Collapsed, the rail is a column of icons. Hovering it (or tabbing into it) lays a wider
+ * layer over the chat where every icon grows its name, so nobody waits for a tooltip.
+ */
+export function WorkspaceIconRail({ activePanel, onToggle, expanded, onExpandedChange }: RailProps) {
+  const finePointer = useFinePointer()
+  const timer = useRef<number | null>(null)
+  const [focusedId, setFocusedId] = useState<WorkspacePanelId | null>(null)
+
+  const schedule = (open: boolean) => {
+    if (timer.current) window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => onExpandedChange(open), open ? HOVER_OPEN_MS : HOVER_CLOSE_MS)
+  }
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
+
+  const choose = (panel: WorkspacePanelId) => {
+    if (timer.current) window.clearTimeout(timer.current)
+    onExpandedChange(false)
+    onToggle(panel)
+  }
+
   return (
-    <aside className="db-icon-rail" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 8px', background: 'var(--kv-mist)', borderRadius: 24, border: '1px solid var(--kv-line)' }}>
-      {WORKSPACE_PANEL_ITEMS.map((item) => {
-        const Icon = item.icon
-        const active = activePanel === item.id
-        return (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => onToggle(item.id)}
-            title={item.label}
-            aria-label={item.label}
-            style={{
-              width: 40, height: 40,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 14,
-              border: active ? 'none' : '1px solid var(--kv-line)',
-              background: active ? 'var(--kv-solid)' : 'var(--kv-surface)',
-              color: active ? 'var(--kv-on-solid)' : 'rgb(var(--kv-ink-rgb) / 0.6)',
-              cursor: 'pointer',
-              transition: 'all 0.18s cubic-bezier(0.34,1.56,0.64,1)',
-            }}
+    <div
+      className="db-rail-wrap"
+      onPointerEnter={(event) => { if (finePointer && event.pointerType === 'mouse') schedule(true) }}
+      onPointerLeave={(event) => { if (event.pointerType === 'mouse') schedule(false) }}
+    >
+      <nav className="db-icon-rail" aria-label="Workspace panels">
+        {WORKSPACE_PANEL_ITEMS.map((item) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`db-rail-btn${activePanel === item.id ? ' is-active' : ''}`}
+              onClick={() => choose(item.id)}
+              onFocus={(event) => { if (event.currentTarget.matches(':focus-visible')) { setFocusedId(item.id); onExpandedChange(true) } }}
+              onBlur={() => { setFocusedId(null); onExpandedChange(false) }}
+              aria-label={item.label}
+              aria-pressed={activePanel === item.id}
+            >
+              <Icon size={16} />
+            </button>
+          )
+        })}
+      </nav>
+
+      <AnimatePresence>
+        {expanded && (
+          // Pointer layer over the real buttons above, which stay the accessible controls.
+          <motion.div
+            className="db-rail-expanded"
+            aria-hidden
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.15, ease: EASE_IN } }}
+            transition={{ duration: 0.2, ease: EASE_OUT }}
           >
-            <Icon size={16} />
-          </button>
-        )
-      })}
-    </aside>
+            {WORKSPACE_PANEL_ITEMS.map((item, index) => {
+              const Icon = item.icon
+              const active = activePanel === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  tabIndex={-1}
+                  className={`db-rail-item${active ? ' is-active' : ''}${focusedId === item.id ? ' is-focused' : ''}`}
+                  onClick={() => choose(item.id)}
+                >
+                  <span className={`db-rail-btn${active ? ' is-active' : ''}`}><Icon size={16} /></span>
+                  <motion.span
+                    className="db-rail-label"
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.02, duration: 0.15, ease: EASE_OUT }}
+                  >
+                    {item.label}
+                  </motion.span>
+                </button>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Phone menu ───────────────────────────────────────────────────────────────
+
+/**
+ * On phones the rail becomes one "Workspace" button that opens this bottom sheet.
+ * Portalled to <body> so it rises above the floating dock instead of the workspace's layer.
+ */
+export function WorkspaceMenuSheet({ open, activePanel, onClose, onChoose }: { open: boolean; activePanel: WorkspacePanelId | null; onClose: () => void; onChoose: (panel: WorkspacePanelId) => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null)
+  // Move focus into the sheet, and give it back to whatever opened it.
+  useEffect(() => {
+    if (!open) return
+    const opener = document.activeElement as HTMLElement | null
+    closeRef.current?.focus()
+    return () => opener?.focus?.()
+  }, [open])
+
+  const trapTab = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return
+    const items = event.currentTarget.querySelectorAll<HTMLElement>('button')
+    const first = items[0]
+    const last = items[items.length - 1]
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+  }
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.button type="button" className="kv-sheet-backdrop" aria-label="Close workspace menu" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+          <motion.div
+            className="kv-sheet"
+            role="dialog"
+            aria-modal="true"
+            onKeyDown={trapTab}
+            aria-label="Workspace"
+            initial={{ y: '110%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '110%' }}
+            transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+          >
+            <div className="kv-sheet-head">
+              <span className="kv-eyebrow">Workspace</span>
+              <button ref={closeRef} type="button" className="kv-icon-btn" onClick={onClose} aria-label="Close workspace menu"><X size={14} /></button>
+            </div>
+            {WORKSPACE_PANEL_ITEMS.map((item) => {
+              const Icon = item.icon
+              const active = activePanel === item.id
+              return (
+                <button key={item.id} type="button" className={`kv-sheet-item kv-sheet-item-rich${active ? ' active' : ''}`} onClick={() => onChoose(item.id)}>
+                  <span className={`db-rail-btn${active ? ' is-active' : ''}`}><Icon size={16} /></span>
+                  <span className="kv-sheet-item-text">
+                    <span>{item.label}</span>
+                    <small>{item.hint}</small>
+                  </span>
+                </button>
+              )
+            })}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
   )
 }
 

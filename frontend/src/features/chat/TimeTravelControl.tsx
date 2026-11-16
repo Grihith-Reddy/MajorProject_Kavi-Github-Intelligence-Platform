@@ -28,8 +28,8 @@ export function TimeTravelButton({ value, onChange, disabled }: { value: string 
         onClick={() => setOpen((current) => !current)}
         disabled={disabled}
         aria-expanded={open}
-        aria-label="Time-Travel: ask about the repository on a past date"
-        title="Time-Travel"
+        aria-label="Ask about a past date"
+        data-tip="Ask about a past date"
       >
         <History size={15} />
       </button>

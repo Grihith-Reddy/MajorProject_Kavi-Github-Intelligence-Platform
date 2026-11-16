@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Download, FileDown, FileText, Loader2, MessageSquarePlus, Send, Square } from 'lucide-react'
+import { Download, FileDown, FileText, Loader2, Menu, MessageSquarePlus, Send, Square } from 'lucide-react'
 import { AgentTrace } from '../../../features/chat/AgentTrace'
 import { AnswerFeedback } from '../../../features/chat/AnswerFeedback'
 import { TimeTravelBanner, TimeTravelButton } from '../../../features/chat/TimeTravelControl'
@@ -14,7 +14,7 @@ import { type ChatPaneProps } from './chatTypes'
 
 // ─── Chat pane ────────────────────────────────────────────────────────────────
 
-export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete }: ChatPaneProps) {
+export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages, chatLoading, chatInput, setChatInput, noPrContext, onSend, messagesEndRef, streamingIndex, onAssistantStreamComplete, onOpenMenu, menuOpen }: ChatPaneProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const assistantMessageRefs = useRef<Record<number, HTMLElement | null>>({})
 
@@ -70,15 +70,21 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
 
   return (
     <section className="db-chat-pane" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--kv-mist)', borderRadius: 24, border: '1px solid var(--kv-line)', overflow: 'hidden' }}>
-      {questionCount > 0 && (
-        <div className="kv-chat-toolbar">
+      <div className={`kv-chat-toolbar${questionCount === 0 ? ' is-bare' : ''}`}>
+        {/* Phones: the workspace rail collapses into this one button */}
+        <button type="button" className="kv-chat-menu-btn" onClick={onOpenMenu} aria-haspopup="dialog" aria-expanded={menuOpen}>
+          <Menu size={16} /> Workspace
+        </button>
+        {questionCount > 0 && (
           <span className="kv-chat-toolbar-meta">{questionCount} question{questionCount === 1 ? '' : 's'} in this conversation</span>
+        )}
+        {questionCount > 0 && (
           <div className="kv-chat-toolbar-actions">
-            <button type="button" className="kv-msg-action" onClick={controls.onNewChat} aria-label="New conversation" title="New conversation">
+            <button type="button" className="kv-msg-action" onClick={controls.onNewChat} aria-label="Start new chat" data-tip="Start new chat" data-tip-pos="below">
               <MessageSquarePlus size={14} />
             </button>
             <div className="kv-export">
-              <button type="button" className="kv-msg-action" onClick={() => setExportOpen((open) => !open)} aria-expanded={exportOpen} aria-label="Export conversation" title="Export conversation">
+              <button type="button" className="kv-msg-action" onClick={() => setExportOpen((open) => !open)} aria-expanded={exportOpen} aria-label="Export chat" data-tip="Export chat" data-tip-pos="below">
                 <Download size={14} />
               </button>
               <AnimatePresence>
@@ -98,8 +104,8 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
               </AnimatePresence>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Messages */}
       <div className="db-chat-messages" ref={messagesContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 20px 8px', display: 'flex', flexDirection: 'column', gap: 12, scrollbarWidth: 'none' }}>
@@ -257,11 +263,12 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(chatInput) } }}
             rows={1}
             disabled={chatLoading}
-            placeholder="Ask about architecture, PR evolution, or type 'Explain Entire Repo'…"
-            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink)', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0 }}
+            aria-label="Ask KAVI about this repository"
+            placeholder="Ask about this repository…"
+            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', boxShadow: 'none', fontFamily: "'Archivo', sans-serif", fontSize: 14, color: 'var(--kv-ink)', background: 'transparent', minHeight: 24, maxHeight: 120, lineHeight: 1.5, padding: 0, scrollbarWidth: 'none' }}
           />
           {chatLoading ? (
-            <button className="db-send-btn kv-stop-btn" type="button" onClick={controls.onStop} aria-label="Stop answering" title="Stop">
+            <button className="db-send-btn kv-stop-btn" type="button" onClick={controls.onStop} aria-label="Stop answering" data-tip="Stop answering">
               <Square size={12} fill="currentColor" />
             </button>
           ) : (
@@ -292,28 +299,14 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
 
         @media (max-width: 820px) {
           .db-workspace-shell {
-            inset: 78px 10px 10px !important;
+            top: 78px !important;
+            left: 10px !important;
+            right: 10px !important;
           }
 
           .db-workspace-grid {
             grid-template-columns: 1fr !important;
-            grid-template-rows: auto minmax(0, 1fr);
-            gap: 10px !important;
-          }
-
-          .db-icon-rail {
-            flex-direction: row !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            width: 100%;
-            border-radius: 16px !important;
-            padding: 8px !important;
-          }
-
-          .db-icon-rail button {
-            width: 36px !important;
-            height: 36px !important;
-            border-radius: 12px !important;
+            gap: 0 !important;
           }
 
           .db-chat-pane {
@@ -340,8 +333,9 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
             gap: 8px !important;
           }
 
+          /* 16px keeps iOS Safari from zooming the page when the field is focused. */
           .db-chat-textarea {
-            font-size: 13px !important;
+            font-size: 16px !important;
           }
 
           .db-send-btn {
@@ -355,13 +349,15 @@ export function ChatPane({ controls, repoId, timeTravel, setTimeTravel, messages
             right: 0 !important;
             width: 100% !important;
             border-radius: 18px !important;
-            inset-block: 46px 0 !important;
+            inset-block: 0 !important;
           }
         }
 
         @media (max-width: 480px) {
           .db-workspace-shell {
-            inset: 74px 6px 8px !important;
+            top: 74px !important;
+            left: 6px !important;
+            right: 6px !important;
           }
 
           .db-quick-prompt-row button {

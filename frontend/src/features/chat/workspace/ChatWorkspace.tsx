@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { ChatPane } from './ChatPane'
-import { WorkspaceIconRail, WorkspaceOverlayPanel } from './WorkspacePanels'
+import { WorkspaceIconRail, WorkspaceMenuSheet, WorkspaceOverlayPanel } from './WorkspacePanels'
 import { WORKSPACE_PANEL_ITEMS } from './chatHelpers'
 import { type WorkspacePanelId, type WorkspaceRenderProps } from './chatTypes'
 
@@ -10,23 +10,26 @@ import { type WorkspacePanelId, type WorkspaceRenderProps } from './chatTypes'
 
 export function ChatWorkspace(props: WorkspaceRenderProps) {
   const [activePanel, setActivePanel] = useState<WorkspacePanelId | null>(null)
+  const [railExpanded, setRailExpanded] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    if (!activePanel) return
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setActivePanel(null) }
+    if (!activePanel && !menuOpen) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { setActivePanel(null); setMenuOpen(false) } }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activePanel])
+  }, [activePanel, menuOpen])
 
   const closePanel = () => setActivePanel(null)
   const handlePanelToggle = (panel: WorkspacePanelId) => setActivePanel((c) => (c === panel ? null : panel))
+  const chooseFromMenu = (panel: WorkspacePanelId) => { setMenuOpen(false); setActivePanel(panel) }
 
   return (
     <div className="db-workspace-shell" style={{ position: 'fixed', inset: '90px 16px 16px', zIndex: 20 }}>
       <div className="db-workspace-inner" style={{ position: 'relative', height: '100%', maxWidth: 1440, margin: '0 auto' }}>
         {/* Main layout: icon rail + chat */}
         <div className="db-workspace-grid" style={{ display: 'grid', gridTemplateColumns: '54px minmax(0,1fr)', gap: 12, height: '100%', minHeight: 0 }}>
-          <WorkspaceIconRail activePanel={activePanel} onToggle={handlePanelToggle} />
+          <WorkspaceIconRail activePanel={activePanel} onToggle={handlePanelToggle} expanded={railExpanded} onExpandedChange={setRailExpanded} />
           <ChatPane
             controls={props.controls}
             repoId={props.repoId}
@@ -41,8 +44,27 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
             messagesEndRef={props.messagesEndRef}
             streamingIndex={props.streamingIndex}
             onAssistantStreamComplete={props.onAssistantStreamComplete}
+            onOpenMenu={() => setMenuOpen(true)}
+            menuOpen={menuOpen}
           />
         </div>
+
+        {/* Blur the chat while the rail shows its names */}
+        <AnimatePresence>
+          {railExpanded && (
+            <motion.div
+              key="rail-backdrop"
+              className="db-rail-backdrop"
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.15, ease: [0.7, 0, 0.84, 0] } }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            />
+          )}
+        </AnimatePresence>
+
+        <WorkspaceMenuSheet open={menuOpen} activePanel={activePanel} onClose={() => setMenuOpen(false)} onChoose={chooseFromMenu} />
 
         {/* Slide-over panel */}
         <AnimatePresence>
@@ -86,6 +108,7 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
                   <button
                     type="button"
                     onClick={closePanel}
+                    aria-label="Close panel"
                     style={{ width: 30, height: 30, borderRadius: 9999, border: '1px solid var(--kv-line)', background: 'var(--kv-mist)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--kv-ink)' }}
                   >
                     <X size={14} />
