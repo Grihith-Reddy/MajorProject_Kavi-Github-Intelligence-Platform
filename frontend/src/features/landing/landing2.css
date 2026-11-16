@@ -117,3 +117,91 @@
 @media (prefers-reduced-motion: reduce) {
   .tl-vis, .tl-vis:hover { transition: none; transform: none; }
 }
+
+/* ── Parallax hero (adapted from 21st.dev / Osmo "Parallax") ─────────────
+   Lives inside .k-hero-card, which keeps its opening zoom. The card is the
+   size container, so every layer scales with it on any screen shape. */
+
+.px { position: absolute; inset: 0; container-type: size; overflow: hidden; isolation: isolate; }
+.px-layer { position: absolute; inset: 0; pointer-events: none; will-change: transform; }
+.px-sky { inset: -2% 0 -30% 0; }
+.px-sky-canvas { display: block; width: 100%; height: 100%; }
+
+/* Each artwork keeps its own aspect ratio, anchored to the bottom centre. Wide screens fit the
+   width; tall phones fit a share of the height and crop the sides instead. */
+.px-art { position: absolute; left: 50%; transform: translateX(-50%); container-type: inline-size; }
+.px-art-far   { bottom: -7cqh; width: max(100cqw, calc(66cqh * 1.792)); aspect-ratio: 2000 / 1116; }
+.px-art-mid   { bottom: -9cqh; width: max(100cqw, calc(60cqh * 1.792)); aspect-ratio: 2000 / 1116; }
+.px-art-front { bottom: -11cqh; width: max(100cqw, calc(56cqh * 1.903)); aspect-ratio: 2000 / 1051; }
+
+.px-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; transition: opacity 0.6s ease; }
+.px-img-night { opacity: 0; }
+:root[data-theme='dark'] .px-img-day { opacity: 0; }
+:root[data-theme='dark'] .px-img-night { opacity: 1; }
+
+/* Portrait screens: lift the landscape so it fills more than the bottom third. */
+@container (max-aspect-ratio: 1/1) {
+  .px-art-far   { bottom: -4cqh; width: max(100cqw, calc(84cqh * 1.792)); }
+  .px-art-mid   { bottom: -5cqh; width: max(100cqw, calc(76cqh * 1.792)); }
+  .px-art-front { bottom: -5cqh; width: max(100cqw, calc(70cqh * 1.903)); }
+}
+
+/* The "New in 2.0" pill stays on one line on phones. */
+.px .k-hero-new, .px .k-hero-new-tag { white-space: nowrap; }
+@media (max-width: 480px) {
+  .px .k-hero-new { font-size: 12.5px; gap: 8px; padding-right: 12px; }
+  .px .k-hero-new-tag { font-size: 11px; padding: 4px 8px; }
+}
+
+/* The wordmark stands behind the front hill, which hides its lower edge. */
+.px-wordmark {
+  position: absolute; left: 50%; bottom: 47%; transform: translateX(-50%); white-space: nowrap;
+  font-family: 'Audiowide', sans-serif; font-size: min(14cqw, 24vw, 28cqh); line-height: 0.8; letter-spacing: 0.02em;
+  color: rgb(255 255 255 / 0.94); text-shadow: 0 12px 48px rgb(40 70 100 / 0.2);
+}
+:root[data-theme='dark'] .px-wordmark { color: rgb(214 226 240 / 0.88); text-shadow: 0 12px 48px rgb(0 0 0 / 0.35); }
+
+/* The glass mark stands on the flat crest (47.5% from the top of the front artwork). */
+.px-art .px-mark { position: absolute; left: 50%; bottom: 52.2%; width: 8.2%; transform: translateX(-50%); }
+
+/* Headline sits in the sky; the existing fade-in after the card opens still applies. */
+.px-copy { position: absolute; inset: 0; z-index: 6; }
+.px .k-hero-center { justify-content: flex-start; padding-top: clamp(96px, 13cqh, 160px); }
+.px .k-hero-h1 { font-size: clamp(34px, min(6.2vw, 9.5cqh), 92px); line-height: 1.04; }
+
+/* ── Glass GitHub mark ── */
+.gm {
+  position: relative; aspect-ratio: 98 / 96;
+  --gm-fill-a: rgb(255 255 255 / 0.62); --gm-fill-b: rgb(118 168 210 / 0.38); --gm-fill-c: rgb(196 228 248 / 0.55);
+  --gm-rim-a: rgb(255 255 255 / 1); --gm-rim-b: rgb(46 92 136 / 0.7);
+}
+:root[data-theme='dark'] .gm {
+  --gm-fill-a: rgb(214 230 250 / 0.42); --gm-fill-b: rgb(70 104 150 / 0.4); --gm-fill-c: rgb(170 198 232 / 0.4);
+  --gm-rim-a: rgb(232 242 255 / 0.95); --gm-rim-b: rgb(20 36 60 / 0.75);
+}
+.gm-body { position: absolute; inset: 0; animation: gm-float 7s ease-in-out infinite; }
+.gm-frost, .gm-sheen { position: absolute; inset: 0; mask-size: 100% 100%; -webkit-mask-size: 100% 100%; mask-repeat: no-repeat; -webkit-mask-repeat: no-repeat; }
+.gm-frost { background: rgb(255 255 255 / 0.06); backdrop-filter: blur(7px) saturate(1.5) brightness(1.08); -webkit-backdrop-filter: blur(7px) saturate(1.5) brightness(1.08); }
+.gm-sheen {
+  background: linear-gradient(112deg, transparent 38%, rgb(255 255 255 / 0.6) 50%, transparent 62%);
+  background-size: 260% 100%; background-position: 160% 0; animation: gm-sheen 7s ease-in-out infinite 1.4s;
+}
+.gm-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 10px 22px rgb(20 45 70 / 0.32)) drop-shadow(0 1px 1px rgb(20 45 70 / 0.25)); }
+.gm-shadow {
+  position: absolute; left: 14%; right: 14%; bottom: -5%; height: 11%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(24 44 20 / 0.34), transparent); filter: blur(2px);
+}
+:root[data-theme='dark'] .gm-shadow { background: radial-gradient(closest-side, rgb(0 0 0 / 0.5), transparent); }
+@keyframes gm-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3.5%); } }
+@keyframes gm-sheen { 0% { background-position: 160% 0; } 45%, 100% { background-position: -60% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-body, .gm-sheen { animation: none; }
+  .px-img { transition: none; }
+}
+
+/* Day sky is a deeper blue than the old hero, so the headline turns white there (night keeps its pale tokens). */
+:root:not([data-theme='dark']) .px { --kv-hero-text-from: rgb(255 255 255 / 0.99); --kv-hero-text-to: rgb(226 242 252 / 0.97); }
+:root:not([data-theme='dark']) .px .k-hero-eyebrow { color: rgb(255 255 255 / 0.92); }
+.px .k-hero-h1 { filter: drop-shadow(0 4px 18px rgb(18 60 104 / 0.28)); }
+.px .k-hero-eyebrow { text-shadow: 0 1px 10px rgb(18 60 104 / 0.3); }

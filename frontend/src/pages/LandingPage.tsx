@@ -9,9 +9,9 @@ import { useAuth } from '../features/auth/useAuth'
 import { useAsync } from '../hooks/useAsync'
 import { useApiClient } from '../services/apiClient'
 import { getGitHubStatus } from '../services/githubService'
-import cloudImg from '../assets/cloud.webp'
 import { MemoryTimeline } from '../features/landing/MemoryTimeline'
 import { MemoryWindow } from '../features/landing/MemoryWindow'
+import { ParallaxHero } from '../features/landing/ParallaxHero'
 import '../features/landing/landing2.css'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -221,7 +221,6 @@ export function LandingPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [isReady, setIsReady] = useState(false)
-  const heroCloudRef = useRef<HTMLImageElement>(null)
   const scrolledRef = useRef(false)
   const latestScrollYRef = useRef(0)
   const scrollRafRef = useRef<number | null>(null)
@@ -249,9 +248,6 @@ export function LandingPage() {
       if (nextScrolled !== scrolledRef.current) {
         scrolledRef.current = nextScrolled
         setScrolled(nextScrolled)
-      }
-      if (heroCloudRef.current) {
-        heroCloudRef.current.style.transform = `translate3d(0, ${Math.round(y * -0.5)}px, 0)`
       }
     })
   }
@@ -353,18 +349,18 @@ export function LandingPage() {
         .k-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; z-index: 10; }
         .k-logo-mark { width: 32px; height: 32px; background: var(--kv-surface); border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: background 0.25s ease; }
         .k-header-inner.on .k-logo-mark { background: var(--kv-solid); }
-        .k-logo-name { font-family: 'Audiowide', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.06em;color: var(--kv-on-solid); transition: color 0.25s ease;  }
+        .k-logo-name { font-family: 'Audiowide', sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.06em; color: #fff; transition: color 0.25s ease; }
         .k-header-inner.on .k-logo-name { color: var(--kv-ink); }
         .k-nav { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; pointer-events: none; }
         @media (max-width: 768px) { .k-nav { display: none; } }
-        .k-nav-link { pointer-events: auto; padding: 8px 20px; border-radius: 9999px; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; color: var(--kv-on-solid); background: transparent; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.25s ease; }
+        .k-nav-link { pointer-events: auto; padding: 8px 20px; border-radius: 9999px; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; color: #fff; background: transparent; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.25s ease; }
         .k-nav-link:hover { background: rgb(var(--kv-veil-rgb) / 0.15); }
         .k-header-inner.on .k-nav-link { color: var(--kv-ink); }
         .k-header-inner.on .k-nav-link:hover { background: rgb(var(--kv-ink-rgb) / 0.08); }
         .k-header-right { position: relative; z-index: 10; }
-        .k-btn-dark { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: rgb(var(--kv-veil-rgb) / 0.18); color: var(--kv-on-solid); border: 1.5px solid rgb(var(--kv-veil-rgb) / 0.4); border-radius: 9999px; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease; backdrop-filter: blur(8px); }
+        .k-btn-dark { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; background: rgb(255 255 255 / 0.16); color: #fff; border: 1.5px solid rgb(255 255 255 / 0.4); border-radius: 9999px; cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 0.02em; white-space: nowrap; transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease; backdrop-filter: blur(8px); }
         @media (max-width: 768px) { .k-btn-dark { font-size: 16px; padding: 8px 16px; } }
-        .k-btn-dark:hover { background: rgb(var(--kv-veil-rgb) / 0.28); }
+        .k-btn-dark:hover { background: rgb(255 255 255 / 0.26); }
         .k-header-inner.on .k-btn-dark { background: var(--kv-solid); color: var(--kv-on-solid); border-color: transparent; }
         .k-header-inner.on .k-btn-dark:hover { background: var(--kv-solid-hover); }
 
@@ -387,10 +383,6 @@ export function LandingPage() {
         @media (max-width: 1200px) { .k-hero-card.expanded { border-radius: 28px; } }
         @media (max-width: 768px) { .k-hero-card.expanded { border-radius: 20px; } }
 
-        .hero-cloud {
-          position: absolute; width: 120%; max-width: none; left: -10%; bottom: -20%;
-          opacity: 0.6; mix-blend-mode: screen; pointer-events: none; z-index: 1; will-change: transform;
-        }
 
         .k-hero-center {
           position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -598,7 +590,6 @@ export function LandingPage() {
         @media (prefers-reduced-motion: reduce) {
           *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
           .word { opacity: 1 !important; transform: none !important; }
-          .hero-cloud { transform: none !important; }
           .k-hero-card { transform: none !important; opacity: 1 !important; }
         }
       `}</style>
@@ -629,13 +620,7 @@ export function LandingPage() {
 
           <section aria-labelledby="hero-heading" className="k-hero">
             <div className={`k-hero-card ${isReady ? 'expanded' : ''}`}>
-              <img
-                src={cloudImg}
-                alt=""
-                className="hero-cloud"
-                ref={heroCloudRef}
-                style={{ transform: 'translate3d(0, 0, 0)' }}
-              />
+              <ParallaxHero>
               <div className="k-hero-center">
                 <p className="k-hero-eyebrow">Pull-request intelligence</p>
                 <h1 id="hero-heading" className="k-hero-h1">
@@ -646,6 +631,7 @@ export function LandingPage() {
                   Why-Lens, Guardian and Time-Travel <ArrowRight size={14} />
                 </button>
               </div>
+              </ParallaxHero>
             </div>
           </section>
 
