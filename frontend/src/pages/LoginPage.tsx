@@ -36,7 +36,9 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() =>
+    new URLSearchParams(location.search).get('reason') === 'expired' ? 'Your session expired. Sign in again to continue where you left off.' : null
+  )
   const [resetSent, setResetSent] = useState(false)
 
   useEffect(() => {

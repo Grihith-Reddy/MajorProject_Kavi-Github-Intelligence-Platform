@@ -13,7 +13,9 @@ export interface AuthContextValue {
   user: AuthUser | null
   login: (returnTo?: string) => Promise<void>
   logout: () => Promise<void>
-  getToken: () => Promise<string | undefined>
+  getToken: (forceRefresh?: boolean) => Promise<string | undefined>
+  /** The server rejected our token even after a refresh: sign out and ask to sign in again. */
+  expireSession: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
