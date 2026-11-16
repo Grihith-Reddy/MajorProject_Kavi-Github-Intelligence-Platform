@@ -25,16 +25,6 @@ export const listKnowledgeEntries = async (api: AxiosInstance, repoId: string) =
   return data
 }
 
-export const getKnowledgeEntry = async (api: AxiosInstance, entryId: string) => {
-  const { data } = await api.get(`/knowledge/entries/${entryId}`)
-  return data
-}
-
-export const listKnowledgeTimeline = async (api: AxiosInstance, repoId: string) => {
-  const { data } = await api.get(`/knowledge/repositories/${repoId}/timeline`)
-  return data
-}
-
 export const getGitVisualization = async (api: AxiosInstance, repoId: string, limit = 500) => {
   const { data } = await api.get(`/knowledge/repositories/${repoId}/git-visualization`, {
     params: { limit },

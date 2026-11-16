@@ -158,31 +158,6 @@ class GitHubService:
         url = f"{settings.GITHUB_API_BASE}/repos/{full_name}"
         return self._request("GET", url)
 
-    def list_pull_requests(
-        self,
-        full_name: str,
-        state: str = "all",
-        page: int = 1,
-        per_page: int = 50,
-        max_pages: int = 20,
-    ) -> list[dict[str, Any]]:
-        url = f"{settings.GITHUB_API_BASE}/repos/{full_name}/pulls"
-        if page > 1:
-            payload = self._request(
-                "GET",
-                url,
-                params={"state": state, "page": page, "per_page": per_page},
-                allow_wait=True,
-            )
-            return payload if isinstance(payload, list) else []
-        return self._request_list_paginated(
-            url,
-            params={"state": state},
-            allow_wait=True,
-            per_page=per_page,
-            max_pages=max_pages,
-        )
-
     def list_pull_requests_updated_since(
         self,
         full_name: str,

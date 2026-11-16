@@ -353,36 +353,20 @@ def review_pull_request(db: Session, *, repo: dict[str, Any], pr: dict[str, Any]
             "impact": json.dumps(impact, default=str) if impact else None,
             "reviewers": json.dumps(reviewers, default=str) if reviewers else None,
         }
-        try:
-            db.execute(
-                text(
-                    """
-                    INSERT INTO guardian_reviews (id, repo_id, pr_number, head_sha, verdict, findings, comment_markdown, impact, reviewers)
-                    VALUES (gen_random_uuid(), :repo_id, :pr_number, :head_sha, :verdict, CAST(:findings AS jsonb), :comment,
-                            CAST(:impact AS jsonb), CAST(:reviewers AS jsonb))
-                    ON CONFLICT (repo_id, pr_number, head_sha)
-                    DO UPDATE SET verdict = EXCLUDED.verdict, findings = EXCLUDED.findings,
-                                  comment_markdown = EXCLUDED.comment_markdown, impact = EXCLUDED.impact,
-                                  reviewers = EXCLUDED.reviewers, created_at = NOW()
-                    """
-                ),
-                params,
-            )
-        except Exception:
-            # Databases without migration 006 still store the core review.
-            db.rollback()
-            db.execute(
-                text(
-                    """
-                    INSERT INTO guardian_reviews (id, repo_id, pr_number, head_sha, verdict, findings, comment_markdown)
-                    VALUES (gen_random_uuid(), :repo_id, :pr_number, :head_sha, :verdict, CAST(:findings AS jsonb), :comment)
-                    ON CONFLICT (repo_id, pr_number, head_sha)
-                    DO UPDATE SET verdict = EXCLUDED.verdict, findings = EXCLUDED.findings,
-                                  comment_markdown = EXCLUDED.comment_markdown, created_at = NOW()
-                    """
-                ),
-                params,
-            )
+        db.execute(
+            text(
+                """
+                INSERT INTO guardian_reviews (id, repo_id, pr_number, head_sha, verdict, findings, comment_markdown, impact, reviewers)
+                VALUES (gen_random_uuid(), :repo_id, :pr_number, :head_sha, :verdict, CAST(:findings AS jsonb), :comment,
+                        CAST(:impact AS jsonb), CAST(:reviewers AS jsonb))
+                ON CONFLICT (repo_id, pr_number, head_sha)
+                DO UPDATE SET verdict = EXCLUDED.verdict, findings = EXCLUDED.findings,
+                              comment_markdown = EXCLUDED.comment_markdown, impact = EXCLUDED.impact,
+                              reviewers = EXCLUDED.reviewers, created_at = NOW()
+                """
+            ),
+            params,
+        )
         db.commit()
     except Exception:
         db.rollback()

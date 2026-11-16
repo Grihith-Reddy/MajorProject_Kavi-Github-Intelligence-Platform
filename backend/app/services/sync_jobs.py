@@ -2,7 +2,6 @@ import json
 from typing import Any
 
 from sqlalchemy import text
-from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.core.settings import settings
@@ -211,35 +210,28 @@ def mark_sync_job_failed(db: Session, *, job_id: str, error_message: str) -> Non
 
 
 def get_latest_sync_job_for_repo(db: Session, repo_id: str) -> dict[str, Any] | None:
-    try:
-        job = db.execute(
-            text(
-                """
-                SELECT
-                    id,
-                    status,
-                    repo_full_name,
-                    attempt_count,
-                    max_attempts,
-                    last_error,
-                    result_summary,
-                    progress,
-                    created_at,
-                    started_at,
-                    finished_at,
-                    updated_at
-                FROM sync_jobs
-                WHERE repo_id = :repo_id
-                ORDER BY created_at DESC
-                LIMIT 1
-                """
-            ),
-            {"repo_id": repo_id},
-        ).mappings().first()
-    except ProgrammingError as exc:
-        db.rollback()
-        # relation "sync_jobs" does not exist (legacy db without migration)
-        if "sync_jobs" in str(exc).lower() and "does not exist" in str(exc).lower():
-            return None
-        raise
+    job = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                status,
+                repo_full_name,
+                attempt_count,
+                max_attempts,
+                last_error,
+                result_summary,
+                progress,
+                created_at,
+                started_at,
+                finished_at,
+                updated_at
+            FROM sync_jobs
+            WHERE repo_id = :repo_id
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ),
+        {"repo_id": repo_id},
+    ).mappings().first()
     return dict(job) if job else None
