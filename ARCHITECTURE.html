@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KAVI Architecture Map</title>
+<meta name="description" content="Personal reference: how every part of KAVI connects, pin to pin. Not part of the website." />
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #14171a; --ink-2: #4a525b; --ink-3: #7a838c;
+    --line: #e3e6ea; --accent: #15aeea; --accent-ink: #037bb5; --chip: #eef3f7; --code: #f1f3f5;
+    --warn: #9b5b00; --warn-bg: #fff4e0; --ok: #1f7a3d; --ok-bg: #e5f5ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1114; --panel: #151a1f; --ink: #e8edf2; --ink-2: #aab4be; --ink-3: #7d8893;
+      --line: #252c33; --accent: #3fc1f2; --accent-ink: #8fd3f5; --chip: #1c242c; --code: #1b2128;
+      --warn: #f3c27a; --warn-bg: #2d2412; --ok: #8fdca8; --ok-bg: #12261a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1114; --panel: #151a1f; --ink: #e8edf2; --ink-2: #aab4be; --ink-3: #7d8893;
+    --line: #252c33; --accent: #3fc1f2; --accent-ink: #8fd3f5; --chip: #1c242c; --code: #1b2128;
+    --warn: #f3c27a; --warn-bg: #2d2412; --ok: #8fdca8; --ok-bg: #12261a;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  a { color: var(--accent-ink); }
+  code { font: 13px/1.4 "JetBrains Mono", Consolas, monospace; background: var(--code); padding: 1px 6px; border-radius: 6px; }
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); max-width: 1500px; margin: 0 auto; }
+  nav.toc { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 28px 18px 28px 24px; border-right: 1px solid var(--line); }
+  nav.toc .brand { font-weight: 700; font-size: 18px; letter-spacing: -0.01em; margin-bottom: 4px; }
+  nav.toc .sub { color: var(--ink-3); font-size: 12.5px; margin-bottom: 18px; }
+  nav.toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a { display: flex; gap: 8px; padding: 6px 10px; border-radius: 10px; color: var(--ink-2); text-decoration: none; font-size: 14px; }
+  nav.toc a::before { content: counter(toc, decimal-leading-zero); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  nav.toc a:hover { background: var(--chip); color: var(--ink); }
+  .theme { margin-top: 18px; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .theme button { border: 0; background: transparent; color: var(--ink-2); padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  .theme button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+  main { padding: 32px 36px 80px; min-width: 0; }
+  header.hero { padding: 26px 28px; border-radius: 22px; background: linear-gradient(160deg, #15aeea, #73cef2); color: #04263a; margin-bottom: 28px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.02em; }
+  header.hero p { margin: 0; max-width: 820px; color: #0b3a55; }
+  .pill { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px; background: rgb(255 255 255 / 0.55); font-size: 12.5px; font-weight: 600; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 24px 26px; margin-bottom: 22px; }
+  section h2 { margin: 0 0 6px; font-size: 21px; letter-spacing: -0.01em; }
+  section > p.lead { margin: 0 0 16px; color: var(--ink-2); max-width: 900px; }
+  h3 { font-size: 16px; margin: 20px 0 8px; }
+  .diagram { overflow-x: auto; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); margin: 10px 0 6px; }
+  .diagram pre.mermaid { margin: 0; display: flex; justify-content: center; min-width: 640px; }
+  .diagram pre.mermaid:not([data-processed]) { font: 12px/1.45 Consolas, monospace; color: var(--ink-3); white-space: pre; justify-content: flex-start; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: var(--bg); }
+  .card h4 { margin: 0 0 6px; font-size: 14.5px; }
+  .card p, .card li { margin: 0; color: var(--ink-2); font-size: 13.5px; }
+  .card ul { margin: 0; padding-left: 18px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-3); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .note { margin-top: 12px; padding: 10px 14px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-size: 13.5px; }
+  .ok { background: var(--ok-bg); color: var(--ok); }
+  .offline { display: none; }
+  .is-offline .offline { display: block; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { padding: 20px 16px 60px; }
+    section { padding: 18px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <div class="brand">KAVI · Architecture</div>
+    <div class="sub">Personal reference. Not shipped with the website.</div>
+    <ol>
+      <li><a href="#overview">System overview</a></li>
+      <li><a href="#request">Life of a request</a></li>
+      <li><a href="#auth">Sign-in &amp; GitHub connect</a></li>
+      <li><a href="#sync">Sync pipeline</a></li>
+      <li><a href="#chat">Chat &amp; the agent</a></li>
+      <li><a href="#retrieval">Hybrid memory search</a></li>
+      <li><a href="#why">Why-Lens</a></li>
+      <li><a href="#guardian">Guardian</a></li>
+      <li><a href="#insights">Insights</a></li>
+      <li><a href="#mcp">MCP server</a></li>
+      <li><a href="#data">Data model</a></li>
+      <li><a href="#frontend">Frontend</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#deploy">Deployment &amp; CI</a></li>
+      <li><a href="#errors">Errors &amp; resilience</a></li>
+      <li><a href="#files">Where things live</a></li>
+    </ol>
+    <div class="theme" role="group" aria-label="Theme">
+      <button type="button" data-set="light">Light</button>
+      <button type="button" data-set="system">Auto</button>
+      <button type="button" data-set="dark">Dark</button>
+    </div>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <h1>How KAVI works, pin to pin</h1>
+      <p>Every box below is a real file, table, service or setting. Follow the arrows to see where data goes: from your browser, through the API on Render, into the Neon database, out to GitHub and Gemini, and back.</p>
+      <span class="pill">Live: kavi-memory.vercel.app → kavi-api-5af0.onrender.com (Singapore) → Neon (Singapore)</span>
+      <div class="note offline">The diagrams are drawn by Mermaid, loaded from a CDN. You are offline, so you see each diagram's source text instead.</div>
+    </header>
+
+    <!-- 1 -->
+    <section id="overview">
+      <h2>1 · System overview</h2>
+      <p class="lead">Four hosted pieces (Vercel, Render, Neon, Firebase) plus three outside services (GitHub, Gemini, UptimeRobot). Solid arrows are live traffic; dotted arrows happen when you push code.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  subgraph Browser["Your browser"]
+    SPA["React SPA<br/>Vite build · Lenis · Framer Motion"]
+  end
+  subgraph Vercel["Vercel · static hosting"]
+    WEB["kavi-memory.vercel.app<br/>frontend/dist + vercel.json headers"]
+  end
+  subgraph Render["Render · free · Singapore"]
+    API["FastAPI on uvicorn<br/>backend/app/main.py"]
+    WRK["Inline sync worker thread<br/>INLINE_SYNC_WORKER=true"]
+  end
+  subgraph NeonBox["Neon · free · Singapore"]
+    DB[("PostgreSQL<br/>20 tables")]
+  end
+  FB["Firebase Auth<br/>Google + email/password"]
+  GH["GitHub REST + GraphQL<br/>GitHub App user token, read-only"]
+  GM["Google Gemini<br/>gemini-2.5-flash + fallbacks<br/>gemini-embedding-001"]
+  GD["Guardian Action<br/>runs in your repos"]
+  MCPC["MCP clients<br/>Claude Code · Cursor"]
+  UR["UptimeRobot<br/>every 5 min"]
+  REPO["GitHub repo · main"]
+  CI["GitHub Actions<br/>CI · manual worker"]
+
+  WEB -->|"HTML, JS, CSS"| SPA
+  SPA -->|"sign in → ID token"| FB
+  SPA -->|"HTTPS · Bearer ID token · /api/*<br/>Server-Sent Events for chat"| API
+  API -->|"verify_id_token, check_revoked"| FB
+  API <-->|"TLS · psycopg2 · pool 10+20"| DB
+  WRK <--> DB
+  WRK -->|"PRs, files, reviews, comments"| GH
+  API -->|"blame, file content, trees"| GH
+  API -->|"agent, answers, judging"| GM
+  WRK -->|"PR summaries, embeddings"| GM
+  GD -->|"POST /api/guardian/review<br/>kavi_gd_ token"| API
+  MCPC -->|"mcp/kavi_mcp.py → /api/mcp/*<br/>kavi_mcp_ token"| API
+  UR -->|"GET /health/live"| API
+  REPO -.->|"push / pull request"| CI
+  REPO -.->|"auto-deploy frontend/"| WEB
+  REPO -.->|"auto-deploy via render.yaml"| API
+</pre></div>
+      <div class="grid">
+        <div class="card"><h4>Website (Vercel)</h4><p>Only <code>frontend/</code> is built and published. Never sleeps. Security headers come from <code>frontend/vercel.json</code>.</p></div>
+        <div class="card"><h4>API (Render)</h4><p>One Python process: the FastAPI app plus a background thread that runs sync jobs. Sleeps after 15 idle minutes; UptimeRobot pings <code>/health/live</code> to keep it awake.</p></div>
+        <div class="card"><h4>Database (Neon)</h4><p>PostgreSQL with full-text search columns. Embeddings are stored as JSON and compared in Python, so no pgvector is needed. Pauses after 5 idle minutes and wakes in about a second.</p></div>
+        <div class="card"><h4>Identity</h4><p>Firebase proves who you are. A separate GitHub App proves which repositories you may read. KAVI's own tokens (Guardian, MCP) are for machines.</p></div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section id="request">
+      <h2>2 · Life of a request</h2>
+      <p class="lead">Every API call passes through the same chain before it touches data. The last middleware added in <code>main.py</code> runs first, so CORS is the outer layer.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TB
+  R(["Request from the SPA"]) --> C["CORSMiddleware<br/>only FRONTEND_URL · GET, POST, DELETE"]
+  C --> RL["RateLimitMiddleware<br/>120/min per user or IP<br/>12/min on expensive routes"]
+  RL --> SZ["RequestSizeLimitMiddleware<br/>body ≤ 256 KB"]
+  SZ --> RC["RequestContextMiddleware<br/>X-Request-ID · CSP · HSTS · nosniff"]
+  RC --> UE["UnhandledErrorMiddleware<br/>logs crash · generic 500 + request_id"]
+  UE --> RT{"Router · /api/..."}
+  RT -->|"user routes"| AU["get_current_user<br/>Firebase ID token"]
+  RT -->|"Guardian / MCP"| TK["require_token<br/>SHA-256 hash lookup in kavi_tokens"]
+  AU --> AC["assert_repo_access<br/>UUID check + repository_access join"]
+  TK --> AC
+  AC --> SV["Service layer<br/>backend/app/services/*"]
+  SV --> DBQ[("SessionLocal → Neon")]
+  SV --> EXT["GitHub · Gemini"]
+</pre></div>
+      <table>
+        <tr><th>Expensive route (12/min)</th><th>Why</th></tr>
+        <tr><td><code>/api/chat/query</code>, <code>/api/chat/stream</code>, <code>/api/mcp/ask</code></td><td>Each call runs the Gemini agent</td></tr>
+        <tr><td><code>/api/ingestion/repositories/sync</code>, <code>/api/guardian/sync</code></td><td>Starts a GitHub crawl and AI summaries</td></tr>
+        <tr><td><code>/api/guardian/review</code>, <code>…/quality/run</code></td><td>AI judging and evaluation runs</td></tr>
+      </table>
+    </section>
+
+    <!-- 3 -->
+    <section id="auth">
+      <h2>3 · Sign-in and GitHub connect</h2>
+      <p class="lead">Two separate identities. Firebase signs you in to KAVI. Then a GitHub App authorisation (with PKCE) gives KAVI a read-only GitHub token, which is encrypted before it is stored.</p>
+      <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as You
+  participant S as SPA
+  participant F as Firebase
+  participant A as API
+  participant D as Neon
+  participant G as GitHub
+  U->>S: Open /login · Google or email
+  S->>F: signInWithPopup / signInWithEmailAndPassword
+  F-->>S: ID token (JWT, refreshed automatically)
+  S->>A: GET /api/github/status · Bearer ID token
+  A->>F: verify_id_token(check_revoked)
+  A->>D: upsert users row
+  A-->>S: connected: false → show /connect-github
+  U->>S: Continue with GitHub
+  S->>A: GET /api/github/connect-url
+  A->>D: github_oauth_states · state + PKCE verifier (Fernet-encrypted, 10 min)
+  A-->>S: github.com/login/oauth/authorize?client_id, state, code_challenge
+  S->>G: redirect · you authorise "Kavi Memory"
+  G->>A: GET /api/github/callback?code&state
+  A->>D: DELETE state RETURNING verifier (single use)
+  A->>G: exchange code + verifier → user access token
+  A->>G: GET /user
+  A->>D: github_accounts · token Fernet-encrypted
+  A-->>S: redirect → /repositories
+</pre></div>
+      <div class="note">KAVI refuses expiring GitHub tokens, so "Expire user authorization tokens" must stay off in the GitHub App. Repositories appear only where the app is installed.</div>
+    </section>
+
+    <!-- 4 -->
+    <section id="sync">
+      <h2>4 · Sync pipeline (turning PRs into memory)</h2>
+      <p class="lead">A sync is a queued job. The worker thread inside the API claims it, reads only PRs updated since the last sync, summarises each one with Gemini, and writes everything KAVI later searches.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TB
+  CL(["Sync button"]) --> EP["POST /api/ingestion/repositories/sync<br/>repo_full_name · full_resync"]
+  EP --> Q[("sync_jobs · queued")]
+  Q --> CLM["Worker claims job<br/>FOR UPDATE SKIP LOCKED · attempt + 1"]
+  CLM --> TOK["Decrypt the user's GitHub token"]
+  TOK --> LST["list_pull_requests_updated_since<br/>cursor = repositories.last_pr_updated_at"]
+  LST --> LOOP{{"For each new or changed PR"}}
+  LOOP --> FETCH["Fetch details, files and patches,<br/>commits, reviews, review and issue comments"]
+  FETCH --> PAY["_build_pr_payload<br/>compact and size-capped"]
+  PAY --> AI["Gemini summary<br/>intent · decisions · risks · tags<br/>falls back across models on quota"]
+  AI --> UPS["Upsert pull_requests, commits,<br/>knowledge_entries, file_mappings,<br/>pr_participants"]
+  UPS --> PRM["extract_promises<br/>heuristics + AI confirmation → pr_promises"]
+  PRM --> PROG["update_sync_job_progress<br/>phase · processed/total · current PR"]
+  PROG --> LOOP
+  LOOP -->|"done"| ENR["run_post_sync_enrichment<br/>backfill embeddings · resolve kept promises"]
+  ENR --> OK[("sync_jobs · succeeded<br/>cursor advanced")]
+  CLM -. "on error" .-> RETRY["retry up to 4 attempts · 30 s apart<br/>stale after 15 min → recycled"]
+  UI(["Progress capsule in the UI"]) -. "polls GET /api/ingestion/jobs/{id}" .-> PROG
+</pre></div>
+      <div class="grid">
+        <div class="card"><h4>File mappings</h4><p>Line ranges come from each patch's hunk headers, so a PR is linked to the exact lines it touched. Why-Lens and Guardian both use them.</p></div>
+        <div class="card"><h4>Incremental</h4><p>Only PRs updated after <code>last_pr_updated_at</code> are read; unchanged ones are skipped by a payload hash. "Full resync" ignores the cursor.</p></div>
+        <div class="card"><h4>Fallback worker</h4><p><code>python -m app.workers.ingestion_worker --once</code> runs the same claim loop. It is also available as a manual GitHub Actions workflow.</p></div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="chat">
+      <h2>5 · Chat and the agent</h2>
+      <p class="lead">Chat streams. The API runs Gemini with function calling over eight KAVI tools, and sends each step and token to the browser as Server-Sent Events while it works.</p>
+      <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant S as SPA (ChatPage)
+  participant A as API /chat/stream
+  participant M as memory_service
+  participant L as Gemini agent
+  participant T as KAVI tools
+  participant D as Neon
+  S->>A: POST {repo_id, query, conversation_id, as_of}
+  A->>D: assert access · ensure conversation · save user message
+  A->>M: build_memory_context (recent turns + remembered facts)
+  A-->>S: event: meta (conversation id)
+  loop until Gemini answers
+    A->>L: prompt + tool definitions
+    L-->>A: call a tool (e.g. search_memory)
+    A-->>S: event: step (running)
+    A->>T: run the tool (database, GitHub, blame)
+    T-->>A: results
+    A-->>S: event: step (done)
+  end
+  L-->>A: answer text
+  A-->>S: event: token … (streamed)
+  A->>D: save assistant message + sources + trace · extract memory items
+  A-->>S: event: done {answer, sources, trace, assistant_message_id}
+  Note over S,A: If tool calling fails, event: legacy carries a single-shot answer instead.
+</pre></div>
+      <table>
+        <tr><th>Agent tool</th><th>What it reads</th></tr>
+        <tr><td><code>search_memory</code></td><td>Hybrid search over knowledge entries (section 6)</td></tr>
+        <tr><td><code>get_pull_request</code></td><td>One PR's summary, decisions, risks and files</td></tr>
+        <tr><td><code>read_file</code> · <code>find_files</code></td><td>Live file content and paths from GitHub</td></tr>
+        <tr><td><code>why_lines</code></td><td>Blame for a line range → the PRs behind it</td></tr>
+        <tr><td><code>who_knows</code></td><td>Experts by module from pr_participants</td></tr>
+        <tr><td><code>list_promises</code></td><td>Open or kept commitments from reviews</td></tr>
+        <tr><td><code>repo_overview</code></td><td>Stats, monthly activity, top files, contributors</td></tr>
+      </table>
+      <div class="grid">
+        <div class="card"><h4>Time-Travel</h4><p><code>as_of</code> limits every tool to PRs merged by that date and reads code as it was then.</p></div>
+        <div class="card"><h4>Clear all chats</h4><p><code>DELETE /api/chat/conversations?repo_id=</code> removes your conversations; messages, feedback and memory cascade.</p></div>
+        <div class="card"><h4>Feedback</h4><p>Thumbs up/down → <code>chat_feedback</code>, one row per user per answer.</p></div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="retrieval">
+      <h2>6 · Hybrid memory search</h2>
+      <p class="lead">Three rankings of the same knowledge entries, merged by Reciprocal Rank Fusion, so an entry that ranks well on meaning and on exact words rises to the top.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  Q(["Question"]) --> SEM["Semantic<br/>Gemini embedding of the question<br/>cosine vs stored vectors<br/>local embedder if no key"]
+  Q --> FTS["Full-text<br/>PostgreSQL tsvector + ts_rank"]
+  Q --> KW["Keyword<br/>ILIKE on summary, intent,<br/>PR title and body, file paths"]
+  SEM --> RRF["reciprocal_rank_fusion<br/>score = Σ 1 / (60 + rank)"]
+  FTS --> RRF
+  KW --> RRF
+  RRF --> TOP["Top entries + their PRs and files<br/>→ agent context and citation chips"]
+</pre></div>
+    </section>
+
+    <!-- 7 -->
+    <section id="why">
+      <h2>7 · Why-Lens</h2>
+      <p class="lead">Every line of a file, traced through GitHub blame to the PR that wrote it and the intent KAVI recorded for that PR.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  P(["Open a file"]) --> E["GET /api/insights/repositories/{id}/why?path="]
+  E --> C{"blame_cache hit?"}
+  C -->|"yes"| SEG
+  C -->|"no"| B["GitHub GraphQL blame<br/>default branch or a past ref"]
+  B --> ST["store in blame_cache"] --> SEG["normalise ranges → merge into segments"]
+  SEG --> MAP["commit → PR → knowledge entry"]
+  MAP --> OUT["file content + coloured segments + PR cards"]
+  OUT --> ASK(["Select lines → Ask KAVI<br/>opens /chat?ask=…"])
+</pre></div>
+    </section>
+
+    <!-- 8 -->
+    <section id="guardian">
+      <h2>8 · Guardian</h2>
+      <p class="lead">A GitHub Action in your repository asks KAVI to review each new PR against past decisions and open promises, then posts the verdict as a comment. KAVI itself never writes to GitHub.</p>
+      <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Dev as Developer
+  participant GA as Guardian Action (kavi-guardian.yml)
+  participant A as API /guardian
+  participant D as Neon
+  participant L as Gemini
+  Dev->>GA: opens or updates a PR
+  GA->>A: POST /review · Bearer kavi_gd_ token · {pr, files + patches}
+  A->>D: token hash → owner still has access? (bound to one repo)
+  A->>D: gather_history (past PRs on the same files) · matching_promises
+  A->>D: predict_change_impact · suggest_reviewers
+  A->>L: judge the change against that history
+  L-->>A: verdict + findings (history-only fallback if AI is unavailable)
+  A->>D: guardian_reviews row (impact, reviewers)
+  A-->>GA: comment_markdown
+  GA->>Dev: posts or updates the PR comment
+  Note over GA,A: On merge the Action calls POST /guardian/sync → incremental sync job
+</pre></div>
+    </section>
+
+    <!-- 9 -->
+    <section id="insights">
+      <h2>9 · Insights</h2>
+      <div class="grid">
+        <div class="card"><h4>Promises</h4><ul><li>Found during sync: "follow-up", "temporary", TODO</li><li><code>resolve_promises</code> asks Gemini whether a later PR kept one</li><li>Stats: open, kept, oldest open, median days to keep</li></ul></div>
+        <div class="card"><h4>Knowledge map</h4><ul><li>Files grouped into modules (two folders deep)</li><li>Each person's share of a module's PRs → bus factor</li><li>At-risk when the main experts have gone quiet</li><li>Co-change edges from PRs that touch two modules</li></ul></div>
+        <div class="card"><h4>Quality harness</h4><ul><li>Samples entries, Gemini writes questions</li><li>Runs full-text, semantic and hybrid search</li><li>Recall@k, MRR and a faithfulness judge → <code>eval_runs</code></li></ul></div>
+        <div class="card"><h4>Repository health</h4><p><code>GET /api/insights/health</code> feeds the chips on the Repositories page: open promises, at-risk modules, sync freshness.</p></div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section id="mcp">
+      <h2>10 · MCP server</h2>
+      <p class="lead">A small local process lets editor agents ask KAVI questions with a personal editor token.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  ED(["Claude Code · Cursor"]) -->|"stdio"| MS["mcp/kavi_mcp.py<br/>list_repositories · ask_kavi ·<br/>why_does_this_exist · search_decisions ·<br/>get_pull_request"]
+  MS -->|"HTTPS · Bearer kavi_mcp_ token"| API["/api/mcp/*<br/>repositories · ask · why · search ·<br/>experts · promises · pull-request"]
+  API --> AG["same agent, retrieval and Why-Lens services"]
+</pre></div>
+    </section>
+
+    <!-- 11 -->
+    <section id="data">
+      <h2>11 · Data model (20 tables)</h2>
+      <p class="lead">Defined in <code>database/schema.sql</code> (identical to migrations 001–006). Deleting a repository or user cascades to everything hanging off it.</p>
+      <div class="diagram"><pre class="mermaid">
+erDiagram
+  users ||--o{ github_accounts : "connects"
+  users ||--o{ github_oauth_states : "pending connect"
+  github_accounts ||--o{ repository_access : "can read"
+  repositories ||--o{ repository_access : "visible through"
+  repositories ||--o{ sync_jobs : "synced by"
+  users ||--o{ sync_jobs : "requested"
+  repositories ||--o{ pull_requests : "contains"
+  pull_requests ||--o{ commits : "has"
+  pull_requests ||--o{ knowledge_entries : "summarised as"
+  knowledge_entries ||--o{ file_mappings : "touches lines"
+  pull_requests ||--o{ pr_participants : "authors, reviewers"
+  pull_requests ||--o{ pr_promises : "makes"
+  repositories ||--o{ blame_cache : "caches"
+  users ||--o{ chat_conversations : "owns"
+  repositories ||--o{ chat_conversations : "about"
+  chat_conversations ||--o{ chat_messages : "holds"
+  chat_messages ||--o{ chat_feedback : "rated"
+  users ||--o{ chat_memory_items : "remembers"
+  users ||--o{ kavi_tokens : "issues"
+  repositories ||--o{ guardian_reviews : "reviewed"
+  repositories ||--o{ eval_runs : "measured"
+</pre></div>
+      <table>
+        <tr><th>Group</th><th>Tables</th><th>Notes</th></tr>
+        <tr><td>Identity</td><td>users, github_accounts, github_oauth_states, kavi_tokens</td><td>GitHub tokens and PKCE verifiers encrypted with Fernet; KAVI tokens stored as SHA-256 hashes</td></tr>
+        <tr><td>Access</td><td>repositories, repository_access</td><td>A repo is readable only through a GitHub account that synced it</td></tr>
+        <tr><td>Memory</td><td>pull_requests, commits, knowledge_entries, file_mappings, pr_participants, pr_promises</td><td>knowledge_entries carries the embedding, its model name and a full-text column</td></tr>
+        <tr><td>Work</td><td>sync_jobs, blame_cache, guardian_reviews, eval_runs</td><td>sync_jobs.progress is JSON shown live in the UI</td></tr>
+        <tr><td>Chat</td><td>chat_conversations, chat_messages, chat_memory_items, chat_feedback</td><td>Clear all chats deletes these for one user and one repo</td></tr>
+      </table>
+    </section>
+
+    <!-- 12 -->
+    <section id="frontend">
+      <h2>12 · Frontend</h2>
+      <p class="lead">A single-page React app. Providers wrap the router; pages load lazily; every API call goes through one axios client that adds your Firebase token.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TB
+  IDX["index.html<br/>applies the saved theme before first paint"] --> MAIN["main.tsx"]
+  MAIN --> BR["BrowserRouter"] --> MC["MotionConfig · respects reduced motion"] --> AP["AuthProvider · Firebase onAuthStateChanged"] --> TP["ToastProvider"]
+  TP --> APP["App.tsx"]
+  TP --> NS["NetworkStatus · offline bar + can't-reach toast"]
+  APP --> EB["ErrorBoundary · crash page, stale-chunk reload"] --> SUS["Suspense · lazy pages"]
+  SUS --> PUB["Public: / (landing) · /login · 404"]
+  SUS --> RA["RequireAuth → /connect-github"]
+  SUS --> RG["RequireAuth + RequireGitHubConnection → AppShell"]
+  RG --> PAGES["/repositories · /chat · /why · /insights ·<br/>/timeline · /file · /settings"]
+  PAGES --> SVC["services/apiClient.ts (axios)<br/>Bearer token · 401 → retry → fresh token → sign out<br/>network failure → reportApiUnreachable"]
+  PAGES --> SSE["services/chatStream.ts<br/>fetch + Server-Sent Events parser"]
+  SVC --> UT["utils/errors.ts · repoId.ts · safeUrl.ts"]
+</pre></div>
+      <div class="grid">
+        <div class="card"><h4>Landing page</h4><p>WebGL sky (<code>SkyCanvas</code>, 30 fps), parallax layers, film grain, scroll sections driven by <code>useScrollProgress</code>, Lenis smooth scroll inside Framer Motion's frame loop.</p></div>
+        <div class="card"><h4>Chat page</h4><p>Start screen → composer glides down after the first question. Agent trace, citation chips, More menu (export, clear all), Time-Travel.</p></div>
+        <div class="card"><h4>Design tokens</h4><p><code>styles/kavi-system.css</code> holds the <code>--kv-*</code> colours; dark mode via <code>:root[data-theme='dark']</code>.</p></div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section id="security">
+      <h2>13 · Security model</h2>
+      <table>
+        <tr><th>Layer</th><th>What protects it</th></tr>
+        <tr><td>Who you are</td><td>Firebase ID token on every call, verified with revocation checks and a small clock-skew allowance</td></tr>
+        <tr><td>What you can read</td><td><code>assert_repo_access</code> on every repo route; IDs must be UUIDs; other routes are scoped to your own user id</td></tr>
+        <tr><td>GitHub</td><td>GitHub App with read-only Contents, Pull requests, Issues; PKCE + signed single-use state; token encrypted at rest</td></tr>
+        <tr><td>Machine tokens</td><td>Guardian and MCP tokens shown once, stored hashed, revocable, Guardian tokens bound to one repo</td></tr>
+        <tr><td>Transport</td><td>HTTPS everywhere; HSTS; database connections require TLS</td></tr>
+        <tr><td>Browser</td><td>CORS limited to the website's origin; CSP and frame denial; same-site-only login redirects; repo ids validated before use</td></tr>
+        <tr><td>Abuse</td><td>Per-user rate limits, 256 KB body limit, proxy headers trusted so limits see real client IPs</td></tr>
+        <tr><td>SQL</td><td>Every value is a bound parameter; migrations contain no grants or privileged functions</td></tr>
+        <tr><td>Errors</td><td>Unexpected failures return a generic message and a request id; details stay in the server log</td></tr>
+      </table>
+    </section>
+
+    <!-- 14 -->
+    <section id="deploy">
+      <h2>14 · Deployment and CI</h2>
+      <div class="diagram"><pre class="mermaid">
+flowchart LR
+  DEV(["git push / merge PR"]) --> MAIN["GitHub · main"]
+  MAIN --> CI["GitHub Actions CI<br/>backend: pytest + migration rollback + pip-audit<br/>frontend: npm ci + lint + build"]
+  MAIN --> VB["Vercel build<br/>root: frontend · vite build"]
+  MAIN --> RB["Render deploy<br/>render.yaml · pip install · uvicorn --proxy-headers"]
+  VB --> VS(["kavi-memory.vercel.app"])
+  RB --> RS(["kavi-api-5af0.onrender.com"])
+  RS --> NE[("Neon · schema.sql applied once")]
+  UR["UptimeRobot · /health/live"] --> RS
+</pre></div>
+      <table>
+        <tr><th>Setting</th><th>Lives in</th></tr>
+        <tr><td><code>DATABASE_URL</code>, <code>FRONTEND_URL</code>, <code>FIREBASE_*</code>, <code>GITHUB_CLIENT_ID/SECRET</code>, <code>GITHUB_OAUTH_REDIRECT_URI</code>, <code>GITHUB_STATE_SECRET</code>, <code>TOKEN_ENCRYPTION_KEY</code>, <code>AI_API_KEY</code></td><td>Render → Environment</td></tr>
+        <tr><td><code>VITE_API_BASE_URL</code>, <code>VITE_FIREBASE_*</code></td><td>Vercel → Environment Variables (baked in at build time)</td></tr>
+        <tr><td>Authorized domain <code>kavi-memory.vercel.app</code></td><td>Firebase → Authentication → Settings</td></tr>
+        <tr><td>Callback <code>…onrender.com/api/github/callback</code>, read-only permissions</td><td>GitHub App "Kavi Memory"</td></tr>
+      </table>
+      <div class="note ok">Never change <code>TOKEN_ENCRYPTION_KEY</code> once people have connected GitHub: every stored token would become unreadable.</div>
+    </section>
+
+    <!-- 15 -->
+    <section id="errors">
+      <h2>15 · Errors and resilience</h2>
+      <div class="diagram"><pre class="mermaid">
+flowchart TB
+  X(["Something fails"]) --> W{"Where?"}
+  W -->|"API code throws"| UE["UnhandledErrorMiddleware<br/>500 · 'Something went wrong' · request_id"]
+  W -->|"GitHub or Gemini"| RS["core/resilience.py<br/>retries with backoff · circuit breaker<br/>Gemini model fallbacks"]
+  W -->|"API unreachable"| NE["apiClient → reportApiUnreachable<br/>NetworkStatus toast (once per 30 s)"]
+  W -->|"Signed-in token expired"| TK["401 → retry → fresh token → sign out"]
+  W -->|"React render crash"| EB["ErrorBoundary · crash page<br/>new deploy? reload once"]
+  W -->|"Unknown URL"| NF["404 · Lost in the clouds"]
+  UE --> MSG["utils/errors.ts → friendly message<br/>with a short reference id"]
+  RS --> MSG
+</pre></div>
+    </section>
+
+    <!-- 16 -->
+    <section id="files">
+      <h2>16 · Where things live</h2>
+      <table>
+        <tr><th>Concern</th><th>Files</th></tr>
+        <tr><td>App entry, middleware order, health checks</td><td><code>backend/app/main.py</code>, <code>backend/app/core/middleware.py</code></td></tr>
+        <tr><td>Settings and startup checks</td><td><code>backend/app/core/settings.py</code></td></tr>
+        <tr><td>Database engine (driver pin, TLS)</td><td><code>backend/app/core/database.py</code></td></tr>
+        <tr><td>Auth, encryption, PKCE state</td><td><code>backend/app/core/security.py</code>, <code>core/tokens.py</code>, <code>core/access.py</code></td></tr>
+        <tr><td>Routes</td><td><code>backend/app/api/</code> auth · github · ingestion · knowledge · chat · insights · guardian · mcp</td></tr>
+        <tr><td>Sync</td><td><code>services/ingestion_service.py</code>, <code>services/sync_jobs.py</code>, <code>workers/ingestion_worker.py</code></td></tr>
+        <tr><td>AI</td><td><code>services/ai_service.py</code>, <code>services/agent_service.py</code>, <code>services/embedding_service.py</code></td></tr>
+        <tr><td>Features</td><td><code>why_service.py</code>, <code>promise_service.py</code>, <code>map_service.py</code>, <code>guardian_service.py</code>, <code>impact_service.py</code>, <code>eval_service.py</code>, <code>memory_service.py</code></td></tr>
+        <tr><td>Schema</td><td><code>database/schema.sql</code>, <code>database/migrations/001–006</code></td></tr>
+        <tr><td>Frontend shell</td><td><code>frontend/src/main.tsx</code>, <code>app/App.tsx</code>, <code>components/</code></td></tr>
+        <tr><td>Pages and features</td><td><code>frontend/src/pages/</code>, <code>frontend/src/features/</code> (chat, insights, landing, theme, integrations)</td></tr>
+        <tr><td>Deployment</td><td><code>render.yaml</code>, <code>frontend/vercel.json</code>, <code>.github/workflows/</code>, <code>docs/deployment.md</code></td></tr>
+      </table>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+  const root = document.documentElement
+  const KEY = 'kavi.archmap.theme'
+  const buttons = document.querySelectorAll('.theme button')
+  const read = () => { try { return localStorage.getItem(KEY) || 'system' } catch { return 'system' } }
+  const isDark = (pref) => pref === 'dark' || (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+
+  // Keep each diagram's source so it can be redrawn when the theme changes.
+  const blocks = [...document.querySelectorAll('pre.mermaid')]
+  // Read each source from its HTML so <br/> line breaks survive (textContent would drop them).
+  const decoder = document.createElement('textarea')
+  blocks.forEach((b) => {
+    decoder.innerHTML = b.innerHTML.replace(/<br\s*\/?>/gi, '__BR__')
+    b.dataset.src = decoder.value.replace(/__BR__/g, '<br/>')
+  })
+
+  let mermaid = null
+  async function draw() {
+    if (!mermaid) return
+    const dark = isDark(read())
+    mermaid.initialize({
+      startOnLoad: false, securityLevel: 'strict', theme: 'base',
+      // Wide flowcharts keep their natural size and scroll sideways instead of shrinking to unreadable.
+      flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: false },
+      themeVariables: dark
+        ? { background: '#0e1114', primaryColor: '#1c2a36', primaryTextColor: '#e8edf2', primaryBorderColor: '#3fc1f2', lineColor: '#7d8893', secondaryColor: '#1a2229', tertiaryColor: '#151a1f', clusterBkg: '#121820', clusterBorder: '#2b3a46', fontFamily: 'Segoe UI, system-ui, sans-serif', noteBkgColor: '#2d2412', noteTextColor: '#f3c27a', actorBkg: '#1c2a36', actorTextColor: '#e8edf2', signalColor: '#aab4be', signalTextColor: '#e8edf2' }
+        : { background: '#f6f7f9', primaryColor: '#e6f6fd', primaryTextColor: '#14171a', primaryBorderColor: '#15aeea', lineColor: '#7a838c', secondaryColor: '#f1f3f5', tertiaryColor: '#ffffff', clusterBkg: '#ffffff', clusterBorder: '#cfe7f3', fontFamily: 'Segoe UI, system-ui, sans-serif', noteBkgColor: '#fff4e0', noteTextColor: '#9b5b00', actorBkg: '#e6f6fd', actorTextColor: '#14171a', signalColor: '#4a525b', signalTextColor: '#14171a' },
+    })
+    blocks.forEach((b) => { b.removeAttribute('data-processed'); b.innerHTML = ''; b.textContent = b.dataset.src })
+    await mermaid.run({ nodes: blocks })
+  }
+
+  function applyTheme(pref) {
+    if (pref === 'system') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', pref)
+    buttons.forEach((btn) => btn.setAttribute('aria-pressed', String(btn.dataset.set === pref)))
+  }
+  buttons.forEach((btn) => btn.addEventListener('click', () => {
+    try { localStorage.setItem(KEY, btn.dataset.set) } catch {}
+    applyTheme(btn.dataset.set); draw()
+  }))
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (read() === 'system') draw() })
+  applyTheme(read())
+
+  try {
+    mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs')).default
+    await draw()
+  } catch {
+    root.classList.add('is-offline')
+  }
+</script>
+</body>
+</html>
