@@ -71,6 +71,10 @@ export function ParallaxHero({ children }: { children: ReactNode }) {
         </div>
       </motion.div>
 
+      {/* Fine film grain over the whole scene. It stays still (grain belongs to the "lens", not the
+          landscape), so it is drawn once and only composited while the layers move. */}
+      <div className="px-grain" aria-hidden />
+
       <motion.div className="px-copy" style={motionStyle({ y: yCopy, opacity: copyOpacity })}>
         {children}
       </motion.div>
