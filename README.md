@@ -29,6 +29,8 @@ KAVI reads a repository's pull requests, asks AI to summarize the intent behind 
 
 Answers are grounded in the evidence KAVI has indexed. When the evidence is missing, KAVI says so instead of guessing.
 
+**Live:** https://kavi-memory.vercel.app
+
 ---
 
 ## Features
@@ -211,7 +213,8 @@ Never commit `.env` files, service-account JSON or tokens.
 | [`docs/api-contracts.md`](docs/api-contracts.md) | REST endpoints with request and response shapes |
 | [`docs/workflows.md`](docs/workflows.md) | Ingestion flow, sync jobs, chat query lifecycle |
 | [`docs/kavi-2.0.md`](docs/kavi-2.0.md) | KAVI 2.0 features, algorithms, Guardian and MCP setup, evaluation |
-| [`docs/deployment.md`](docs/deployment.md) | Free deployment guide (Render + Neon + Vercel + scheduled GitHub Actions worker) |
+| [`docs/deployment.md`](docs/deployment.md) | The live deployment, step by step (Neon + Render + Vercel + GitHub App + UptimeRobot), all free |
+| [`ARCHITECTURE.html`](ARCHITECTURE.html) | Visual map of the whole system: 13 diagrams from request chain to data model (open in a browser) |
 | [`docs/public-launch.md`](docs/public-launch.md) | Launch checklist and operations runbook |
 
 ---

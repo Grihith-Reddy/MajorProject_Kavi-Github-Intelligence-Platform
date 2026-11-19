@@ -1,141 +1,138 @@
-# Free Hobby Deployment Guide
+# Deployment guide
 
-This guide describes a $0, hobby/demo topology. It is not a production availability or durability guarantee:
+This is the exact route KAVI's live deployment took (November 2026). Every service is on a free plan.
 
-- **Frontend:** Vercel Hobby static hosting (personal, non-commercial use only).
-- **API:** Render Free web service; it can spin down when idle and consumes the workspace's shared free instance hours.
-- **Database:** Neon Free PostgreSQL; current plan limits include 1 GB per project and 100 CU-hours per project. Check the current plan before relying on it.
-- **Ingestion worker:** runs inside the API (`INLINE_SYNC_WORKER=true`). A manual GitHub Actions workflow is kept as a fallback.
+| Part | Service | Live address |
+|---|---|---|
+| Website | Vercel (Hobby) | https://kavi-memory.vercel.app |
+| API | Render (Free web service, Singapore) | https://kavi-api-5af0.onrender.com |
+| Database | Neon (Free, AWS Singapore) | private connection string |
+| Sign-in | Firebase Authentication | Google + email/password |
+| GitHub access | GitHub App "Kavi Memory" | read-only |
+| Keep-awake monitor | UptimeRobot (Free) | pings `/health/live` |
 
-The Render free PostgreSQL database is intentionally not used: it expires 30 days after creation and is deleted after its upgrade grace period. Render free services also are not intended for production workloads. Free-plan limits can change; confirm them before deployment.
+**How changes go live:** anything merged into `main` deploys automatically. Vercel rebuilds the website and Render rebuilds the API. Work on a branch, open a pull request, wait for the CI checks, then merge.
 
-## 1. Prepare accounts and repository
+Keep all secret values in the providers' settings screens. Never commit them, and never paste them into issues or chat.
 
-1. Push the reviewed code to the repository's default branch.
-2. Create accounts for GitHub, Render, Neon, Vercel, and Firebase. Create a Gemini API key if AI summaries and chat are required.
-3. Keep all credentials in the providers' secret/environment-variable forms. Never paste secrets into source files, commits, issues, or chat.
-4. Generate secrets locally (these commands print values only to your terminal):
-   ```powershell
-   backend\.venv\Scripts\python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-   python -c "import secrets; print(secrets.token_urlsafe(48))"
-   ```
-   Use the first value for `TOKEN_ENCRYPTION_KEY` and the second for `GITHUB_STATE_SECRET`. Configure the same `TOKEN_ENCRYPTION_KEY` for the Render API and GitHub Actions worker; losing or changing it invalidates stored encrypted GitHub tokens. Never paste either value into chat or commit it.
+---
 
-## 2. Create the empty PostgreSQL database in Neon
+## 1. Database: Neon
 
-1. Create a Neon project and database. Copy its PostgreSQL connection string from the Neon dashboard; keep the SSL setting enabled.
-2. No existing users or application data need to be migrated. This step initializes the empty database schema so the application can start. Prefer the versioned schema migrations, in order:
-   - `database/migrations/001_init.sql`
-   - `database/migrations/002_access_control_and_sync_jobs.sql`
-   - `database/migrations/003_chat_memory.sql`
-   - `database/migrations/004_github_oauth_states.sql`
-   - `database/migrations/005_kavi_intelligence.sql`
-   - `database/migrations/006_impact_and_feedback.sql`
-3. From the repository root in PowerShell, set the Neon URL in the current terminal (do not save it in a file or commit it), then run all five files in one go:
-   ```powershell
-   $env:DATABASE_URL = "<paste the Neon connection string here>"
-   psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 `
-     -f .\database\migrations\001_init.sql `
-     -f .\database\migrations\002_access_control_and_sync_jobs.sql `
-     -f .\database\migrations\003_chat_memory.sql `
-     -f .\database\migrations\004_github_oauth_states.sql `
-     -f .\database\migrations\005_kavi_intelligence.sql `
-     -f .\database\migrations\006_impact_and_feedback.sql
-   ```
-   Upgrading an existing database? Run only the migrations it does not have yet: `005_kavi_intelligence.sql` for a KAVI 1.x database, then `006_impact_and_feedback.sql`. Both are additive (new tables and nullable columns) and safe to apply before deploying the new code. Apply them **before** merging into `main`, because `main` deploys automatically.
+1. Create a Neon account and a project named `kavi`. Choose the region closest to you, and use the same region for Render (KAVI uses **AWS Asia Pacific (Singapore)**). Keep the database name `neondb`.
+2. Open **SQL Editor** (branch `main`, database `neondb`). Paste the whole of `database/schema.sql` and run it. It creates all 20 tables and matches migrations 001–006 exactly.
+3. Check it: `SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public';` should return `20`.
+4. **Dashboard → Connect.** Turn **Connection pooling off** (the API keeps its own pool) and copy the connection string. It ends with `sslmode=require`. This is `DATABASE_URL`.
 
-   A successful run returns to the PowerShell prompt with no SQL error. `ON_ERROR_STOP` makes `psql` stop at the first failed script. If `psql` is not installed, open each migration file in the Neon SQL Editor, paste and run the complete file in order, waiting for success before running the next.
-4. For a brand-new database you can alternatively run `database/schema.sql` once instead of the migration files. **Do not run both approaches** on the same database.
-5. Keep the connection string for the Render and GitHub Actions secret settings. The free plan has bounded storage, compute, and recovery history; export data periodically if it matters.
+Upgrading an existing database instead of starting fresh? Run only the numbered files in `database/migrations/` that it does not have yet, in order. Never run `schema.sql` on a database that already has tables.
 
-## 3. Configure Firebase Google sign-in
+## 2. Two production secrets
 
-1. In Firebase Console, create/select a project and enable **Google** under Authentication providers.
-2. Add the planned Vercel production hostname to Firebase Authentication's **Authorized domains**. Do not include a scheme or path.
-3. Create a Firebase Web App and note its web configuration values for the frontend.
-4. Create a server-side Firebase service account credential for the backend. Store its JSON securely; do not commit it.
+Generate them on your own computer. They print only to your terminal.
 
-## 4. Configure a least-privilege GitHub App
+```bash
+backend/.venv/Scripts/python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
 
-1. Create a GitHub App and set its **User authorization callback URL** to the eventual API URL:
-   `https://<render-api-domain>/api/github/callback`
-   Render assigns the API URL when the web service is created. If it is not known yet, use the local callback temporarily and replace it with the exact Render URL before testing GitHub connection.
-2. Grant only these **repository permissions**, all **Read-only**:
-   - **Contents**: read repository trees and file contents.
-   - **Pull requests**: read pull requests, commits, reviews, and changed files.
-   - **Issues**: read pull-request conversation comments.
-   Repository metadata is granted automatically. Do not grant write or administration permissions.
-3. Configure the app for the intended account ownership and install it only on repositories that should be available to KAVI. Keep GitHub App user-access-token expiration disabled unless token refresh is implemented and tested.
-4. Save the GitHub App **Client ID** (not App ID) as `GITHUB_CLIENT_ID` and its client secret as `GITHUB_CLIENT_SECRET` in Render.
-5. Make sure the empty Neon database is initialized through migration 006 (or the consolidated `database/schema.sql`) before deploying this backend. Existing OAuth connections are marked legacy and blocked until the user reconnects. Old OAuth App grants may still exist at GitHub: revoke them from GitHub account settings after cutover, then reconnect using the new GitHub App.
+```bash
+backend/.venv/Scripts/python.exe -c "import secrets; print(secrets.token_urlsafe(48))"
+```
 
-## 5. Deploy the API on Render
+The first is `TOKEN_ENCRYPTION_KEY`, the second `GITHUB_STATE_SECRET`. Use new values for production, not the ones in your local `.env`.
 
-1. Create a Render Web Service from the repository using the root `render.yaml` Blueprint.
-2. Set the required environment variables in Render:
-   - `DATABASE_URL`: Neon PostgreSQL connection string.
-   - `FRONTEND_URL`: exact Vercel production origin, for example `https://<project>.vercel.app` (no trailing slash).
-   - `FIREBASE_PROJECT_ID`
-   - `FIREBASE_CREDENTIALS_JSON` (or configure a secure credentials file and `FIREBASE_CREDENTIALS_PATH`)
-   - `GITHUB_CLIENT_ID`
-   - `GITHUB_CLIENT_SECRET`
-   - `GITHUB_OAUTH_REDIRECT_URI`: `https://<render-api-domain>/api/github/callback`
-   - `GITHUB_STATE_SECRET`: generated random secret, at least 32 bytes.
-   - `TOKEN_ENCRYPTION_KEY`: valid Fernet key.
-   - `AI_API_KEY`: Gemini API key, if AI features are enabled.
-   - Optional: `RATE_LIMIT_REQUESTS_PER_MINUTE` (default 120) and `RATE_LIMIT_EXPENSIVE_PER_MINUTE` (default 12, applies to chat, sync and quality runs).
+> **Never change `TOKEN_ENCRYPTION_KEY` once people have connected GitHub.** Stored GitHub tokens are encrypted with it; a new key makes every connection unreadable, and everyone must reconnect.
 
-   The blueprint's start command is `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'`. The proxy flags let rate limits see each visitor's real address behind Render's proxy. If the service was created before this flag was added, update **Settings → Start Command** in Render to match.
-3. Wait for the API deployment. The API's initial `/health/ready` check must return success only after migrations are applied. Render's free instance may sleep while idle; the first request can be delayed.
-4. Record the Render service's HTTPS URL. The blueprint health check uses `/health/live`; use `/health/ready` to verify the database schema.
+## 3. API: Render
 
-## 6. Deploy the frontend on Vercel
+`render.yaml` describes the service (free plan, Singapore, Python 3.11, start command with `--proxy-headers`).
 
-1. Import the repository in Vercel and set **Root Directory** to `frontend`.
-2. Use `npm ci` as the install command, `npm run build` as the build command, and `dist` as the output directory.
-3. Set these Vercel environment variables:
-   - `VITE_API_BASE_URL=https://<render-api-domain>/api`
-   - `VITE_FIREBASE_API_KEY`
-   - `VITE_FIREBASE_AUTH_DOMAIN`
-   - `VITE_FIREBASE_PROJECT_ID`
-   - `VITE_FIREBASE_APP_ID`
-   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
-4. Deploy and note the production URL. Confirm that `frontend/vercel.json` SPA fallback supports refreshing nested routes.
-5. If the production URL differs from the value used for `FRONTEND_URL`, update Render's `FRONTEND_URL` to the exact origin and redeploy the API.
-6. Add the exact production hostname to Firebase's authorized domains and verify the callback URL in the GitHub App settings.
+1. Sign up with GitHub. **New → Blueprint**, connect the repository (install Render's GitHub app on that repository only), branch `main`.
+2. Render asks for the settings marked `sync: false`:
 
-## 7. Optional: the manual ingestion worker
+| Setting | Value |
+|---|---|
+| `FRONTEND_URL` | the website address from step 4, for example `https://kavi-memory.vercel.app`. A placeholder like `https://kavi-placeholder.vercel.app` works until then. No trailing slash. |
+| `DATABASE_URL` | the Neon connection string |
+| `FIREBASE_PROJECT_ID` | your Firebase project id |
+| `FIREBASE_CREDENTIALS_JSON` | the full contents of the Firebase service-account JSON file |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | from the GitHub App (step 6) |
+| `GITHUB_OAUTH_REDIRECT_URI` | `https://<your-render-address>/api/github/callback` |
+| `GITHUB_STATE_SECRET`, `TOKEN_ENCRYPTION_KEY` | from step 2 |
+| `AI_API_KEY` | your Gemini API key |
 
-In the GitHub repository's **Settings → Secrets and variables → Actions**, add:
+3. Deploy and wait for **"Your service is live"**. Then open `https://<your-render-address>/health/ready`; it should return `{"status":"ready"}`.
 
-- `DATABASE_URL`: the same Neon connection string used by Render.
-- `TOKEN_ENCRYPTION_KEY`: exactly the same Fernet key used by Render.
-- `AI_API_KEY`: Gemini API key used for repository summaries.
+On startup the API refuses to run with unsafe settings: it requires HTTPS addresses, real secrets of at least 32 bytes and a valid encryption key. The log names the exact setting it rejected.
 
-Syncs normally run inside the API. `.github/workflows/ingestion-worker.yml` is manual only (Actions tab → **Ingestion worker (manual)** → **Run workflow**) and processes one queued sync job per run. It is deliberately not scheduled: private repositories get a limited number of free Actions minutes each month.
+## 4. Website: Vercel
 
-## 8. Add UptimeRobot monitoring (optional)
+1. Sign up (Hobby) with GitHub. **Add New → Project**, install Vercel's GitHub app on the repository only, then **Import**.
+2. **Root Directory: `frontend`** (Vite is detected automatically).
+3. Environment variables:
 
-1. Create a free UptimeRobot account and add an **HTTP(s)** monitor.
-2. Set the friendly name to `KAVI API health`.
-3. Set the URL to `https://<render-api-domain>/health/ready`, choose a 5-minute interval, and save it. This endpoint checks that the API can reach PostgreSQL and that required tables exist.
-4. Configure an alert contact and wait for the first successful check. If it reports a failure, open the Render service logs and verify `/health/ready` directly.
+| Key | Value |
+|---|---|
+| `VITE_API_BASE_URL` | `https://<your-render-address>/api` |
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_FIREBASE_MESSAGING_SENDER_ID` | from the Firebase web app config |
 
-UptimeRobot is monitoring, not an uptime guarantee. Its periodic requests may keep an idle free web service active and consume Render's free instance hours; Render can still sleep or throttle the service, and free-plan terms can change. Do not rely on repeated pings as a substitute for an always-on paid service.
+4. Deploy. Then give the project a short address. In the project's **Domains** settings (or **Ctrl + K → Add Domain**), add a free name such as `kavi-memory.vercel.app` for **Production**.
+5. Use that production address everywhere, not the long per-deployment links: those are protected by a Vercel login.
 
-## 9. Verify the deployment
+`VITE_*` values are baked in at build time; after changing one, redeploy.
 
-1. Open `https://<render-api-domain>/health/live`; expect HTTP 200.
-2. Open `https://<render-api-domain>/health/ready`; expect HTTP 200 and `{"status":"ready"}`. A 503 means the database is unavailable or a required migration is missing.
-3. Open the Vercel production URL; sign in with Google.
-4. Connect GitHub, verify the intended account, and select a repository.
-5. Trigger a repository sync and confirm the repository shows indexed pull requests. If a sync stays queued, run **Ingestion worker (manual)** once from the Actions tab.
-6. Ask KAVI a question about the selected repository, including an exact file-content question, and verify that the answer is grounded in the connected repository.
-7. Check Render logs, Actions logs, and Neon usage after the smoke test. Never include secret values in logs or support reports.
+## 5. Point the API at the website
 
-## Free-plan references
+In Render → **Environment**, set `FRONTEND_URL` to the website's production address and click **Save, rebuild and deploy**. The API only accepts browser requests from that origin (CORS).
 
-- [Render free services and limitations](https://render.com/docs/free)
-- [Neon plans and limits](https://neon.com/docs/introduction/plans)
-- [Vercel Hobby plan](https://vercel.com/docs/plans/hobby)
-- [GitHub scheduled workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+## 6. GitHub App
+
+KAVI needs a **GitHub App**. An OAuth App would only see public repositories, because KAVI asks for no OAuth scopes.
+
+1. GitHub → **Settings → Developer settings → GitHub Apps → New GitHub App**.
+2. Name (unique on GitHub), **Homepage URL** = the website address, **Callback URL** = `https://<your-render-address>/api/github/callback`. You can add `http://localhost:8000/api/github/callback` as a second callback for local work.
+3. **Expire user authorization tokens: off.** KAVI rejects expiring tokens. Leave "Request user authorization during installation" and "Device Flow" off, and untick **Webhook → Active**.
+4. Repository permissions, all **Read-only**: Contents, Issues, Pull requests (Metadata is automatic). Everything else: No access.
+5. **Where can this GitHub App be installed: Any account** (so others can connect their repos).
+6. Copy the **Client ID** (starts with `Iv`, not the numeric App ID) and **Generate a new client secret**. Put both into Render.
+7. **Install App** on your account, choosing all or selected repositories. KAVI can only see repositories where the app is installed.
+
+## 7. Firebase
+
+Firebase console → **Authentication → Settings → Authorized domains → Add domain**, and add the website's domain (for example `kavi-memory.vercel.app`). Without it, Google sign-in on the live site fails with "unauthorized domain".
+
+## 8. Keep the API awake: UptimeRobot
+
+Render's free plan sleeps after 15 minutes without traffic, and the next visitor waits 30–60 seconds while it wakes. To avoid that:
+
+1. Create a free UptimeRobot account. **New monitor → HTTP(s)**.
+2. URL: `https://<your-render-address>/health/live`, interval **5 minutes**, keep your email as an alert contact.
+
+Ping **`/health/live`, not `/health/ready`.** `/health/ready` queries the database every time, which keeps Neon awake around the clock and uses up its free compute hours. Running one Render service all month uses about 744 of the 750 free hours, so keep it the only free Render service.
+
+## 9. Check the live site
+
+1. Open the website, sign in, and connect GitHub (you are sent to GitHub to authorise the app, then back to **Repositories**).
+2. Sync a small repository and wait for **Synced**.
+3. Ask a question in Chat, then open Why-Lens and Insights.
+
+| Symptom | Fix |
+|---|---|
+| "unauthorized domain" on sign-in | add the website domain in Firebase (step 7) |
+| GitHub: "redirect_uri is not associated" | the GitHub App callback must exactly match `GITHUB_OAUTH_REDIRECT_URI` |
+| "did not return an access token" | wrong `GITHUB_CLIENT_SECRET`; generate a new one |
+| no repositories listed | install the GitHub App on them (step 6.7) |
+| "Can't reach KAVI right now" | the API is waking up or redeploying; wait a minute |
+| browser requests blocked (CORS) | `FRONTEND_URL` must equal the website origin exactly, with no trailing slash |
+
+## Things learned during the first deploy
+
+- **CI and Render install the newest Python packages on Python 3.11.** A local Python 3.10 environment gets older versions (for example SQLAlchemy 2.0 instead of 2.1). When you change backend dependencies, test against a fresh install of the latest versions.
+- **SQLAlchemy 2.1 defaults plain `postgresql://` URLs to psycopg 3.** `backend/app/core/database.py` pins the bundled psycopg2 driver, so Neon's URL works as copied.
+- **Vercel's npm does not install optional peer packages.** The frontend relies only on Vite's built-in CSS minifier.
+- **The repository is private, so GitHub Actions minutes are limited.** Syncs run inside the API (`INLINE_SYNC_WORKER=true`), and `.github/workflows/ingestion-worker.yml` is manual only (Actions tab → **Ingestion worker (manual)** → **Run workflow**). It needs `DATABASE_URL`, `TOKEN_ENCRYPTION_KEY` and `AI_API_KEY` as repository secrets if you ever use it.
+
+## Rolling back
+
+- **API:** Render → **Events** → previous deploy → **Rollback**.
+- **Website:** Vercel → **Deployments** → previous deployment → **⋯ → Promote to Production**.
+- **Database:** before any schema change, create a Neon branch (an instant copy) as a restore point.
