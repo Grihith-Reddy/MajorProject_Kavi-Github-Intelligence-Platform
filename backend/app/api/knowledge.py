@@ -175,6 +175,89 @@ def git_visualization(
     }
 
 
+@router.get("/repositories/{repo_id}/git-explorer")
+def git_explorer(
+    repo_id: str,
+    limit: int = Query(400, ge=20, le=1200),
+    commit_limit: int = Query(3000, ge=100, le=10000),
+    current_user: UserContext = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Everything the Git Explorer page draws: pull requests with their branches, commits, people,
+    files and promises, plus the repository's commits. Newest activity first."""
+    repo = assert_repo_access(db, repo_id, current_user.sub)
+    pull_requests = db.execute(
+        text(
+            """
+            WITH pr AS (
+                SELECT p.id, p.github_pr_number, p.title, p.state, p.base_branch, p.head_branch,
+                       p.author_login, p.url, p.created_at, p.merged_at, p.updated_at
+                FROM pull_requests p
+                WHERE p.repo_id = :repo_id
+                ORDER BY COALESCE(p.merged_at, p.updated_at, p.created_at) DESC NULLS LAST, p.github_pr_number DESC
+                LIMIT :limit
+            )
+            SELECT
+                pr.github_pr_number, pr.title, pr.state, pr.base_branch, pr.head_branch,
+                pr.author_login, pr.url, pr.created_at, pr.merged_at, pr.updated_at,
+                k.intent, k.summary, k.tags,
+                (SELECT COUNT(*) FROM commits c WHERE c.pr_id = pr.id) AS commit_count,
+                (SELECT MIN(c.committed_at) FROM commits c WHERE c.pr_id = pr.id) AS first_commit_at,
+                (SELECT MAX(c.committed_at) FROM commits c WHERE c.pr_id = pr.id) AS last_commit_at,
+                (
+                    SELECT COALESCE(
+                        json_agg(json_build_object('login', pp.login, 'role', pp.role, 'interactions', pp.interactions)
+                                 ORDER BY pp.interactions DESC, pp.login),
+                        '[]'::json)
+                    FROM pr_participants pp WHERE pp.pr_id = pr.id
+                ) AS participants,
+                (
+                    SELECT COALESCE(array_agg(DISTINCT fm.file_path), ARRAY[]::text[])
+                    FROM file_mappings fm WHERE k.id IS NOT NULL AND fm.knowledge_entry_id = k.id
+                ) AS files,
+                (SELECT COUNT(*) FROM pr_promises pm WHERE pm.pr_id = pr.id AND pm.status = 'open') AS open_promises,
+                (SELECT COUNT(*) FROM pr_promises pm WHERE pm.pr_id = pr.id AND pm.status = 'kept') AS kept_promises
+            FROM pr
+            LEFT JOIN knowledge_entries k ON k.pr_id = pr.id
+            ORDER BY COALESCE(pr.merged_at, pr.updated_at, pr.created_at) DESC NULLS LAST, pr.github_pr_number DESC
+            """
+        ),
+        {"repo_id": repo_id, "limit": limit},
+    ).mappings().all()
+
+    commits = db.execute(
+        text(
+            """
+            SELECT c.github_sha, split_part(COALESCE(c.message, ''), E'\\n', 1) AS message,
+                   c.author_name, c.committed_at, c.url, p.github_pr_number
+            FROM commits c
+            LEFT JOIN pull_requests p ON p.id = c.pr_id
+            WHERE c.repo_id = :repo_id
+            ORDER BY c.committed_at DESC NULLS LAST
+            LIMIT :commit_limit
+            """
+        ),
+        {"repo_id": repo_id, "commit_limit": commit_limit},
+    ).mappings().all()
+
+    rows = []
+    for row in pull_requests:
+        item = dict(row)
+        item["files"] = sorted(item.get("files") or [])[:60]
+        item["tags"] = list(item.get("tags") or [])
+        rows.append(item)
+    audit_log("knowledge.git_explorer.viewed", auth0_sub=current_user.sub, repo_id=repo_id, count=len(rows))
+    return {
+        "repository": {
+            "id": repo.get("id"),
+            "full_name": repo.get("full_name"),
+            "default_branch": repo.get("default_branch"),
+        },
+        "pull_requests": rows,
+        "commits": [dict(row) for row in commits],
+    }
+
+
 @router.get("/repositories/{repo_id}/evolution")
 def evolution(
     repo_id: str,

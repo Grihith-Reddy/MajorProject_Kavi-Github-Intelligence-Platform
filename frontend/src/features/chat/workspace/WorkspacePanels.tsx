@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { AlertCircle, ArrowRight, FolderGit2, GitPullRequest, X } from 'lucide-react'
-import { GitVisualizationPanel } from './GitVisualizationPanel'
 import { WORKSPACE_PANEL_ITEMS, splitFilePath } from './chatHelpers'
 import { type WorkspaceOverlayProps, type WorkspacePanelId } from './chatTypes'
 
@@ -201,9 +200,6 @@ export function WorkspaceOverlayPanel({
   filesLoading,
   filesError,
   onNavigate,
-  gitVisualization,
-  gitVisualizationLoading,
-  gitVisualizationError,
   historyNode,
 }: WorkspaceOverlayProps & { panel: WorkspacePanelId }) {
   const referencedEntries = (entries.length ? entries : (chatSources as any[])).slice(0, 7)
@@ -270,16 +266,6 @@ export function WorkspaceOverlayPanel({
           </div>
         )
       }) : <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 13, color: 'rgb(var(--kv-ink-rgb) / 0.5)' }}>No PR context available yet.</p>}
-    </section>
-  )
-
-  if (panel === 'git') return (
-    <section>
-      <p style={labelStyle}>Git Visualization</p>
-      <p style={{ fontFamily: "'Archivo', sans-serif", fontSize: 12, color: 'rgb(var(--kv-ink-rgb) / 0.55)', marginBottom: 10 }}>
-        Main branch stays centered while side branches are split left and right, with merge paths connected per PR.
-      </p>
-      <GitVisualizationPanel data={gitVisualization} loading={gitVisualizationLoading} error={gitVisualizationError} />
     </section>
   )
 

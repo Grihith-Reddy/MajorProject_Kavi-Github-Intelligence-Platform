@@ -11,7 +11,7 @@ import { ChatMode, clearConversations, getConversation, queryChat } from '../ser
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { getApiErrorMessage } from '../utils/errors'
 import { getRepositoryStatus } from '../services/githubService'
-import { getGitVisualization, listKnowledgeEntries, listKnowledgeFiles } from '../services/knowledgeService'
+import { listKnowledgeEntries, listKnowledgeFiles } from '../services/knowledgeService'
 import { ChatWorkspace } from '../features/chat/workspace/ChatWorkspace'
 import { ACTIVE_REPO_STORAGE_KEY, defaultMessages, getChatStorageKey, readStoredRepoId, resolveChatMode, resolveUserDisplayName } from '../features/chat/workspace/chatHelpers'
 import { type ChatEntry, type ChatQueryResponse, type ChatSource, type StructuredAnswer } from '../features/chat/workspace/chatTypes'
@@ -35,7 +35,6 @@ export function ChatPage() {
   const { data: filesData, error: filesError, loading: filesLoading } = useAsync(() => (repoId ? listKnowledgeFiles(api, repoId) : Promise.resolve(null)), [api, repoId])
   const { data: entriesData, error: entriesError, loading: entriesLoading } = useAsync(() => (repoId ? listKnowledgeEntries(api, repoId) : Promise.resolve(null)), [api, repoId])
   const { data: repositoryStatus } = useAsync(() => (repoId ? getRepositoryStatus(api, repoId) : Promise.resolve(null)), [api, repoId])
-  const { data: gitVisualizationData, error: gitVisualizationError, loading: gitVisualizationLoading } = useAsync(() => (repoId ? getGitVisualization(api, repoId) : Promise.resolve(null)), [api, repoId])
 
   const [messages, setMessages] = useState<ChatEntry[]>(() => defaultMessages(welcomeName))
   const [chatLoading, setChatLoading] = useState(false)
@@ -426,9 +425,6 @@ export function ChatPage() {
       messagesEndRef={messagesEndRef}
       streamingIndex={streamingIndex}
       onAssistantStreamComplete={handleAssistantStreamComplete}
-      gitVisualization={gitVisualizationData ?? null}
-      gitVisualizationLoading={gitVisualizationLoading}
-      gitVisualizationError={gitVisualizationError}
       timeTravel={timeTravel}
       controls={{ onStop: stopAnswer, onRegenerate: regenerateAnswer, onEditLast: editLastQuestion, onExport: exportConversation, onNewChat: startNewConversation, onClearAll: () => setClearOpen(true) }}
       setTimeTravel={setTimeTravel}

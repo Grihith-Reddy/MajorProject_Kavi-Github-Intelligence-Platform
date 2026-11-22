@@ -14,7 +14,7 @@ export const WORKSPACE_PANEL_ITEMS: { id: WorkspacePanelId; label: string; hint:
   { id: 'focus', label: 'Focus', hint: 'Tips for sharper answers', icon: Compass },
   { id: 'prs', label: 'PRs', hint: 'Pull requests this chat draws on', icon: GitPullRequest },
   { id: 'files', label: 'Files', hint: 'Files KAVI has indexed', icon: File },
-  { id: 'git', label: 'Git Visualization', hint: 'Branches and merges over time', icon: GitBranch },
+  { id: 'git', label: 'Git Explorer', hint: 'Branches, merges and commits over time', icon: GitBranch },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

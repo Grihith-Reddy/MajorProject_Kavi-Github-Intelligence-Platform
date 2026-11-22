@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { setChatHeaderActions } from '../chatHeaderActions'
@@ -10,6 +11,7 @@ import { type WorkspacePanelId, type WorkspaceRenderProps } from './chatTypes'
 // ─── Workspace layout ─────────────────────────────────────────────────────────
 
 export function ChatWorkspace(props: WorkspaceRenderProps) {
+  const navigate = useNavigate()
   const [activePanel, setActivePanel] = useState<WorkspacePanelId | null>(null)
   const [railExpanded, setRailExpanded] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -36,8 +38,17 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
   useEffect(() => () => setChatHeaderActions(null), [])
 
   const closePanel = () => setActivePanel(null)
-  const handlePanelToggle = (panel: WorkspacePanelId) => setActivePanel((c) => (c === panel ? null : panel))
-  const chooseFromMenu = (panel: WorkspacePanelId) => { setMenuOpen(false); setActivePanel(panel) }
+  // Git Explorer is a full page, reached only from this dock.
+  const openGitExplorer = () => navigate(`/git?repoId=${encodeURIComponent(props.repoId)}`)
+  const handlePanelToggle = (panel: WorkspacePanelId) => {
+    if (panel === 'git') { openGitExplorer(); return }
+    setActivePanel((c) => (c === panel ? null : panel))
+  }
+  const chooseFromMenu = (panel: WorkspacePanelId) => {
+    setMenuOpen(false)
+    if (panel === 'git') { openGitExplorer(); return }
+    setActivePanel(panel)
+  }
 
   return (
     <div className="db-workspace-shell" style={{ position: 'fixed', inset: '90px 16px 16px', zIndex: 20 }}>
@@ -143,9 +154,6 @@ export function ChatWorkspace(props: WorkspaceRenderProps) {
                   entriesError={props.entriesError}
                   filesLoading={props.filesLoading}
                   filesError={props.filesError}
-                  gitVisualization={props.gitVisualization}
-                  gitVisualizationLoading={props.gitVisualizationLoading}
-                  gitVisualizationError={props.gitVisualizationError}
                   onNavigate={closePanel}
                   historyNode={props.renderHistory(closePanel)}
                 />
